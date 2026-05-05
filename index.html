@@ -4,226 +4,205 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>연차 관리 시스템</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   :root {
-    --primary: #1D9E75;
-    --primary-light: #E1F5EE;
-    --primary-dark: #085041;
-    --blue: #378ADD;
-    --blue-light: #E6F1FB;
-    --blue-dark: #0C447C;
-    --amber: #BA7517;
-    --amber-light: #FAEEDA;
-    --red: #E24B4A;
-    --red-light: #FCEBEB;
-    --red-dark: #791F1F;
-    --gray-50: #F8F8F8;
-    --gray-100: #F1F1F1;
-    --gray-200: #E0E0E0;
-    --gray-400: #9E9E9E;
-    --gray-600: #5F5F5F;
-    --gray-900: #1A1A1A;
-    --white: #ffffff;
-    --radius: 10px;
-    --radius-sm: 6px;
-    --shadow: 0 1px 4px rgba(0,0,0,0.07);
+    --primary: #1D9E75; --primary-light: #E1F5EE; --primary-dark: #085041;
+    --blue: #378ADD; --blue-light: #E6F1FB; --blue-dark: #0C447C;
+    --amber: #BA7517; --amber-light: #FAEEDA;
+    --red: #E24B4A; --red-light: #FCEBEB; --red-dark: #791F1F;
+    --gray-50: #F8F8F8; --gray-100: #F1F1F1; --gray-200: #E0E0E0;
+    --gray-400: #9E9E9E; --gray-600: #5F5F5F; --gray-900: #1A1A1A;
+    --white: #ffffff; --radius: 10px; --radius-sm: 6px;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif; background: var(--gray-50); color: var(--gray-900); min-height: 100vh; }
 
-  /* Layout */
+  .login-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.45); display: flex; align-items: center; justify-content: center; z-index: 1000; }
+  .login-box { background: var(--white); border-radius: var(--radius); padding: 32px; width: 320px; text-align: center; }
+  .login-title { font-size: 18px; font-weight: 700; margin-bottom: 6px; }
+  .login-sub { font-size: 13px; color: var(--gray-400); margin-bottom: 24px; }
+  .login-input { width: 100%; padding: 10px 14px; font-size: 14px; border: 1px solid var(--gray-200); border-radius: var(--radius-sm); font-family: inherit; margin-bottom: 8px; }
+  .login-input:focus { outline: none; border-color: var(--primary); }
+  .login-btn { width: 100%; padding: 11px; font-size: 14px; font-weight: 600; border: none; border-radius: var(--radius-sm); cursor: pointer; font-family: inherit; }
+  .login-btn-admin { background: var(--primary); color: var(--white); margin-bottom: 8px; }
+  .login-btn-emp { background: var(--gray-100); color: var(--gray-600); }
+  .login-error { font-size: 12px; color: var(--red); margin-bottom: 8px; display: none; }
+  .login-error.show { display: block; }
+  .divider { display: flex; align-items: center; gap: 8px; margin: 14px 0; }
+  .divider-line { flex: 1; height: 1px; background: var(--gray-200); }
+  .divider-text { font-size: 11px; color: var(--gray-400); }
+
   .app { display: flex; min-height: 100vh; }
   .sidebar { width: 220px; background: var(--white); border-right: 1px solid var(--gray-200); display: flex; flex-direction: column; padding: 24px 0; position: fixed; height: 100vh; }
   .main { margin-left: 220px; flex: 1; padding: 28px; }
   .logo { padding: 0 20px 24px; border-bottom: 1px solid var(--gray-100); margin-bottom: 16px; }
   .logo-title { font-size: 16px; font-weight: 700; color: var(--primary-dark); }
   .logo-sub { font-size: 11px; color: var(--gray-400); margin-top: 2px; }
-
-  /* Sidebar nav */
+  .user-info { padding: 0 20px 16px; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid var(--gray-100); margin-bottom: 8px; }
+  .user-avatar { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; flex-shrink: 0; }
+  .user-name { font-size: 13px; font-weight: 600; }
+  .user-role { font-size: 11px; color: var(--gray-400); }
   .nav-item { display: flex; align-items: center; gap: 10px; padding: 10px 20px; font-size: 13px; color: var(--gray-600); cursor: pointer; border-left: 3px solid transparent; transition: all 0.15s; }
-  .nav-item:hover { background: var(--gray-50); color: var(--gray-900); }
+  .nav-item:hover { background: var(--gray-50); }
   .nav-item.active { background: var(--primary-light); color: var(--primary-dark); border-left-color: var(--primary); font-weight: 600; }
-  .nav-icon { font-size: 15px; }
   .nav-section { font-size: 10px; color: var(--gray-400); padding: 12px 20px 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .logout-btn { margin: auto 20px 0; padding: 8px; font-size: 12px; color: var(--gray-400); background: none; border: 1px solid var(--gray-200); border-radius: var(--radius-sm); cursor: pointer; font-family: inherit; }
+  .logout-btn:hover { color: var(--red); border-color: #F7C1C1; }
 
-  /* Role switch */
-  .role-bar { display: flex; gap: 6px; padding: 0 20px; margin-bottom: 16px; }
-  .role-btn { flex: 1; padding: 6px 0; font-size: 11px; border-radius: 20px; border: 1px solid var(--gray-200); background: none; cursor: pointer; color: var(--gray-600); font-family: inherit; }
-  .role-btn.active { background: var(--primary); color: var(--white); border-color: var(--primary); font-weight: 600; }
-
-  /* Header */
-  .page-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
-  .page-title { font-size: 20px; font-weight: 700; color: var(--gray-900); }
+  .page-header { margin-bottom: 24px; }
+  .page-title { font-size: 20px; font-weight: 700; }
   .page-sub { font-size: 13px; color: var(--gray-400); margin-top: 2px; }
 
-  /* Metric cards */
   .metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 24px; }
   .metric-card { background: var(--white); border-radius: var(--radius); padding: 18px; border: 1px solid var(--gray-200); }
   .metric-label { font-size: 11px; color: var(--gray-400); margin-bottom: 6px; }
-  .metric-value { font-size: 28px; font-weight: 700; color: var(--gray-900); line-height: 1; }
+  .metric-value { font-size: 28px; font-weight: 700; line-height: 1; }
   .metric-unit { font-size: 13px; color: var(--gray-400); margin-top: 4px; }
   .metric-card.green .metric-value { color: var(--primary); }
   .metric-card.blue .metric-value { color: var(--blue); }
   .metric-card.amber .metric-value { color: var(--amber); }
-  .metric-card.red .metric-value { color: var(--red); }
 
-  /* Cards */
   .card { background: var(--white); border-radius: var(--radius); border: 1px solid var(--gray-200); padding: 20px; margin-bottom: 16px; }
-  .card-title { font-size: 14px; font-weight: 600; color: var(--gray-900); margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+  .card-title { font-size: 14px; font-weight: 600; margin-bottom: 16px; }
   .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 
-  /* Request rows */
   .req-row { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--gray-100); }
   .req-row:last-child { border-bottom: none; padding-bottom: 0; }
   .avatar { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; flex-shrink: 0; }
-  .av-green { background: var(--primary-light); color: var(--primary-dark); }
-  .av-blue { background: var(--blue-light); color: var(--blue-dark); }
-  .av-amber { background: var(--amber-light); color: var(--amber); }
-  .av-red { background: var(--red-light); color: var(--red-dark); }
-  .av-purple { background: #EEEDFE; color: #3C3489; }
+  .av-0 { background: var(--primary-light); color: var(--primary-dark); }
+  .av-1 { background: var(--blue-light); color: var(--blue-dark); }
+  .av-2 { background: var(--amber-light); color: var(--amber); }
+  .av-3 { background: #EEEDFE; color: #3C3489; }
+  .av-4 { background: var(--red-light); color: var(--red-dark); }
   .req-info { flex: 1; min-width: 0; }
-  .req-name { font-size: 13px; font-weight: 600; color: var(--gray-900); }
+  .req-name { font-size: 13px; font-weight: 600; }
   .req-detail { font-size: 12px; color: var(--gray-400); margin-top: 1px; }
 
-  /* Badges */
   .badge { font-size: 11px; padding: 3px 9px; border-radius: 20px; font-weight: 600; white-space: nowrap; }
   .badge-pending { background: var(--amber-light); color: var(--amber); }
   .badge-approved { background: var(--primary-light); color: var(--primary-dark); }
   .badge-rejected { background: var(--red-light); color: var(--red-dark); }
 
-  /* Buttons */
   .btn-row { display: flex; gap: 6px; }
-  .btn { padding: 5px 12px; font-size: 12px; border-radius: var(--radius-sm); border: 1px solid var(--gray-200); background: var(--white); cursor: pointer; font-family: inherit; font-weight: 500; transition: all 0.15s; }
-  .btn:hover { opacity: 0.85; }
+  .btn { padding: 5px 12px; font-size: 12px; border-radius: var(--radius-sm); border: 1px solid var(--gray-200); background: var(--white); cursor: pointer; font-family: inherit; font-weight: 500; }
   .btn-approve { background: var(--primary-light); color: var(--primary-dark); border-color: #9FE1CB; }
   .btn-reject { background: var(--red-light); color: var(--red-dark); border-color: #F7C1C1; }
   .btn-primary { background: var(--primary); color: var(--white); border-color: var(--primary); padding: 10px 20px; font-size: 13px; border-radius: var(--radius-sm); width: 100%; margin-top: 8px; }
 
-  /* Progress bar */
   .progress-wrap { flex: 1; min-width: 0; }
   .progress-bar { height: 6px; background: var(--gray-100); border-radius: 3px; overflow: hidden; margin-top: 6px; }
   .progress-fill { height: 100%; border-radius: 3px; background: var(--primary); }
   .progress-fill.danger { background: var(--red); }
 
-  /* Calendar */
   .cal-nav { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
   .cal-month { font-size: 15px; font-weight: 700; }
   .cal-btn { padding: 4px 12px; font-size: 13px; border-radius: var(--radius-sm); border: 1px solid var(--gray-200); background: var(--white); cursor: pointer; }
   .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
   .cal-head { text-align: center; font-size: 11px; color: var(--gray-400); padding: 4px 0; font-weight: 600; }
-  .cal-day { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; font-size: 12px; border-radius: var(--radius-sm); cursor: default; color: var(--gray-900); }
+  .cal-day { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; font-size: 12px; border-radius: var(--radius-sm); color: var(--gray-900); }
   .cal-day.today { background: var(--gray-100); font-weight: 700; }
-  .cal-day.leave-g { background: var(--primary-light); color: var(--primary-dark); font-weight: 600; }
-  .cal-day.leave-b { background: var(--blue-light); color: var(--blue-dark); font-weight: 600; }
-  .cal-day.leave-a { background: var(--amber-light); color: var(--amber); font-weight: 600; }
-  .cal-day.leave-m { background: #EEEDFE; color: #3C3489; font-weight: 600; }
+  .cal-day.leave-0 { background: var(--primary-light); color: var(--primary-dark); font-weight: 600; }
+  .cal-day.leave-1 { background: var(--blue-light); color: var(--blue-dark); font-weight: 600; }
+  .cal-day.leave-2 { background: var(--amber-light); color: var(--amber); font-weight: 600; }
+  .cal-day.leave-3 { background: #EEEDFE; color: #3C3489; font-weight: 600; }
+  .cal-day.leave-multi { background: #EEEDFE; color: #3C3489; font-weight: 600; }
   .cal-day.other { color: var(--gray-200); }
   .cal-legend { display: flex; gap: 12px; margin-top: 14px; flex-wrap: wrap; }
   .legend-item { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--gray-600); }
   .legend-dot { width: 10px; height: 10px; border-radius: 3px; }
 
-  /* Form */
   .form-group { margin-bottom: 14px; }
   .form-label { font-size: 12px; color: var(--gray-600); font-weight: 600; margin-bottom: 5px; display: block; }
   .form-input { width: 100%; padding: 9px 12px; font-size: 13px; border: 1px solid var(--gray-200); border-radius: var(--radius-sm); background: var(--white); color: var(--gray-900); font-family: inherit; }
   .form-input:focus { outline: none; border-color: var(--primary); }
   .form-row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 
-  /* Notify */
   .notify { background: var(--primary-light); border: 1px solid #9FE1CB; border-radius: var(--radius-sm); padding: 10px 14px; font-size: 12px; color: var(--primary-dark); margin-bottom: 14px; display: none; }
   .notify.show { display: block; }
-
-  /* Empty */
+  .info-box { background: var(--blue-light); border: 1px solid #B5D4F4; border-radius: var(--radius-sm); padding: 12px 16px; font-size: 12px; color: var(--blue-dark); margin-bottom: 16px; line-height: 1.7; }
   .empty { font-size: 13px; color: var(--gray-400); padding: 12px 0; text-align: center; }
-
-  /* Page visibility */
+  .loading { font-size: 13px; color: var(--gray-400); padding: 12px 0; text-align: center; }
   .page { display: none; }
   .page.active { display: block; }
 
-  /* Responsive */
   @media (max-width: 768px) {
-    .sidebar { width: 100%; height: auto; position: relative; flex-direction: row; flex-wrap: wrap; padding: 12px; }
+    .sidebar { width: 100%; height: auto; position: relative; }
     .main { margin-left: 0; padding: 16px; }
-    .metrics { grid-template-columns: repeat(2, 1fr); }
+    .metrics { grid-template-columns: repeat(2,1fr); }
     .grid-2 { grid-template-columns: 1fr; }
     .app { flex-direction: column; }
   }
 </style>
 </head>
 <body>
-<div class="app">
 
-  <!-- Sidebar -->
+<!-- ⚠️ 여기에 Supabase 정보를 입력하세요 -->
+<script>
+  const SUPABASE_URL = 'https://yidswostdxaejjeikxhg.supabase.co';
+  const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlpZHN3b3N0ZHhhZWpqZWlreGhnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc5NjM1MDAsImV4cCI6MjA5MzUzOTUwMH0.DIP9Yqr7v0Z5y4bdqU5UkoNn1OL0dh1WuYhaiOxtaq4';
+</script>
+
+<!-- 로그인 -->
+<div class="login-overlay" id="login-overlay">
+  <div class="login-box">
+    <div style="font-size:36px;margin-bottom:12px;">📋</div>
+    <div class="login-title">연차 관리 시스템</div>
+    <div class="login-sub">접속할 계정을 선택해 주세요</div>
+    <input class="login-input" type="password" id="admin-pw" placeholder="관리자 암호 입력" onkeydown="if(event.key==='Enter')adminLogin()">
+    <div class="login-error" id="pw-error">❌ 암호가 올바르지 않습니다</div>
+    <button class="login-btn login-btn-admin" onclick="adminLogin()">🔐 관리자로 로그인</button>
+    <div class="divider"><div class="divider-line"></div><span class="divider-text">또는 직원으로 접속</span><div class="divider-line"></div></div>
+    <select class="login-input" id="emp-select" style="margin-bottom:8px;"><option value="">-- 직원 선택 --</option></select>
+    <button class="login-btn login-btn-emp" onclick="empLogin()">👤 직원으로 로그인</button>
+  </div>
+</div>
+
+<div class="app" id="main-app" style="display:none;">
   <div class="sidebar">
     <div class="logo">
       <div class="logo-title">📋 연차관리</div>
-      <div class="logo-sub">2025년 연차 시스템</div>
+      <div class="logo-sub" id="sidebar-year"></div>
     </div>
-    <div class="role-bar">
-      <button class="role-btn active" onclick="setRole('admin')">관리자</button>
-      <button class="role-btn" onclick="setRole('employee')">직원</button>
-    </div>
-
-    <!-- Admin nav -->
+    <div class="user-info" id="user-info-box"></div>
     <div id="admin-nav">
       <div class="nav-section">관리자 메뉴</div>
-      <div class="nav-item active" onclick="showPage('dashboard')"><span class="nav-icon">📊</span> 대시보드</div>
-      <div class="nav-item" onclick="showPage('requests')"><span class="nav-icon">📝</span> 신청 관리</div>
-      <div class="nav-item" onclick="showPage('calendar')"><span class="nav-icon">📅</span> 캘린더</div>
-      <div class="nav-item" onclick="showPage('employees')"><span class="nav-icon">👥</span> 직원 현황</div>
+      <div class="nav-item active" onclick="showPage('dashboard',this)"><span>📊</span> 대시보드</div>
+      <div class="nav-item" onclick="showPage('requests',this)"><span>📝</span> 신청 관리</div>
+      <div class="nav-item" onclick="showPage('calendar',this)"><span>📅</span> 캘린더</div>
+      <div class="nav-item" onclick="showPage('employees',this)"><span>👥</span> 직원 현황</div>
     </div>
-
-    <!-- Employee nav -->
     <div id="employee-nav" style="display:none;">
       <div class="nav-section">직원 메뉴</div>
-      <div class="nav-item active" onclick="showPage('my-leave')"><span class="nav-icon">🏖️</span> 내 연차</div>
-      <div class="nav-item" onclick="showPage('apply')"><span class="nav-icon">✏️</span> 신청하기</div>
-      <div class="nav-item" onclick="showPage('my-calendar')"><span class="nav-icon">📅</span> 캘린더</div>
+      <div class="nav-item active" onclick="showPage('my-leave',this)"><span>🏖️</span> 내 연차</div>
+      <div class="nav-item" onclick="showPage('apply',this)"><span>✏️</span> 신청하기</div>
+      <div class="nav-item" onclick="showPage('my-calendar',this)"><span>📅</span> 캘린더</div>
     </div>
+    <button class="logout-btn" onclick="logout()">🚪 로그아웃</button>
   </div>
 
-  <!-- Main -->
   <div class="main">
-
-    <!-- 대시보드 -->
     <div class="page active" id="page-dashboard">
-      <div class="page-header">
-        <div><div class="page-title">대시보드</div><div class="page-sub">2025년 전체 연차 현황</div></div>
-      </div>
+      <div class="page-header"><div class="page-title">대시보드</div><div class="page-sub" id="dash-sub"></div></div>
       <div class="metrics">
-        <div class="metric-card"><div class="metric-label">전체 직원</div><div class="metric-value">8</div><div class="metric-unit">명</div></div>
-        <div class="metric-card green"><div class="metric-label">이번 달 승인</div><div class="metric-value" id="m-approved">5</div><div class="metric-unit">건</div></div>
-        <div class="metric-card amber"><div class="metric-label">대기 중</div><div class="metric-value" id="m-pending">2</div><div class="metric-unit">건</div></div>
-        <div class="metric-card blue"><div class="metric-label">평균 잔여 연차</div><div class="metric-value">9.2</div><div class="metric-unit">일</div></div>
+        <div class="metric-card"><div class="metric-label">전체 직원</div><div class="metric-value" id="m-total">-</div><div class="metric-unit">명</div></div>
+        <div class="metric-card green"><div class="metric-label">승인된 신청</div><div class="metric-value" id="m-approved">-</div><div class="metric-unit">건</div></div>
+        <div class="metric-card amber"><div class="metric-label">대기 중</div><div class="metric-value" id="m-pending">-</div><div class="metric-unit">건</div></div>
+        <div class="metric-card blue"><div class="metric-label">평균 잔여 연차</div><div class="metric-value" id="m-avg">-</div><div class="metric-unit">일</div></div>
       </div>
       <div class="grid-2">
-        <div class="card">
-          <div class="card-title">⏳ 대기 중인 신청</div>
-          <div id="pending-list"></div>
-        </div>
-        <div class="card">
-          <div class="card-title">📈 직원별 연차 현황</div>
-          <div id="emp-progress"></div>
-        </div>
+        <div class="card"><div class="card-title">⏳ 대기 중인 신청</div><div id="pending-list"><div class="loading">불러오는 중...</div></div></div>
+        <div class="card"><div class="card-title">📈 직원별 연차 현황</div><div id="emp-progress"><div class="loading">불러오는 중...</div></div></div>
       </div>
     </div>
 
-    <!-- 신청 관리 -->
     <div class="page" id="page-requests">
-      <div class="page-header">
-        <div><div class="page-title">신청 관리</div><div class="page-sub">전체 연차 신청 내역</div></div>
-      </div>
-      <div class="card">
-        <div class="card-title">📋 전체 신청 내역</div>
-        <div id="all-requests"></div>
-      </div>
+      <div class="page-header"><div class="page-title">신청 관리</div><div class="page-sub">전체 연차 신청 내역</div></div>
+      <div class="card"><div class="card-title">📋 전체 신청 내역</div><div id="all-requests"><div class="loading">불러오는 중...</div></div></div>
     </div>
 
-    <!-- 캘린더 (관리자) -->
     <div class="page" id="page-calendar">
-      <div class="page-header">
-        <div><div class="page-title">연차 캘린더</div><div class="page-sub">직원 휴가 일정</div></div>
-      </div>
+      <div class="page-header"><div class="page-title">연차 캘린더</div><div class="page-sub">직원 휴가 일정</div></div>
       <div class="card">
         <div class="cal-nav">
           <button class="cal-btn" onclick="changeMonth(-1)">← 이전</button>
@@ -236,72 +215,38 @@
       </div>
     </div>
 
-    <!-- 직원 현황 -->
     <div class="page" id="page-employees">
-      <div class="page-header">
-        <div><div class="page-title">직원 현황</div><div class="page-sub">연차 사용 현황</div></div>
-      </div>
-      <div class="card">
-        <div class="card-title">👥 전체 직원 연차 현황</div>
-        <div id="emp-list"></div>
-      </div>
+      <div class="page-header"><div class="page-title">직원 현황</div><div class="page-sub">연차 사용 현황</div></div>
+      <div class="info-box">📌 연차 규정: 1년차 11일 · 2년차 15일 · 이후 3년 만기마다 1일 추가 (최대 25일)</div>
+      <div class="card"><div class="card-title">👥 전체 직원 연차 현황</div><div id="emp-list"><div class="loading">불러오는 중...</div></div></div>
     </div>
 
-    <!-- 내 연차 (직원) -->
     <div class="page" id="page-my-leave">
-      <div class="page-header">
-        <div><div class="page-title">내 연차</div><div class="page-sub">김민준님의 연차 현황</div></div>
-      </div>
-      <div class="metrics" style="grid-template-columns: repeat(3,1fr);">
-        <div class="metric-card"><div class="metric-label">총 연차</div><div class="metric-value">15</div><div class="metric-unit">일</div></div>
-        <div class="metric-card amber"><div class="metric-label">사용한 연차</div><div class="metric-value">6</div><div class="metric-unit">일</div></div>
-        <div class="metric-card green"><div class="metric-label">남은 연차</div><div class="metric-value">9</div><div class="metric-unit">일</div></div>
-      </div>
-      <div class="card">
-        <div class="card-title">📋 내 신청 내역</div>
-        <div id="my-requests"></div>
-      </div>
+      <div class="page-header"><div class="page-title">내 연차</div><div class="page-sub" id="my-leave-sub"></div></div>
+      <div class="metrics" style="grid-template-columns:repeat(3,1fr);" id="my-metrics"></div>
+      <div class="card"><div class="card-title">📋 내 신청 내역</div><div id="my-requests"><div class="loading">불러오는 중...</div></div></div>
     </div>
 
-    <!-- 신청하기 (직원) -->
     <div class="page" id="page-apply">
-      <div class="page-header">
-        <div><div class="page-title">연차 신청</div><div class="page-sub">새 연차 신청</div></div>
-      </div>
-      <div class="card" style="max-width: 480px;">
+      <div class="page-header"><div class="page-title">연차 신청</div><div class="page-sub">새 연차 신청</div></div>
+      <div class="card" style="max-width:480px;">
         <div class="notify" id="apply-notify">✅ 신청이 완료되었습니다. 관리자 승인을 기다려 주세요.</div>
+        <div id="rem-info" style="background:var(--primary-light);border-radius:var(--radius-sm);padding:10px 14px;font-size:12px;color:var(--primary-dark);margin-bottom:14px;"></div>
         <div class="form-group">
           <label class="form-label">신청 유형</label>
-          <select class="form-input" id="leave-type">
-            <option>연차</option>
-            <option>반차 (오전)</option>
-            <option>반차 (오후)</option>
-            <option>병가</option>
-          </select>
+          <select class="form-input" id="leave-type"><option>연차</option><option>반차 (오전)</option><option>반차 (오후)</option><option>병가</option></select>
         </div>
         <div class="form-row-2">
-          <div class="form-group">
-            <label class="form-label">시작일</label>
-            <input type="date" class="form-input" id="start-date" value="2025-05-12">
-          </div>
-          <div class="form-group">
-            <label class="form-label">종료일</label>
-            <input type="date" class="form-input" id="end-date" value="2025-05-14">
-          </div>
+          <div class="form-group"><label class="form-label">시작일</label><input type="date" class="form-input" id="start-date"></div>
+          <div class="form-group"><label class="form-label">종료일</label><input type="date" class="form-input" id="end-date"></div>
         </div>
-        <div class="form-group">
-          <label class="form-label">사유 (선택)</label>
-          <textarea class="form-input" rows="3" id="leave-reason" placeholder="휴가 사유를 입력하세요..."></textarea>
-        </div>
+        <div class="form-group"><label class="form-label">사유 (선택)</label><textarea class="form-input" rows="3" id="leave-reason" placeholder="휴가 사유를 입력하세요..."></textarea></div>
         <button class="btn btn-primary" onclick="submitLeave()">신청 제출</button>
       </div>
     </div>
 
-    <!-- 내 캘린더 (직원) -->
     <div class="page" id="page-my-calendar">
-      <div class="page-header">
-        <div><div class="page-title">내 캘린더</div><div class="page-sub">나의 연차 일정</div></div>
-      </div>
+      <div class="page-header"><div class="page-title">내 캘린더</div><div class="page-sub">나의 연차 일정</div></div>
       <div class="card">
         <div class="cal-nav">
           <button class="cal-btn" onclick="changeMonth(-1)">← 이전</button>
@@ -313,240 +258,257 @@
         <div class="cal-legend" id="cal-legend-e"></div>
       </div>
     </div>
-
   </div>
 </div>
 
 <script>
-const employees = [
-  { id:1, name:'김민준', initials:'김민', dept:'개발팀', color:'av-green', calColor:'leave-g' },
-  { id:2, name:'이서연', initials:'이서', dept:'디자인팀', color:'av-blue', calColor:'leave-b' },
-  { id:3, name:'박지호', initials:'박지', dept:'개발팀', color:'av-amber', calColor:'leave-a' },
-  { id:4, name:'최유나', initials:'최유', dept:'마케팅팀', color:'av-purple', calColor:'leave-m' },
-  { id:5, name:'정태양', initials:'정태', dept:'영업팀', color:'av-green', calColor:'leave-g' },
-  { id:6, name:'한소희', initials:'한소', dept:'인사팀', color:'av-blue', calColor:'leave-b' },
-  { id:7, name:'오준서', initials:'오준', dept:'개발팀', color:'av-amber', calColor:'leave-a' },
-  { id:8, name:'임채원', initials:'임채', dept:'디자인팀', color:'av-purple', calColor:'leave-m' },
-];
-const empUsed = { 1:6, 2:10, 3:3, 4:8, 5:12, 6:5, 7:9, 8:7 };
-const total = 15;
+const ADMIN_PW = 'ljh9609';
+const CY = new Date().getFullYear();
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-let requests = [
-  { id:1, empId:1, type:'연차', start:'2025-05-12', end:'2025-05-14', days:3, status:'pending', reason:'가족여행' },
-  { id:2, empId:3, type:'반차 (오전)', start:'2025-05-08', end:'2025-05-08', days:0.5, status:'pending', reason:'병원' },
-  { id:3, empId:2, type:'연차', start:'2025-04-21', end:'2025-04-25', days:5, status:'approved', reason:'' },
-  { id:4, empId:5, type:'연차', start:'2025-04-14', end:'2025-04-16', days:3, status:'approved', reason:'' },
-  { id:5, empId:4, type:'병가', start:'2025-03-10', end:'2025-03-12', days:3, status:'approved', reason:'' },
-  { id:6, empId:6, type:'연차', start:'2025-02-17', end:'2025-02-18', days:2, status:'rejected', reason:'' },
-];
+let employees = [];
+let requests = [];
+let currentMonth = new Date(CY, new Date().getMonth());
+let currentRole = null, currentEmpId = null, currentPage = 'dashboard';
 
-let currentMonth = new Date(2025, 4);
-let currentRole = 'admin';
-let currentPage = 'dashboard';
-
-function getEmp(id) { return employees.find(e => e.id === id); }
-
-function statusBadge(s) {
-  const map = { pending:'badge-pending', approved:'badge-approved', rejected:'badge-rejected' };
-  const label = { pending:'대기 중', approved:'승인됨', rejected:'거절됨' };
-  return `<span class="badge ${map[s]}">${label[s]}</span>`;
+function calcLeave(years) {
+  if(years < 1) return 0;
+  if(years === 1) return 11;
+  if(years === 2) return 15;
+  return Math.min(15 + Math.floor((years-2)/3), 25);
 }
 
-function renderPending() {
-  const pending = requests.filter(r => r.status === 'pending');
-  document.getElementById('m-pending').textContent = pending.length;
-  const el = document.getElementById('pending-list');
-  if (!pending.length) { el.innerHTML = '<div class="empty">대기 중인 신청이 없습니다</div>'; return; }
-  el.innerHTML = pending.map(r => {
-    const e = getEmp(r.empId);
-    return `<div class="req-row">
-      <div class="avatar ${e.color}">${e.initials}</div>
-      <div class="req-info">
-        <div class="req-name">${e.name} <span style="font-weight:400;font-size:11px;color:var(--gray-400);">${e.dept}</span></div>
-        <div class="req-detail">${r.type} · ${r.start} ~ ${r.end} · ${r.days}일</div>
-      </div>
-      ${statusBadge(r.status)}
-      <div class="btn-row">
-        <button class="btn btn-approve" onclick="decide(${r.id},'approved')">승인</button>
-        <button class="btn btn-reject" onclick="decide(${r.id},'rejected')">거절</button>
-      </div>
-    </div>`;
+function getEmp(id) { return employees.find(e=>e.id===id); }
+function getYears(e) { return CY - e.join_year; }
+function getTotal(e) { return calcLeave(getYears(e)); }
+function getUsed(e) {
+  return requests.filter(r=>r.emp_id===e.id && r.status==='approved').reduce((s,r)=>s+Number(r.days),0);
+}
+function getRemaining(e) { return Math.max(0, getTotal(e) - getUsed(e)); }
+function getAvatarClass(idx) { return 'av-'+(idx%5); }
+function getInitials(name) { return name.slice(0,2); }
+
+function statusBadge(s) {
+  const m={pending:'badge-pending',approved:'badge-approved',rejected:'badge-rejected'};
+  const l={pending:'대기 중',approved:'승인됨',rejected:'거절됨'};
+  return `<span class="badge ${m[s]}">${l[s]}</span>`;
+}
+
+async function loadData() {
+  const [empRes, reqRes] = await Promise.all([
+    supabase.from('employees').select('*').order('id'),
+    supabase.from('requests').select('*').order('created_at', {ascending: false})
+  ]);
+  if(empRes.data) employees = empRes.data;
+  if(reqRes.data) requests = reqRes.data;
+
+  const sel = document.getElementById('emp-select');
+  sel.innerHTML = '<option value="">-- 직원 선택 --</option>';
+  employees.forEach(e => {
+    const opt = document.createElement('option');
+    opt.value = e.id;
+    opt.textContent = e.name + ' (' + e.dept + ')';
+    sel.appendChild(opt);
+  });
+}
+
+async function adminLogin() {
+  if(document.getElementById('admin-pw').value !== ADMIN_PW) {
+    document.getElementById('pw-error').classList.add('show');
+    document.getElementById('admin-pw').value='';
+    return;
+  }
+  currentRole='admin'; currentEmpId=null;
+  await loadData();
+  document.getElementById('login-overlay').style.display='none';
+  document.getElementById('main-app').style.display='flex';
+  document.getElementById('admin-nav').style.display='block';
+  document.getElementById('employee-nav').style.display='none';
+  document.getElementById('sidebar-year').textContent=CY+'년 연차 시스템';
+  document.getElementById('dash-sub').textContent=CY+'년 전체 연차 현황';
+  document.getElementById('user-info-box').innerHTML=`<div class="user-avatar av-0">관리</div><div><div class="user-name">관리자</div><div class="user-role">전체 권한</div></div>`;
+  showPage('dashboard', document.querySelector('#admin-nav .nav-item'));
+}
+
+async function empLogin() {
+  const sel=document.getElementById('emp-select').value;
+  if(!sel){alert('직원을 선택해 주세요');return;}
+  currentRole='employee'; currentEmpId=parseInt(sel);
+  await loadData();
+  const emp=getEmp(currentEmpId);
+  const idx=employees.findIndex(e=>e.id===currentEmpId);
+  document.getElementById('login-overlay').style.display='none';
+  document.getElementById('main-app').style.display='flex';
+  document.getElementById('admin-nav').style.display='none';
+  document.getElementById('employee-nav').style.display='block';
+  document.getElementById('sidebar-year').textContent=CY+'년 연차 시스템';
+  document.getElementById('my-leave-sub').textContent=emp.name+'님의 연차 현황';
+  document.getElementById('user-info-box').innerHTML=`<div class="user-avatar ${getAvatarClass(idx)}">${getInitials(emp.name)}</div><div><div class="user-name">${emp.name}</div><div class="user-role">${emp.dept}</div></div>`;
+  showPage('my-leave', document.querySelector('#employee-nav .nav-item'));
+}
+
+function logout() {
+  currentRole=null; currentEmpId=null;
+  document.getElementById('main-app').style.display='none';
+  document.getElementById('login-overlay').style.display='flex';
+  document.getElementById('admin-pw').value='';
+  document.getElementById('pw-error').classList.remove('show');
+}
+
+function renderDashboard() {
+  const pending=requests.filter(r=>r.status==='pending');
+  const approved=requests.filter(r=>r.status==='approved');
+  document.getElementById('m-total').textContent=employees.length;
+  document.getElementById('m-pending').textContent=pending.length;
+  document.getElementById('m-approved').textContent=approved.length;
+  const avg=employees.length>0?Math.round(employees.reduce((s,e)=>s+getRemaining(e),0)/employees.length):0;
+  document.getElementById('m-avg').textContent=avg;
+
+  const el=document.getElementById('pending-list');
+  if(!pending.length){el.innerHTML='<div class="empty">대기 중인 신청이 없습니다</div>';return;}
+  el.innerHTML=pending.map(r=>{
+    const e=getEmp(r.emp_id);
+    if(!e)return '';
+    const idx=employees.findIndex(x=>x.id===e.id);
+    return `<div class="req-row"><div class="avatar ${getAvatarClass(idx)}">${getInitials(e.name)}</div><div class="req-info"><div class="req-name">${e.name} <span style="font-weight:400;font-size:11px;color:var(--gray-400)">${e.dept}</span></div><div class="req-detail">${r.type} · ${r.start_date} ~ ${r.end_date} · ${r.days}일</div></div>${statusBadge(r.status)}<div class="btn-row"><button class="btn btn-approve" onclick="decide(${r.id},'approved')">승인</button><button class="btn btn-reject" onclick="decide(${r.id},'rejected')">거절</button></div></div>`;
   }).join('');
 }
 
 function renderAllRequests() {
-  const el = document.getElementById('all-requests');
-  el.innerHTML = requests.map(r => {
-    const e = getEmp(r.empId);
-    return `<div class="req-row">
-      <div class="avatar ${e.color}">${e.initials}</div>
-      <div class="req-info">
-        <div class="req-name">${e.name} <span style="font-weight:400;font-size:11px;color:var(--gray-400);">${e.dept}</span></div>
-        <div class="req-detail">${r.type} · ${r.start} ~ ${r.end} · ${r.days}일${r.reason?' · '+r.reason:''}</div>
-      </div>
-      ${statusBadge(r.status)}
-      ${r.status==='pending'?`<div class="btn-row"><button class="btn btn-approve" onclick="decide(${r.id},'approved')">승인</button><button class="btn btn-reject" onclick="decide(${r.id},'rejected')">거절</button></div>`:''}
-    </div>`;
+  const el=document.getElementById('all-requests');
+  if(!requests.length){el.innerHTML='<div class="empty">신청 내역이 없습니다</div>';return;}
+  el.innerHTML=requests.map(r=>{
+    const e=getEmp(r.emp_id);
+    if(!e)return '';
+    const idx=employees.findIndex(x=>x.id===e.id);
+    return `<div class="req-row"><div class="avatar ${getAvatarClass(idx)}">${getInitials(e.name)}</div><div class="req-info"><div class="req-name">${e.name} <span style="font-weight:400;font-size:11px;color:var(--gray-400)">${e.dept}</span></div><div class="req-detail">${r.type} · ${r.start_date} ~ ${r.end_date} · ${r.days}일${r.reason?' · '+r.reason:''}</div></div>${statusBadge(r.status)}${r.status==='pending'?`<div class="btn-row"><button class="btn btn-approve" onclick="decide(${r.id},'approved')">승인</button><button class="btn btn-reject" onclick="decide(${r.id},'rejected')">거절</button></div>`:''}</div>`;
   }).join('');
 }
 
 function renderEmpProgress() {
-  const el = document.getElementById('emp-progress');
-  el.innerHTML = employees.map(e => {
-    const used = empUsed[e.id];
-    const rem = total - used;
-    const pct = Math.round((used/total)*100);
-    return `<div class="req-row">
-      <div class="avatar ${e.color}">${e.initials}</div>
-      <div class="progress-wrap">
-        <div style="display:flex;justify-content:space-between;font-size:12px;">
-          <span style="font-weight:600;">${e.name}</span>
-          <span style="color:var(--gray-400);">잔여 ${rem}일</span>
-        </div>
-        <div class="progress-bar"><div class="progress-fill ${pct>80?'danger':''}" style="width:${pct}%"></div></div>
-      </div>
-    </div>`;
+  const el=document.getElementById('emp-progress');
+  el.innerHTML=employees.map((e,idx)=>{
+    const total=getTotal(e),used=getUsed(e),rem=getRemaining(e),pct=total>0?Math.round((used/total)*100):0;
+    return `<div class="req-row"><div class="avatar ${getAvatarClass(idx)}">${getInitials(e.name)}</div><div class="progress-wrap"><div style="display:flex;justify-content:space-between;font-size:12px;"><span style="font-weight:600">${e.name}</span><span style="color:var(--gray-400)">잔여 ${rem}/${total}일</span></div><div class="progress-bar"><div class="progress-fill ${pct>80?'danger':''}" style="width:${pct}%"></div></div></div></div>`;
   }).join('');
 }
 
 function renderEmpList() {
-  const el = document.getElementById('emp-list');
-  el.innerHTML = employees.map(e => {
-    const used = empUsed[e.id];
-    const rem = total - used;
-    const pct = Math.round((used/total)*100);
-    return `<div class="req-row">
-      <div class="avatar ${e.color}">${e.initials}</div>
-      <div class="req-info">
-        <div class="req-name">${e.name}</div>
-        <div class="req-detail">${e.dept}</div>
-      </div>
-      <div style="min-width:160px;">
-        <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--gray-400);margin-bottom:4px;"><span>사용 ${used}일</span><span>잔여 ${rem}일</span></div>
-        <div class="progress-bar"><div class="progress-fill ${pct>80?'danger':''}" style="width:${pct}%"></div></div>
-      </div>
-    </div>`;
+  const el=document.getElementById('emp-list');
+  el.innerHTML=employees.map((e,idx)=>{
+    const years=getYears(e),total=getTotal(e),used=getUsed(e),rem=getRemaining(e),pct=total>0?Math.round((used/total)*100):0;
+    return `<div class="req-row"><div class="avatar ${getAvatarClass(idx)}">${getInitials(e.name)}</div><div class="req-info"><div class="req-name">${e.name}</div><div class="req-detail">${e.dept} · 근속 ${years}년 · 연차 ${total}일</div></div><div style="min-width:160px"><div style="display:flex;justify-content:space-between;font-size:11px;color:var(--gray-400);margin-bottom:4px"><span>사용 ${used}일</span><span>잔여 ${rem}일</span></div><div class="progress-bar"><div class="progress-fill ${pct>80?'danger':''}" style="width:${pct}%"></div></div></div></div>`;
   }).join('');
 }
 
+function renderMyMetrics() {
+  const emp=getEmp(currentEmpId); if(!emp)return;
+  const years=getYears(emp),total=getTotal(emp),used=getUsed(emp),rem=getRemaining(emp);
+  document.getElementById('my-metrics').innerHTML=`
+    <div class="metric-card blue"><div class="metric-label">근속 / 연차 부여</div><div class="metric-value">${years}년</div><div class="metric-unit">${total}일 부여</div></div>
+    <div class="metric-card amber"><div class="metric-label">사용한 연차</div><div class="metric-value">${used}</div><div class="metric-unit">일</div></div>
+    <div class="metric-card green"><div class="metric-label">남은 연차</div><div class="metric-value">${rem}</div><div class="metric-unit">일</div></div>`;
+  document.getElementById('rem-info').textContent=`현재 잔여 연차: ${rem}일 (총 ${total}일 중 ${used}일 사용)`;
+}
+
 function renderMyRequests() {
-  const mine = requests.filter(r => r.empId === 1);
-  const el = document.getElementById('my-requests');
-  if (!mine.length) { el.innerHTML = '<div class="empty">신청 내역이 없습니다</div>'; return; }
-  el.innerHTML = mine.map(r => `<div class="req-row">
-    <div class="req-info">
-      <div class="req-name">${r.type}</div>
-      <div class="req-detail">${r.start} ~ ${r.end} · ${r.days}일${r.reason?' · '+r.reason:''}</div>
-    </div>
-    ${statusBadge(r.status)}
-  </div>`).join('');
+  const mine=requests.filter(r=>r.emp_id===currentEmpId);
+  const el=document.getElementById('my-requests');
+  if(!mine.length){el.innerHTML='<div class="empty">신청 내역이 없습니다</div>';return;}
+  el.innerHTML=mine.map(r=>`<div class="req-row"><div class="req-info"><div class="req-name">${r.type}</div><div class="req-detail">${r.start_date} ~ ${r.end_date} · ${r.days}일${r.reason?' · '+r.reason:''}</div></div>${statusBadge(r.status)}</div>`).join('');
 }
 
 function renderCalendar(bodyId, headId, titleId, legendId, empId) {
-  const y = currentMonth.getFullYear();
-  const m = currentMonth.getMonth();
-  const months = ['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'];
-  document.getElementById(titleId).textContent = `${y}년 ${months[m]}`;
-
-  const days = ['일','월','화','수','목','금','토'];
-  document.getElementById(headId).innerHTML = days.map(d=>`<div class="cal-head">${d}</div>`).join('');
-
-  const first = new Date(y,m,1).getDay();
-  const last = new Date(y,m+1,0).getDate();
-  const today = new Date();
-
-  const approved = requests.filter(r => r.status==='approved' && (!empId || r.empId===empId));
-  const dateMap = {};
-  approved.forEach(r => {
-    let d = new Date(r.start);
-    const end = new Date(r.end);
-    while(d <= end) {
-      const key = d.toISOString().slice(0,10);
-      if(!dateMap[key]) dateMap[key]=[];
-      dateMap[key].push(r.empId);
+  const y=currentMonth.getFullYear(),m=currentMonth.getMonth();
+  const months=['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'];
+  document.getElementById(titleId).textContent=`${y}년 ${months[m]}`;
+  document.getElementById(headId).innerHTML=['일','월','화','수','목','금','토'].map(d=>`<div class="cal-head">${d}</div>`).join('');
+  const first=new Date(y,m,1).getDay(),last=new Date(y,m+1,0).getDate(),today=new Date();
+  const approved=requests.filter(r=>r.status==='approved'&&(!empId||r.emp_id===empId));
+  const dateMap={};
+  approved.forEach(r=>{
+    let d=new Date(r.start_date);const end=new Date(r.end_date);
+    while(d<=end){
+      const k=d.toISOString().slice(0,10);
+      if(!dateMap[k])dateMap[k]=[];
+      dateMap[k].push(r.emp_id);
       d.setDate(d.getDate()+1);
     }
   });
-
-  let html = '';
-  for(let i=0;i<first;i++) html+=`<div class="cal-day other"></div>`;
-  for(let d=1;d<=last;d++) {
+  let html='';
+  for(let i=0;i<first;i++)html+=`<div class="cal-day other"></div>`;
+  for(let d=1;d<=last;d++){
     const ds=`${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-    const isToday = today.getFullYear()===y&&today.getMonth()===m&&today.getDate()===d;
-    const emps = dateMap[ds]||[];
-    let cls = isToday?'today':'';
-    if(emps.length===1) cls = getEmp(emps[0])?.calColor||'leave-g';
-    else if(emps.length>1) cls='leave-m';
-    const title = emps.map(id=>getEmp(id)?.name||'').join(', ');
-    html+=`<div class="cal-day ${cls}" title="${title}">${d}</div>`;
+    const isToday=today.getFullYear()===y&&today.getMonth()===m&&today.getDate()===d;
+    const emps=dateMap[ds]||[];
+    let cls=isToday?'today':'';
+    if(emps.length===1){const idx=employees.findIndex(e=>e.id===emps[0]);cls='leave-'+(idx%4);}
+    else if(emps.length>1)cls='leave-multi';
+    html+=`<div class="cal-day ${cls}" title="${emps.map(id=>getEmp(id)?.name||'').join(', ')}">${d}</div>`;
   }
-  document.getElementById(bodyId).innerHTML = html;
-
-  if(legendId) {
-    const shown = new Set(approved.map(r=>r.empId));
-    const colors = {'leave-g':'#9FE1CB','leave-b':'#B5D4F4','leave-a':'#FAC775','leave-m':'#CECBF6'};
-    document.getElementById(legendId).innerHTML = Array.from(shown).slice(0,5).map(id=>{
+  document.getElementById(bodyId).innerHTML=html;
+  if(legendId){
+    const shown=new Set(approved.map(r=>r.emp_id));
+    const dotColors=['#9FE1CB','#B5D4F4','#FAC775','#CECBF6','#F5C4B3'];
+    document.getElementById(legendId).innerHTML=Array.from(shown).slice(0,5).map(id=>{
       const e=getEmp(id);
-      return `<div class="legend-item"><div class="legend-dot" style="background:${colors[e?.calColor]||'#ccc'}"></div>${e?.name}</div>`;
-    }).join('') + `<div class="legend-item"><div class="legend-dot" style="background:#CECBF6"></div>복수 직원</div>`;
+      const idx=employees.findIndex(x=>x.id===id);
+      return `<div class="legend-item"><div class="legend-dot" style="background:${dotColors[idx%5]}"></div>${e?.name}</div>`;
+    }).join('');
   }
 }
 
-function decide(id, status) {
-  const r = requests.find(x=>x.id===id);
-  if(r) r.status=status;
+async function decide(id, status) {
+  await supabase.from('requests').update({status}).eq('id',id);
+  await loadData();
   renderAll();
 }
 
-function submitLeave() {
-  const type = document.getElementById('leave-type').value;
-  const start = document.getElementById('start-date').value;
-  const end = document.getElementById('end-date').value;
-  const reason = document.getElementById('leave-reason').value;
-  const s=new Date(start), e=new Date(end);
-  const days = type.includes('반차')?0.5:Math.round((e-s)/(86400000))+1;
-  requests.unshift({id:Date.now(),empId:1,type,start,end,days,status:'pending',reason});
-  const n = document.getElementById('apply-notify');
+async function submitLeave() {
+  const emp=getEmp(currentEmpId);
+  const rem=getRemaining(emp);
+  const type=document.getElementById('leave-type').value;
+  const start=document.getElementById('start-date').value;
+  const end=document.getElementById('end-date').value;
+  const reason=document.getElementById('leave-reason').value;
+  if(!start||!end){alert('날짜를 선택해 주세요');return;}
+  const days=type.includes('반차')?0.5:Math.round((new Date(end)-new Date(start))/86400000)+1;
+  if(days>rem){alert(`잔여 연차(${rem}일)가 부족합니다`);return;}
+  await supabase.from('requests').insert({emp_id:currentEmpId,type,start_date:start,end_date:end,days,status:'pending',reason});
+  const n=document.getElementById('apply-notify');
   n.classList.add('show');
   setTimeout(()=>n.classList.remove('show'),3000);
+  await loadData();
   renderAll();
 }
 
-function setRole(role) {
-  currentRole = role;
-  document.querySelectorAll('.role-btn').forEach(b=>b.classList.remove('active'));
-  event.target.classList.add('active');
-  document.getElementById('admin-nav').style.display = role==='admin'?'block':'none';
-  document.getElementById('employee-nav').style.display = role==='employee'?'block':'none';
-  showPage(role==='admin'?'dashboard':'my-leave');
-}
-
-function showPage(page) {
-  currentPage = page;
+async function showPage(page, el) {
+  currentPage=page;
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.getElementById('page-'+page)?.classList.add('active');
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
-  event?.target?.classList.add('active');
-  if(page==='calendar') renderCalendar('cal-body-a','cal-head-a','cal-title','cal-legend-a',null);
-  if(page==='my-calendar') renderCalendar('cal-body-e','cal-head-e','cal-title-e','cal-legend-e',1);
+  el?.classList.add('active');
+  await loadData();
+  if(page==='calendar')renderCalendar('cal-body-a','cal-head-a','cal-title','cal-legend-a',null);
+  if(page==='my-calendar')renderCalendar('cal-body-e','cal-head-e','cal-title-e','cal-legend-e',currentEmpId);
+  if(page==='apply')renderMyMetrics();
   renderAll();
 }
 
 function changeMonth(dir) {
-  currentMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth()+dir);
-  if(currentPage==='calendar') renderCalendar('cal-body-a','cal-head-a','cal-title','cal-legend-a',null);
-  if(currentPage==='my-calendar') renderCalendar('cal-body-e','cal-head-e','cal-title-e','cal-legend-e',1);
+  currentMonth=new Date(currentMonth.getFullYear(),currentMonth.getMonth()+dir);
+  if(currentPage==='calendar')renderCalendar('cal-body-a','cal-head-a','cal-title','cal-legend-a',null);
+  if(currentPage==='my-calendar')renderCalendar('cal-body-e','cal-head-e','cal-title-e','cal-legend-e',currentEmpId);
 }
 
 function renderAll() {
-  renderPending();
-  renderAllRequests();
-  renderEmpProgress();
-  renderEmpList();
-  renderMyRequests();
+  if(currentRole==='admin'){renderDashboard();renderAllRequests();renderEmpProgress();renderEmpList();}
+  if(currentRole==='employee'){renderMyRequests();renderMyMetrics();}
 }
 
-renderAll();
+const todayStr=new Date().toISOString().slice(0,10);
+document.getElementById('start-date').value=todayStr;
+document.getElementById('end-date').value=todayStr;
 </script>
 </body>
 </html>
