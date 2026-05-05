@@ -264,7 +264,7 @@
 <script>
 const ADMIN_PW = 'ljh9609';
 const CY = new Date().getFullYear();
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 let employees = [];
 let requests = [];
@@ -296,8 +296,8 @@ function statusBadge(s) {
 
 async function loadData() {
   const [empRes, reqRes] = await Promise.all([
-    supabase.from('employees').select('*').order('id'),
-    supabase.from('requests').select('*').order('created_at', {ascending: false})
+    sb.from('employees').select('*').order('id'),
+    sb.from('requests').select('*').order('created_at', {ascending: false})
   ]);
   if(empRes.data) employees = empRes.data;
   if(reqRes.data) requests = reqRes.data;
@@ -459,7 +459,7 @@ function renderCalendar(bodyId, headId, titleId, legendId, empId) {
 }
 
 async function decide(id, status) {
-  await supabase.from('requests').update({status}).eq('id',id);
+  await sb.from('requests').update({status}).eq('id',id);
   await loadData();
   renderAll();
 }
@@ -474,7 +474,7 @@ async function submitLeave() {
   if(!start||!end){alert('날짜를 선택해 주세요');return;}
   const days=type.includes('반차')?0.5:Math.round((new Date(end)-new Date(start))/86400000)+1;
   if(days>rem){alert(`잔여 연차(${rem}일)가 부족합니다`);return;}
-  await supabase.from('requests').insert({emp_id:currentEmpId,type,start_date:start,end_date:end,days,status:'pending',reason});
+  await sb.from('requests').insert({emp_id:currentEmpId,type,start_date:start,end_date:end,days,status:'pending',reason});
   const n=document.getElementById('apply-notify');
   n.classList.add('show');
   setTimeout(()=>n.classList.remove('show'),3000);
