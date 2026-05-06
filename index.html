@@ -274,7 +274,7 @@
           <div class="form-group"><label class="form-label">시작일</label><input type="date" class="form-input" id="start-date"></div>
           <div class="form-group"><label class="form-label">종료일</label><input type="date" class="form-input" id="end-date"></div>
         </div>
-        <div class="form-group"><label class="form-label">사유 (선택)</label><textarea class="form-input" rows="3" id="leave-reason" placeholder="휴가 사유를 입력하세요..."></textarea></div>
+        <div class="form-group"><label class="form-label">사유 <span style="color:var(--red);">*필수</span></label><textarea class="form-input" rows="3" id="leave-reason" placeholder="휴가 사유를 입력하세요... (필수)"></textarea></div>
         <button class="btn btn-primary" onclick="submitLeave()">신청 제출</button>
       </div>
     </div>
@@ -377,7 +377,8 @@ async function loadData() {
     const sel = document.getElementById('emp-select');
     const curVal = sel.value;
     sel.innerHTML = '<option value="">-- 직원 선택 --</option>';
-    employees.forEach(e => {
+    const excluded = ['이종훈', '송규헌'];
+    employees.filter(e => !excluded.includes(e.name)).forEach(e => {
       const opt = document.createElement('option');
       opt.value = e.id;
       opt.textContent = e.name + ' (' + e.dept + ')';
@@ -598,6 +599,7 @@ async function submitLeave() {
   const end=document.getElementById('end-date').value;
   const reason=document.getElementById('leave-reason').value;
   if(!start||!end){alert('날짜를 선택해 주세요');return;}
+  if(!reason.trim()){alert('사유를 입력해 주세요');return;}
   const days=type.includes('반차')?0.5:Math.round((new Date(end)-new Date(start))/86400000)+1;
   if(days>rem){alert(`잔여 연차(${rem}일)가 부족합니다`);return;}
   await dbInsert('requests',{emp_id:currentEmpId,type,start_date:start,end_date:end,days,status:'pending',reason});
