@@ -732,8 +732,10 @@ async function submitLeave() {
   const days = type.includes('반차') ? 0.5 : Math.round((new Date(end)-new Date(start))/86400000)+1;
   if(days>rem) { alert('잔여 연차(' + rem + '일)가 부족합니다'); return; }
 
-  // 총무부 팀장은 바로 관리자 결재, 나머지는 팀장 경유
-  const isDirect = DIRECT_TO_ADMIN_DEPTS.includes(empData.dept);
+  // 팀장이 신청하면 바로 관리자에게, 직원은 팀장 경유
+  // 총무부 팀장도 바로 관리자에게
+  const isManager = empData.role === 'manager';
+  const isDirect = isManager || DIRECT_TO_ADMIN_DEPTS.includes(empData.dept);
   const initStatus = isDirect ? 'manager-approved' : 'pending';
   const initManagerStatus = isDirect ? 'approved' : 'pending';
   const initAdminStatus = isDirect ? 'pending' : 'waiting';
