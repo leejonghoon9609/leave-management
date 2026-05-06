@@ -88,6 +88,8 @@
   .badge-pending { background: var(--amber-light); color: var(--amber); }
   .badge-approved { background: var(--primary-light); color: var(--primary-dark); }
   .badge-rejected { background: var(--red-light); color: var(--red-dark); }
+  .badge-manager-approved { background: var(--blue-light); color: var(--blue-dark); }
+  .badge-waiting { background: var(--gray-100); color: var(--gray-600); }
 
   .btn-row { display: flex; gap: 6px; }
   .btn { padding: 5px 12px; font-size: 12px; border-radius: var(--radius-sm); border: 1px solid var(--gray-200); background: var(--white); cursor: pointer; font-family: inherit; font-weight: 500; }
@@ -166,7 +168,7 @@
     <textarea class="form-input" id="reject-reason" rows="4" placeholder="거절 사유를 입력하세요..."></textarea>
     <div class="modal-btn-row">
       <button class="modal-btn modal-btn-cancel" onclick="closeRejectModal()">취소</button>
-      <button class="modal-btn modal-btn-confirm" onclick="confirmReject()">거절 확정</button>
+      <button class="modal-btn modal-btn-confirm" id="reject-confirm-btn" onclick="confirmReject()">거절 확정</button>
     </div>
   </div>
 </div>
@@ -209,6 +211,13 @@
       <div class="nav-item active" onclick="showPage('my-leave',this)"><span>🏖️</span> 내 연차</div>
       <div class="nav-item" onclick="showPage('apply',this)"><span>✏️</span> 신청하기</div>
       <div class="nav-item" onclick="showPage('my-calendar',this)"><span>📅</span> 캘린더</div>
+    </div>
+    <div id="manager-nav" style="display:none;">
+      <div class="nav-section">팀장 메뉴</div>
+      <div class="nav-item active" onclick="showPage('manager-dashboard',this)"><span>📊</span> 대시보드</div>
+      <div class="nav-item" onclick="showPage('manager-requests',this)"><span>📝</span> 신청 관리</div>
+      <div class="nav-item" onclick="showPage('my-leave',this)"><span>🏖️</span> 내 연차</div>
+      <div class="nav-item" onclick="showPage('apply',this)"><span>✏️</span> 신청하기</div>
     </div>
     <button class="logout-btn" style="margin-bottom:8px;background:var(--primary-light);color:var(--primary-dark);border-color:#9FE1CB;" onclick="downloadExcel()">📥 엑셀 다운로드</button>
     <button class="logout-btn" onclick="logout()">🚪 로그아웃</button>
@@ -255,6 +264,23 @@
       <div class="page-header"><div><div class="page-title">직원 현황</div></div></div>
       <div class="info-box">📌 연차 규정: 1년차 11일 · 2년차 15일 · 이후 3년 만기마다 1일 추가 (최대 25일)</div>
       <div class="card"><div class="card-title">👥 전체 직원 연차 현황</div><div id="emp-list"><div class="loading">불러오는 중...</div></div></div>
+    </div>
+
+    <!-- 팀장 대시보드 -->
+    <div class="page" id="page-manager-dashboard">
+      <div class="page-header"><div><div class="page-title">팀장 대시보드</div><div class="page-sub" id="manager-dash-sub"></div></div><div class="last-updated" id="manager-last-updated"></div></div>
+      <div class="metrics" style="grid-template-columns:repeat(3,1fr);">
+        <div class="metric-card"><div class="metric-label">팀원 수</div><div class="metric-value" id="mm-total">-</div><div class="metric-unit">명</div></div>
+        <div class="metric-card amber"><div class="metric-label">대기 중</div><div class="metric-value" id="mm-pending">-</div><div class="metric-unit">건</div></div>
+        <div class="metric-card green"><div class="metric-label">승인한 신청</div><div class="metric-value" id="mm-approved">-</div><div class="metric-unit">건</div></div>
+      </div>
+      <div class="card"><div class="card-title">⏳ 승인 대기 중인 신청</div><div id="manager-pending-list"><div class="loading">불러오는 중...</div></div></div>
+    </div>
+
+    <!-- 팀장 신청 관리 -->
+    <div class="page" id="page-manager-requests">
+      <div class="page-header"><div><div class="page-title">팀 신청 관리</div><div class="page-sub">우리 팀 전체 신청 내역</div></div></div>
+      <div class="card"><div class="card-title">📋 팀 전체 신청 내역</div><div id="manager-all-requests"><div class="loading">불러오는 중...</div></div></div>
     </div>
 
     <div class="page" id="page-my-leave">
@@ -346,9 +372,9 @@ function getRemaining(e) { return Math.max(0,getTotal(e)-getUsed(e)); }
 function avClass(i) { return 'av-'+(i%5); }
 function ini(n) { return n.slice(0,2); }
 function statusBadge(s) {
-  const m={pending:'badge-pending',approved:'badge-approved',rejected:'badge-rejected'};
-  const l={pending:'대기 중',approved:'승인됨',rejected:'거절됨'};
-  return `<span class="badge ${m[s]}">${l[s]}</span>`;
+  const m={pending:'badge-pending',approved:'badge-approved',rejected:'badge-rejected','manager-approved':'badge-manager-approved',waiting:'badge-waiting'};
+  const l={pending:'대기 중',approved:'최종승인',rejected:'거절됨','manager-approved':'팀장승인(관리자대기)',waiting:'대기중'};
+  return `<span class="badge ${m[s]||'badge-pending'}">${l[s]||s}</span>`;
 }
 
 // 로그인 상태 저장/복원
@@ -380,6 +406,7 @@ async function loadData() {
     const curVal = sel.value;
     sel.innerHTML = '<option value="">-- 직원 선택 --</option>';
     const excluded = ['이종훈', '송규헌'];
+    const adminExcluded = ['이종훈'];
     employees.filter(e => !excluded.includes(e.name)).forEach(e => {
       const opt = document.createElement('option');
       opt.value = e.id;
@@ -469,6 +496,9 @@ function logout() {
   document.getElementById('login-overlay').style.display='flex';
   document.getElementById('admin-pw').value='';
   document.getElementById('pw-error').classList.remove('show');
+  document.getElementById('manager-nav').style.display='none';
+  document.getElementById('employee-nav').style.display='none';
+  document.getElementById('admin-nav').style.display='none';
 }
 
 function renderDashboard() {
@@ -587,8 +617,49 @@ async function confirmReject() {
   renderAll();
 }
 
+// 관리자 최종 결재
 async function decide(id, status) {
-  await dbUpdate('requests', id, {status});
+  await dbUpdate('requests', id, {status, admin_status: status});
+  await loadData();
+  renderAll();
+}
+
+// 팀장 1차 결재
+async function managerDecide(id, status) {
+  if(status === 'approved') {
+    // 팀장 승인 → 관리자에게 넘김
+    await dbUpdate('requests', id, {manager_status:'approved', admin_status:'pending', status:'manager-approved'});
+  } else {
+    // 팀장 거절 → 직원에게 통보
+    openManagerRejectModal(id);
+    return;
+  }
+  await loadData();
+  renderAll();
+}
+
+let managerRejectTargetId = null;
+function openManagerRejectModal(id) {
+  const r = requests.find(x=>x.id===id);
+  const e = getEmp(r.emp_id);
+  managerRejectTargetId = id;
+  document.getElementById('reject-modal-sub').textContent = e.name + '님의 ' + r.type + ' 신청 (' + r.start_date + ' ~ ' + r.end_date + ')';
+  document.getElementById('reject-reason').value = '';
+  document.getElementById('reject-modal').classList.add('show');
+  // 모달 확인 버튼을 팀장 거절로 바꿈
+  document.getElementById('reject-confirm-btn').onclick = confirmManagerReject;
+}
+
+async function confirmManagerReject() {
+  const reason = document.getElementById('reject-reason').value.trim();
+  if(!reason) { alert('거절 사유를 입력해 주세요'); return; }
+  await dbUpdate('requests', managerRejectTargetId, { 
+    status: 'rejected', 
+    manager_status: 'rejected',
+    admin_status: 'waiting',
+    reject_reason: reason 
+  });
+  closeRejectModal();
   await loadData();
   renderAll();
 }
@@ -604,7 +675,13 @@ async function submitLeave() {
   if(!reason.trim()){alert('사유를 입력해 주세요');return;}
   const days=type.includes('반차')?0.5:Math.round((new Date(end)-new Date(start))/86400000)+1;
   if(days>rem){alert(`잔여 연차(${rem}일)가 부족합니다`);return;}
-  await dbInsert('requests',{emp_id:currentEmpId,type,start_date:start,end_date:end,days,status:'pending',reason});
+  const emp = getEmp(currentEmpId);
+  // 총무부 팀장은 바로 관리자에게, 나머지는 팀장 경유
+  const directDepts = ['총무부'];
+  const needsManager = !directDepts.includes(emp.dept);
+  const initStatus = needsManager ? 'pending' : 'manager-approved';
+  const initAdminStatus = needsManager ? 'waiting' : 'pending';
+  await dbInsert('requests',{emp_id:currentEmpId,type,start_date:start,end_date:end,days,status:initStatus,manager_status:needsManager?'pending':'approved',admin_status:initAdminStatus,reason});
   
   // 폼 초기화
   document.getElementById('leave-type').value = '연차';
@@ -665,9 +742,68 @@ function downloadExcel() {
   URL.revokeObjectURL(url);
 }
 
+function renderManagerDashboard() {
+  const emp = getEmp(currentEmpId);
+  if(!emp) return;
+  // 같은 부서 직원들의 신청만 (팀장 본인 제외)
+  const teamReqs = requests.filter(r => {
+    const e = getEmp(r.emp_id);
+    return e && e.dept === emp.dept && r.emp_id !== currentEmpId && e.role === 'employee';
+  });
+  const pending = teamReqs.filter(r => r.status === 'pending');
+  
+  document.getElementById('mm-total').textContent = employees.filter(e => e.dept === emp.dept && e.role === 'employee').length;
+  document.getElementById('mm-pending').textContent = pending.length;
+  document.getElementById('mm-approved').textContent = teamReqs.filter(r => r.manager_status === 'approved').length;
+  
+  const el = document.getElementById('manager-pending-list');
+  if(!pending.length) { el.innerHTML = '<div class="empty">대기 중인 신청이 없습니다</div>'; return; }
+  el.innerHTML = pending.map(r => {
+    const e = getEmp(r.emp_id); if(!e) return '';
+    const idx = employees.findIndex(x => x.id === e.id);
+    return `<div class="req-row"><div class="avatar ${avClass(idx)}">${ini(e.name)}</div><div class="req-info"><div class="req-name">${e.name} <span style="font-weight:400;font-size:11px;color:var(--gray-400)">${e.position}</span></div><div class="req-detail">${r.type} · ${r.start_date} ~ ${r.end_date} · ${r.days}일${r.reason?' · <span style="color:var(--blue);">'+r.reason+'</span>':''}</div></div>${statusBadge(r.status)}<div class="btn-row"><button class="btn btn-approve" onclick="managerDecide(${r.id},'approved')">승인</button><button class="btn btn-reject" onclick="managerDecide(${r.id},'rejected')">거절</button></div></div>`;
+  }).join('');
+}
+
+function renderManagerAllRequests() {
+  const emp = getEmp(currentEmpId);
+  if(!emp) return;
+  const teamReqs = requests.filter(r => {
+    const e = getEmp(r.emp_id);
+    return e && e.dept === emp.dept && r.emp_id !== currentEmpId && e.role === 'employee';
+  });
+  const el = document.getElementById('manager-all-requests');
+  if(!teamReqs.length) { el.innerHTML = '<div class="empty">신청 내역이 없습니다</div>'; return; }
+  el.innerHTML = teamReqs.map(r => {
+    const e = getEmp(r.emp_id); if(!e) return '';
+    const idx = employees.findIndex(x => x.id === e.id);
+    return `<div class="req-row"><div class="avatar ${avClass(idx)}">${ini(e.name)}</div><div class="req-info"><div class="req-name">${e.name} <span style="font-weight:400;font-size:11px;color:var(--gray-400)">${e.position}</span></div><div class="req-detail">${r.type} · ${r.start_date} ~ ${r.end_date} · ${r.days}일${r.reason?' · '+r.reason:''}</div>${r.status==='rejected'&&r.reject_reason?`<div style="font-size:11px;color:var(--red);margin-top:3px;">❌ 거절 사유: ${r.reject_reason}</div>`:''}</div>${statusBadge(r.status)}${r.status==='pending'?`<div class="btn-row"><button class="btn btn-approve" onclick="managerDecide(${r.id},'approved')">승인</button><button class="btn btn-reject" onclick="managerDecide(${r.id},'rejected')">거절</button></div>`:''}</div>`;
+  }).join('');
+}
+
+// 관리자 대시보드 - 팀장승인된 것만 표시
+function renderDashboard() {
+  // 관리자에게는 admin_status=pending 인 것만 대기중으로 표시
+  const adminPending = requests.filter(r => r.admin_status === 'pending');
+  const approved = requests.filter(r => r.status === 'approved');
+  document.getElementById('m-total').textContent = employees.length;
+  document.getElementById('m-pending').textContent = adminPending.length;
+  document.getElementById('m-approved').textContent = approved.length;
+  const avg = employees.length>0 ? Math.round(employees.reduce((s,e)=>s+getRemaining(e),0)/employees.length) : 0;
+  document.getElementById('m-avg').textContent = avg;
+  const el = document.getElementById('pending-list');
+  if(!adminPending.length) { el.innerHTML = '<div class="empty">대기 중인 신청이 없습니다</div>'; return; }
+  el.innerHTML = adminPending.map(r => {
+    const e = getEmp(r.emp_id); if(!e) return '';
+    const idx = employees.findIndex(x => x.id === e.id);
+    return `<div class="req-row"><div class="avatar ${avClass(idx)}">${ini(e.name)}</div><div class="req-info"><div class="req-name">${e.name} <span style="font-weight:400;font-size:11px;color:var(--gray-400)">${e.dept}</span></div><div class="req-detail">${r.type} · ${r.start_date} ~ ${r.end_date} · ${r.days}일${r.reason?' · <span style="color:var(--blue);">사유: '+r.reason+'</span>':''}</div></div><span class="badge badge-manager-approved">팀장승인</span><div class="btn-row"><button class="btn btn-approve" onclick="decide(${r.id},'approved')">최종승인</button><button class="btn btn-reject" onclick="openRejectModal(${r.id})">거절</button></div></div>`;
+  }).join('');
+}
+
 function renderAll() {
   if(currentRole==='admin'){renderDashboard();renderAllRequests();renderEmpProgress();renderEmpList();}
   if(currentRole==='employee'){renderMyRequests();renderMyMetrics();}
+  if(currentRole==='manager'){renderManagerDashboard();renderManagerAllRequests();renderMyRequests();renderMyMetrics();}
 }
 
 // 초기화
@@ -679,14 +815,33 @@ document.getElementById('end-date').value=todayStr;
 async function restoreSession() {
   const role = sessionStorage.getItem('role');
   const empId = sessionStorage.getItem('empId');
+  await loadData();
   if(role === 'admin') {
-    await loadData();
     await initApp('admin', null);
-  } else if(role === 'employee' && empId) {
-    await loadData();
-    await initApp('employee', parseInt(empId));
-  } else {
-    await loadData();
+  } else if((role === 'employee' || role === 'manager') && empId) {
+    currentEmpId = parseInt(empId);
+    const emp = getEmp(currentEmpId);
+    if(emp) {
+      currentRole = emp.role === 'manager' ? 'manager' : 'employee';
+      const idx = employees.findIndex(e=>e.id===currentEmpId);
+      document.getElementById('login-overlay').style.display='none';
+      document.getElementById('main-app').style.display='flex';
+      document.getElementById('sidebar-year').textContent=CY+'년 연차 시스템';
+      document.getElementById('my-leave-sub').textContent=emp.name+'님의 연차 현황';
+      document.getElementById('user-info-box').innerHTML=`<div class="user-avatar ${avClass(idx)}">${ini(emp.name)}</div><div><div class="user-name">${emp.name}</div><div class="user-role">${emp.role==='manager'?'팀장':emp.dept}</div></div>`;
+      document.getElementById('admin-nav').style.display='none';
+      if(currentRole === 'manager') {
+        document.getElementById('manager-nav').style.display='block';
+        document.getElementById('employee-nav').style.display='none';
+        document.getElementById('manager-dash-sub').textContent=emp.dept+' 팀 현황';
+        showPage('manager-dashboard', document.querySelector('#manager-nav .nav-item'));
+      } else {
+        document.getElementById('employee-nav').style.display='block';
+        document.getElementById('manager-nav').style.display='none';
+        showPage('my-leave', document.querySelector('#employee-nav .nav-item'));
+      }
+      startAutoRefresh();
+    }
   }
 }
 
