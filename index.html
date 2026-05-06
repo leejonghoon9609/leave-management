@@ -480,7 +480,7 @@ function renderDashboard() {
   el.innerHTML=pending.map(r=>{
     const e=getEmp(r.emp_id); if(!e)return '';
     const idx=employees.findIndex(x=>x.id===e.id);
-    return `<div class="req-row"><div class="avatar ${avClass(idx)}">${ini(e.name)}</div><div class="req-info"><div class="req-name">${e.name} <span style="font-weight:400;font-size:11px;color:var(--gray-400)">${e.dept}</span></div><div class="req-detail">${r.type} · ${r.start_date} ~ ${r.end_date} · ${r.days}일</div></div>${statusBadge(r.status)}<div class="btn-row"><button class="btn btn-approve" onclick="decide(${r.id},'approved')">승인</button><button class="btn btn-reject" onclick="openRejectModal(${r.id})">거절</button></div></div>`;
+    return `<div class="req-row"><div class="avatar ${avClass(idx)}">${ini(e.name)}</div><div class="req-info"><div class="req-name">${e.name} <span style="font-weight:400;font-size:11px;color:var(--gray-400)">${e.dept}</span></div><div class="req-detail">${r.type} · ${r.start_date} ~ ${r.end_date} · ${r.days}일${r.reason?` · <span style="color:var(--blue);">사유: ${r.reason}</span>`:''}</div></div>${statusBadge(r.status)}<div class="btn-row"><button class="btn btn-approve" onclick="decide(${r.id},'approved')">승인</button><button class="btn btn-reject" onclick="openRejectModal(${r.id})">거절</button></div></div>`;
   }).join('');
 }
 
@@ -601,6 +601,13 @@ async function submitLeave() {
   const days=type.includes('반차')?0.5:Math.round((new Date(end)-new Date(start))/86400000)+1;
   if(days>rem){alert(`잔여 연차(${rem}일)가 부족합니다`);return;}
   await dbInsert('requests',{emp_id:currentEmpId,type,start_date:start,end_date:end,days,status:'pending',reason});
+  
+  // 폼 초기화
+  document.getElementById('leave-type').value = '연차';
+  document.getElementById('start-date').value = new Date().toISOString().slice(0,10);
+  document.getElementById('end-date').value = new Date().toISOString().slice(0,10);
+  document.getElementById('leave-reason').value = '';
+  
   const n=document.getElementById('apply-notify');
   n.classList.add('show');
   setTimeout(()=>n.classList.remove('show'),3000);
