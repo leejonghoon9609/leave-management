@@ -184,6 +184,7 @@
       <div class="nav-item" onclick="showPage('apply',this)"><span>✏️</span> 신청하기</div>
       <div class="nav-item" onclick="showPage('my-calendar',this)"><span>📅</span> 캘린더</div>
     </div>
+    <button class="logout-btn" style="margin-bottom:8px;background:var(--primary-light);color:var(--primary-dark);border-color:#9FE1CB;" onclick="downloadExcel()">📥 엑셀 다운로드</button>
     <button class="logout-btn" onclick="logout()">🚪 로그아웃</button>
   </div>
 
@@ -575,6 +576,33 @@ function changeMonth(dir) {
   currentMonth=new Date(currentMonth.getFullYear(),currentMonth.getMonth()+dir);
   if(currentPage==='calendar')renderCalendar('cal-body-a','cal-head-a','cal-title','cal-legend-a',null);
   if(currentPage==='my-calendar')renderCalendar('cal-body-e','cal-head-e','cal-title-e','cal-legend-e',currentEmpId);
+}
+
+function downloadExcel() {
+  // CSV 형식으로 엑셀 다운로드
+  const BOM = '\uFEFF'; // 한글 깨짐 방지
+  let csv = '이름,부서,근속연수,총연차,사용연차,남은연차,사용날짜 및 수량\n';
+
+  employees.forEach(e => {
+    const years = getYears(e);
+    const total = getTotal(e);
+    const used = getUsed(e);
+    const rem = getRemaining(e);
+
+    // 해당 직원의 승인된 연차 내역
+    const myReqs = requests.filter(r => r.emp_id === e.id && r.status === 'approved');
+    const usageDetail = myReqs.map(r => `${r.start_date}~${r.end_date}(${r.days}일)`).join(' / ');
+
+    csv += `"${e.name}","${e.dept}","${years}년","${total}일","${used}일","${rem}일","${usageDetail}"\n`;
+  });
+
+  const blob = new Blob([BOM + csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = '연차현황_' + new Date().toISOString().slice(0,10) + '.csv';
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
 function renderAll() {
