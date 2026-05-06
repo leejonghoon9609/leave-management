@@ -441,7 +441,7 @@ async function loadData() {
     if(currentRole === 'manager') {
       const myEmp = getEmpById(currentEmpId);
       if(myEmp) {
-        const teamPending = requests.filter(r => { const e = getEmpById(r.emp_id); return e && e.dept === myEmp.dept && r.emp_id !== currentEmpId && e.role === 'employee' && r.status === 'pending'; }).length;
+        const teamPending = requests.filter(r => { const e = getEmpById(r.emp_id); return e && e.dept === myEmp.dept && r.emp_id !== currentEmpId && (e.role === 'employee' || e.role === 'viewer') && r.status === 'pending'; }).length;
         if(prevPendingCount > 0 && teamPending > prevPendingCount) showToast();
         prevPendingCount = teamPending;
       }
@@ -677,7 +677,7 @@ function renderEmpList() {
 
 function renderManagerEmpProgress() {
   const myEmp = getEmpById(currentEmpId); if(!myEmp) return;
-  const teamMembers = employees.filter(function(e){ return e.dept === myEmp.dept && e.role === 'employee'; });
+  const teamMembers = employees.filter(function(e){ return e.dept === myEmp.dept && (e.role === 'employee' || e.role === 'viewer'); });
   const el = document.getElementById('manager-emp-progress');
   if(!teamMembers.length) { el.innerHTML = '<div class="empty">팀원이 없습니다</div>'; return; }
   el.innerHTML = teamMembers.map(function(e) {
@@ -689,8 +689,8 @@ function renderManagerEmpProgress() {
 
 function renderManagerDashboard() {
   const myEmp = getEmpById(currentEmpId); if(!myEmp) return;
-  const teamMembers = employees.filter(function(e){ return e.dept === myEmp.dept && e.role === 'employee'; });
-  const teamReqs = requests.filter(function(r){ const e = getEmpById(r.emp_id); return e && e.dept === myEmp.dept && r.emp_id !== currentEmpId && e.role === 'employee'; });
+  const teamMembers = employees.filter(function(e){ return e.dept === myEmp.dept && (e.role === 'employee' || e.role === 'viewer'); });
+  const teamReqs = requests.filter(function(r){ const e = getEmpById(r.emp_id); return e && e.dept === myEmp.dept && r.emp_id !== currentEmpId && (e.role === 'employee' || e.role === 'viewer'); });
   const pending = teamReqs.filter(function(r){ return r.status === 'pending'; });
   document.getElementById('mm-total').textContent = teamMembers.length;
   document.getElementById('mm-pending').textContent = pending.length;
@@ -706,7 +706,7 @@ function renderManagerDashboard() {
 
 function renderManagerAllRequests() {
   const myEmp = getEmpById(currentEmpId); if(!myEmp) return;
-  const teamReqs = requests.filter(function(r){ const e = getEmpById(r.emp_id); return e && e.dept === myEmp.dept && r.emp_id !== currentEmpId && e.role === 'employee'; });
+  const teamReqs = requests.filter(function(r){ const e = getEmpById(r.emp_id); return e && e.dept === myEmp.dept && r.emp_id !== currentEmpId && (e.role === 'employee' || e.role === 'viewer'); });
   const el = document.getElementById('manager-all-requests');
   if(!teamReqs.length) { el.innerHTML = '<div class="empty">신청 내역이 없습니다</div>'; return; }
   el.innerHTML = teamReqs.map(function(r) {
