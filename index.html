@@ -282,7 +282,10 @@
         <div class="metric-card amber"><div class="metric-label">승인 대기</div><div class="metric-value" id="mm-pending">-</div><div class="metric-unit">건</div></div>
         <div class="metric-card green"><div class="metric-label">승인한 신청</div><div class="metric-value" id="mm-approved">-</div><div class="metric-unit">건</div></div>
       </div>
-      <div class="card"><div class="card-title">⏳ 승인 대기 중인 신청</div><div id="manager-pending-list"><div class="loading">불러오는 중...</div></div></div>
+      <div class="grid-2">
+        <div class="card"><div class="card-title">⏳ 승인 대기 중인 신청</div><div id="manager-pending-list"><div class="loading">불러오는 중...</div></div></div>
+        <div class="card"><div class="card-title">📈 팀 연차 현황</div><div id="manager-emp-progress"><div class="loading">불러오는 중...</div></div></div>
+      </div>
     </div>
 
     <!-- 팀장 신청 관리 -->
@@ -601,6 +604,18 @@ function renderEmpList() {
   }).join('');
 }
 
+function renderManagerEmpProgress() {
+  const myEmp = getEmpById(currentEmpId); if(!myEmp) return;
+  const teamMembers = employees.filter(function(e){ return e.dept === myEmp.dept && e.role === 'employee'; });
+  const el = document.getElementById('manager-emp-progress');
+  if(!teamMembers.length) { el.innerHTML = '<div class="empty">팀원이 없습니다</div>'; return; }
+  el.innerHTML = teamMembers.map(function(e) {
+    const idx = employees.findIndex(function(x){ return x.id===e.id; });
+    const total = getTotal(e), used = getUsed(e), rem = getRemaining(e), pct = total>0?Math.round((used/total)*100):0;
+    return '<div class="req-row"><div class="avatar ' + avClass(idx) + '">' + ini(e.name) + '</div><div class="progress-wrap"><div style="display:flex;justify-content:space-between;font-size:12px;"><span style="font-weight:600">' + e.name + '</span><span style="color:var(--gray-400)">잔여 ' + rem + '/' + total + '일</span></div><div class="progress-bar"><div class="progress-fill ' + (pct>80?'danger':'') + '" style="width:' + pct + '%"></div></div></div></div>';
+  }).join('');
+}
+
 function renderManagerDashboard() {
   const myEmp = getEmpById(currentEmpId); if(!myEmp) return;
   const teamMembers = employees.filter(function(e){ return e.dept === myEmp.dept && e.role === 'employee'; });
@@ -748,7 +763,7 @@ function changeMonth(dir) {
 
 function renderAll() {
   if(currentRole==='admin') { renderAdminDashboard(); renderAllRequests(); renderEmpProgress(); renderEmpList(); }
-  if(currentRole==='manager') { renderManagerDashboard(); renderManagerAllRequests(); renderMyRequests(); renderMyMetrics(); }
+  if(currentRole==='manager') { renderManagerDashboard(); renderManagerEmpProgress(); renderManagerAllRequests(); renderMyRequests(); renderMyMetrics(); }
   if(currentRole==='employee') { renderMyRequests(); renderMyMetrics(); }
 }
 
