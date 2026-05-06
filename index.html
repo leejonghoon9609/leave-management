@@ -824,13 +824,31 @@ async function submitLeave() {
 
 function downloadExcel() {
   const BOM = '\uFEFF';
+  let targetEmployees = [];
+
+  if(currentRole === 'admin') {
+    // 관리자: 전직원
+    targetEmployees = employees;
+  } else if(currentRole === 'manager') {
+    // 팀장: 본인 팀만
+    const myEmp = getEmpById(currentEmpId);
+    targetEmployees = employees.filter(function(e){ return e.dept === myEmp.dept; });
+  } else if(currentRole === 'viewer') {
+    // 뷰어(조은주): 사업관리만 (현장 제외, 이종훈 제외)
+    targetEmployees = employees.filter(function(e){ return e.dept === '사업관리' && e.name !== '이종훈'; });
+  } else {
+    // 직원: 본인만
+    targetEmployees = employees.filter(function(e){ return e.id === currentEmpId; });
+  }
+
   let csv = '이름,직급,부서,근속연수,총연차,사용연차,남은연차,사용날짜 및 수량\n';
-  employees.forEach(function(e) {
+  targetEmployees.forEach(function(e) {
     const years = getYears(e), total = getTotal(e), used = getUsed(e), rem = getRemaining(e);
     const myReqs = requests.filter(function(r){ return r.emp_id===e.id&&r.status==='approved'; });
     const usageDetail = myReqs.map(function(r){ return r.start_date + '~' + r.end_date + '(' + r.days + '일)'; }).join(' / ');
     csv += '"' + e.name + '","' + e.position + '","' + e.dept + '","' + years + '년","' + total + '일","' + used + '일","' + rem + '일","' + usageDetail + '"\n';
   });
+
   const blob = new Blob([BOM + csv], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
