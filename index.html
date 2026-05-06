@@ -572,7 +572,8 @@ function renderAdminDashboard() {
   el.innerHTML = adminPending.map(function(r) {
     const e = getEmpById(r.emp_id); if(!e) return '';
     const idx = employees.findIndex(function(x){ return x.id===e.id; });
-    return '<div class="req-row"><div class="avatar ' + avClass(idx) + '">' + ini(e.name) + '</div><div class="req-info"><div class="req-name">' + e.name + ' <span style="font-weight:400;font-size:11px;color:var(--gray-400)">' + e.dept + '</span></div><div class="req-detail">' + r.type + ' · ' + r.start_date + ' ~ ' + r.end_date + ' · ' + r.days + '일' + (r.reason ? ' · <span style="color:var(--blue);">사유: ' + r.reason + '</span>' : '') + '</div></div>' + (r.status === 'manager-approved' ? '<span class="badge badge-manager-approved">팀장승인</span>' : statusBadge(r.status)) + '<div class="btn-row"><button class="btn btn-approve" onclick="adminApprove(' + r.id + ')">최종승인</button><button class="btn btn-reject" onclick="openRejectModal(' + r.id + ', 'admin')">거절</button></div></div>';
+    var rejectCall = 'openRejectModal(' + r.id + ', \'admin\')';
+    return '<div class="req-row"><div class="avatar ' + avClass(idx) + '">' + ini(e.name) + '</div><div class="req-info"><div class="req-name">' + e.name + ' <span style="font-weight:400;font-size:11px;color:var(--gray-400)">' + e.dept + '</span></div><div class="req-detail">' + r.type + ' · ' + r.start_date + ' ~ ' + r.end_date + ' · ' + r.days + '일' + (r.reason ? ' · <span style="color:var(--blue);">사유: ' + r.reason + '</span>' : '') + '</div></div>' + (r.status === 'manager-approved' ? '<span class="badge badge-manager-approved">팀장승인</span>' : statusBadge(r.status)) + '<div class="btn-row"><button class="btn btn-approve" onclick="adminApprove(' + r.id + ')">최종승인</button><button class="btn btn-reject" onclick="' + rejectCall + '">거절</button></div></div>';
   }).join('');
 }
 
@@ -582,7 +583,7 @@ function renderAllRequests() {
   el.innerHTML = requests.map(function(r) {
     const e = getEmpById(r.emp_id); if(!e) return '';
     const idx = employees.findIndex(function(x){ return x.id===e.id; });
-    return '<div class="req-row"><div class="avatar ' + avClass(idx) + '">' + ini(e.name) + '</div><div class="req-info"><div class="req-name">' + e.name + ' <span style="font-weight:400;font-size:11px;color:var(--gray-400)">' + e.dept + '</span></div><div class="req-detail">' + r.type + ' · ' + r.start_date + ' ~ ' + r.end_date + ' · ' + r.days + '일' + (r.reason ? ' · ' + r.reason : '') + '</div>' + (r.status==='rejected'&&r.reject_reason ? '<div style="font-size:11px;color:var(--red);margin-top:3px;">❌ 거절 사유: ' + r.reject_reason + '</div>' : '') + '</div>' + statusBadge(r.status) + (r.admin_status==='pending' ? '<div class="btn-row"><button class="btn btn-approve" onclick="adminApprove(' + r.id + ')">최종승인</button><button class="btn btn-reject" onclick="openRejectModal(' + r.id + ', 'admin')">거절</button></div>' : '') + '</div>';
+    return '<div class="req-row"><div class="avatar ' + avClass(idx) + '">' + ini(e.name) + '</div><div class="req-info"><div class="req-name">' + e.name + ' <span style="font-weight:400;font-size:11px;color:var(--gray-400)">' + e.dept + '</span></div><div class="req-detail">' + r.type + ' · ' + r.start_date + ' ~ ' + r.end_date + ' · ' + r.days + '일' + (r.reason ? ' · ' + r.reason : '') + '</div>' + (r.status==='rejected'&&r.reject_reason ? '<div style="font-size:11px;color:var(--red);margin-top:3px;">❌ 거절 사유: ' + r.reject_reason + '</div>' : '') + '</div>' + statusBadge(r.status) + (r.admin_status==='pending' ? '<div class="btn-row"><button class="btn btn-approve" onclick="adminApprove(' + r.id + ')">최종승인</button><button class="btn btn-reject" onclick="openRejectModal(' + r.id + ', \'admin\')">거절</button></div>' : '') + '</div>';
   }).join('');
 }
 
@@ -613,7 +614,7 @@ function renderManagerDashboard() {
   el.innerHTML = pending.map(function(r) {
     const e = getEmpById(r.emp_id); if(!e) return '';
     const idx = employees.findIndex(function(x){ return x.id===e.id; });
-    return '<div class="req-row"><div class="avatar ' + avClass(idx) + '">' + ini(e.name) + '</div><div class="req-info"><div class="req-name">' + e.name + ' <span style="font-weight:400;font-size:11px;color:var(--gray-400)">' + e.position + '</span></div><div class="req-detail">' + r.type + ' · ' + r.start_date + ' ~ ' + r.end_date + ' · ' + r.days + '일' + (r.reason ? ' · <span style="color:var(--blue);">' + r.reason + '</span>' : '') + '</div></div>' + statusBadge(r.status) + '<div class="btn-row"><button class="btn btn-approve" onclick="managerApprove(' + r.id + ')">승인</button><button class="btn btn-reject" onclick="openRejectModal(' + r.id + ', 'manager')">거절</button></div></div>';
+    return '<div class="req-row"><div class="avatar ' + avClass(idx) + '">' + ini(e.name) + '</div><div class="req-info"><div class="req-name">' + e.name + ' <span style="font-weight:400;font-size:11px;color:var(--gray-400)">' + e.position + '</span></div><div class="req-detail">' + r.type + ' · ' + r.start_date + ' ~ ' + r.end_date + ' · ' + r.days + '일' + (r.reason ? ' · <span style="color:var(--blue);">' + r.reason + '</span>' : '') + '</div></div>' + statusBadge(r.status) + '<div class="btn-row"><button class="btn btn-approve" onclick="managerApprove(' + r.id + ')">승인</button><button class="btn btn-reject" onclick="openRejectModal(' + r.id + ', \'manager\')">거절</button></div></div>';
   }).join('');
 }
 
@@ -625,7 +626,7 @@ function renderManagerAllRequests() {
   el.innerHTML = teamReqs.map(function(r) {
     const e = getEmpById(r.emp_id); if(!e) return '';
     const idx = employees.findIndex(function(x){ return x.id===e.id; });
-    return '<div class="req-row"><div class="avatar ' + avClass(idx) + '">' + ini(e.name) + '</div><div class="req-info"><div class="req-name">' + e.name + ' <span style="font-weight:400;font-size:11px;color:var(--gray-400)">' + e.position + '</span></div><div class="req-detail">' + r.type + ' · ' + r.start_date + ' ~ ' + r.end_date + ' · ' + r.days + '일' + (r.reason ? ' · ' + r.reason : '') + '</div>' + (r.status==='rejected'&&r.reject_reason ? '<div style="font-size:11px;color:var(--red);margin-top:3px;">❌ 거절 사유: ' + r.reject_reason + '</div>' : '') + '</div>' + statusBadge(r.status) + (r.status==='pending' ? '<div class="btn-row"><button class="btn btn-approve" onclick="managerApprove(' + r.id + ')">승인</button><button class="btn btn-reject" onclick="openRejectModal(' + r.id + ', 'manager')">거절</button></div>' : '') + '</div>';
+    return '<div class="req-row"><div class="avatar ' + avClass(idx) + '">' + ini(e.name) + '</div><div class="req-info"><div class="req-name">' + e.name + ' <span style="font-weight:400;font-size:11px;color:var(--gray-400)">' + e.position + '</span></div><div class="req-detail">' + r.type + ' · ' + r.start_date + ' ~ ' + r.end_date + ' · ' + r.days + '일' + (r.reason ? ' · ' + r.reason : '') + '</div>' + (r.status==='rejected'&&r.reject_reason ? '<div style="font-size:11px;color:var(--red);margin-top:3px;">❌ 거절 사유: ' + r.reject_reason + '</div>' : '') + '</div>' + statusBadge(r.status) + (r.status==='pending' ? '<div class="btn-row"><button class="btn btn-approve" onclick="managerApprove(' + r.id + ')">승인</button><button class="btn btn-reject" onclick="openRejectModal(" + r.id + ", \"manager\")">거절</button></div>' : '') + '</div>';
   }).join('');
 }
 
