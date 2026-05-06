@@ -845,7 +845,11 @@ function downloadExcel() {
   targetEmployees.forEach(function(e) {
     const years = getYears(e), total = getTotal(e), used = getUsed(e), rem = getRemaining(e);
     const myReqs = requests.filter(function(r){ return r.emp_id===e.id&&r.status==='approved'; });
-    const usageDetail = myReqs.map(function(r){ return r.start_date + '~' + r.end_date + '(' + r.days + '일)'; }).join(' / ');
+    const usageDetail = myReqs.map(function(r){
+      function fmt(d){ const p=d.split('-'); return parseInt(p[1])+'/'+parseInt(p[2]); }
+      if(r.start_date===r.end_date) return fmt(r.start_date)+'('+r.days+'일)';
+      return fmt(r.start_date)+'~'+fmt(r.end_date)+'('+r.days+'일)';
+    }).join(', ');
     csv += '"' + e.name + '","' + e.position + '","' + e.dept + '","' + years + '년","' + total + '일","' + used + '일","' + rem + '일","' + usageDetail + '"\n';
   });
 
