@@ -175,9 +175,9 @@
     <div style="font-size:36px;margin-bottom:8px;">📋</div>
     <div class="login-title">연차 관리 시스템</div>
     <div class="login-sub">접속할 계정을 선택해 주세요</div>
-    <input class="login-input" type="password" id="admin-pw" placeholder="관리자 암호 입력" onkeydown="if(event.key==='Enter')adminLogin()">
+    <input class="login-input" type="password" id="admin-pw" placeholder="관리자/팀장 암호 입력" onkeydown="if(event.key==='Enter')adminLogin()">
     <div class="login-error" id="pw-error">❌ 암호가 올바르지 않습니다</div>
-    <button class="login-btn login-btn-admin" onclick="adminLogin()">🔐 관리자로 로그인</button>
+    <button class="login-btn login-btn-admin" onclick="adminLogin()">🔐 관리자/팀장으로 로그인</button>
     <div class="divider"><div class="divider-line"></div><span class="divider-text">또는 직원으로 접속</span><div class="divider-line"></div></div>
     <select class="login-input" id="emp-select" style="margin-bottom:8px;"><option value="">-- 직원 선택 --</option></select>
     <button class="login-btn login-btn-emp" onclick="empLogin()">👤 직원/팀장으로 로그인</button>
@@ -464,24 +464,52 @@ function setNavActive(navId, firstItem) {
 }
 
 async function adminLogin() {
-  if(document.getElementById('admin-pw').value !== ADMIN_PW) {
-    document.getElementById('pw-error').classList.add('show');
-    document.getElementById('admin-pw').value = '';
+  const pw = document.getElementById('admin-pw').value;
+
+  // 관리자 로그인
+  if(pw === ADMIN_PW) {
+    currentRole = 'admin'; currentEmpId = null;
+    saveSession('admin', null);
+    await loadData();
+    document.getElementById('login-overlay').style.display = 'none';
+    document.getElementById('main-app').style.display = 'flex';
+    document.getElementById('admin-nav').style.display = 'block';
+    document.getElementById('manager-nav').style.display = 'none';
+    document.getElementById('employee-nav').style.display = 'none';
+    document.getElementById('sidebar-year').textContent = CY + '년 연차 시스템';
+    document.getElementById('dash-sub').textContent = CY + '년 전체 연차 현황';
+    document.getElementById('user-info-box').innerHTML = '<div class="user-avatar av-0">관리</div><div><div class="user-name">관리자 (이종훈)</div><div class="user-role">전체 권한</div></div>';
+    showPage('dashboard', document.querySelector('#admin-nav .nav-item'));
+    startAutoRefresh();
     return;
   }
-  currentRole = 'admin'; currentEmpId = null;
-  saveSession('admin', null);
-  await loadData();
-  document.getElementById('login-overlay').style.display = 'none';
-  document.getElementById('main-app').style.display = 'flex';
-  document.getElementById('admin-nav').style.display = 'block';
-  document.getElementById('manager-nav').style.display = 'none';
-  document.getElementById('employee-nav').style.display = 'none';
-  document.getElementById('sidebar-year').textContent = CY + '년 연차 시스템';
-  document.getElementById('dash-sub').textContent = CY + '년 전체 연차 현황';
-  document.getElementById('user-info-box').innerHTML = '<div class="user-avatar av-0">관리</div><div><div class="user-name">관리자 (이종훈)</div><div class="user-role">전체 권한</div></div>';
-  showPage('dashboard', document.querySelector('#admin-nav .nav-item'));
-  startAutoRefresh();
+
+  // 송규헌 팀장 로그인
+  if(pw === 'sgh2511') {
+    await loadData();
+    const sgh = employees.find(function(e){ return e.name === '송규헌'; });
+    if(sgh) {
+      currentRole = 'manager'; currentEmpId = sgh.id;
+      saveSession('manager', sgh.id);
+      const idx = employees.findIndex(function(e){ return e.id===sgh.id; });
+      document.getElementById('login-overlay').style.display = 'none';
+      document.getElementById('main-app').style.display = 'flex';
+      document.getElementById('admin-nav').style.display = 'none';
+      document.getElementById('manager-nav').style.display = 'block';
+      document.getElementById('employee-nav').style.display = 'none';
+      document.getElementById('sidebar-year').textContent = CY + '년 연차 시스템';
+      document.getElementById('my-leave-sub').textContent = '송규헌님의 연차 현황';
+      document.getElementById('manager-dash-sub').textContent = '측량부 팀 현황';
+      document.getElementById('user-info-box').innerHTML = '<div class="user-avatar ' + avClass(idx) + '">' + ini(sgh.name) + '</div><div><div class="user-name">' + sgh.name + '</div><div class="user-role">팀장 · 측량부</div></div>';
+      showPage('manager-dashboard', document.querySelector('#manager-nav .nav-item'));
+      startAutoRefresh();
+    }
+    return;
+  }
+
+  // 암호 오류
+  document.getElementById('pw-error').classList.add('show');
+  document.getElementById('admin-pw').value = '';
 }
 
 async function empLogin() {
