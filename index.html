@@ -49,9 +49,15 @@
   .logout-btn { margin: auto 20px 0; padding: 8px; font-size: 12px; color: var(--gray-400); background: none; border: 1px solid var(--gray-200); border-radius: var(--radius-sm); cursor: pointer; font-family: inherit; }
   .logout-btn:hover { color: var(--red); border-color: #F7C1C1; }
 
-  .page-header { margin-bottom: 24px; }
+  /* 실시간 상태 표시 */
+  .live-badge { display: flex; align-items: center; gap: 6px; padding: 4px 12px; background: var(--primary-light); border-radius: 20px; font-size: 11px; color: var(--primary-dark); margin: 0 20px 16px; }
+  .live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--primary); animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:0.3;} }
+
+  .page-header { margin-bottom: 24px; display: flex; align-items: center; justify-content: space-between; }
   .page-title { font-size: 20px; font-weight: 700; }
   .page-sub { font-size: 13px; color: var(--gray-400); margin-top: 2px; }
+  .last-updated { font-size: 11px; color: var(--gray-400); }
 
   .metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 24px; }
   .metric-card { background: var(--white); border-radius: var(--radius); padding: 18px; border: 1px solid var(--gray-200); }
@@ -125,6 +131,11 @@
   .page { display: none; }
   .page.active { display: block; }
 
+  /* 새 신청 알림 토스트 */
+  .toast { position: fixed; top: 20px; right: 20px; background: var(--primary); color: white; padding: 12px 20px; border-radius: var(--radius); font-size: 13px; font-weight: 600; z-index: 9999; display: none; box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+  .toast.show { display: block; animation: slideIn 0.3s ease; }
+  @keyframes slideIn { from{transform:translateX(100px);opacity:0;} to{transform:translateX(0);opacity:1;} }
+
   @media (max-width: 768px) {
     .sidebar { width: 100%; height: auto; position: relative; }
     .main { margin-left: 0; padding: 16px; }
@@ -135,6 +146,8 @@
 </style>
 </head>
 <body>
+
+<div class="toast" id="toast">🔔 새 연차 신청이 들어왔어요!</div>
 
 <div class="login-overlay" id="login-overlay">
   <div class="login-box">
@@ -157,6 +170,7 @@
       <div class="logo-sub" id="sidebar-year"></div>
     </div>
     <div class="user-info" id="user-info-box"></div>
+    <div class="live-badge"><div class="live-dot"></div><span>실시간 연동 중</span></div>
     <div id="admin-nav">
       <div class="nav-section">관리자 메뉴</div>
       <div class="nav-item active" onclick="showPage('dashboard',this)"><span>📊</span> 대시보드</div>
@@ -175,7 +189,10 @@
 
   <div class="main">
     <div class="page active" id="page-dashboard">
-      <div class="page-header"><div class="page-title">대시보드</div><div class="page-sub" id="dash-sub"></div></div>
+      <div class="page-header">
+        <div><div class="page-title">대시보드</div><div class="page-sub" id="dash-sub"></div></div>
+        <div class="last-updated" id="last-updated"></div>
+      </div>
       <div class="metrics">
         <div class="metric-card"><div class="metric-label">전체 직원</div><div class="metric-value" id="m-total">-</div><div class="metric-unit">명</div></div>
         <div class="metric-card green"><div class="metric-label">승인된 신청</div><div class="metric-value" id="m-approved">-</div><div class="metric-unit">건</div></div>
@@ -189,12 +206,12 @@
     </div>
 
     <div class="page" id="page-requests">
-      <div class="page-header"><div class="page-title">신청 관리</div><div class="page-sub">전체 연차 신청 내역</div></div>
+      <div class="page-header"><div><div class="page-title">신청 관리</div><div class="page-sub">전체 연차 신청 내역</div></div></div>
       <div class="card"><div class="card-title">📋 전체 신청 내역</div><div id="all-requests"><div class="loading">불러오는 중...</div></div></div>
     </div>
 
     <div class="page" id="page-calendar">
-      <div class="page-header"><div class="page-title">연차 캘린더</div></div>
+      <div class="page-header"><div><div class="page-title">연차 캘린더</div></div></div>
       <div class="card">
         <div class="cal-nav">
           <button class="cal-btn" onclick="changeMonth(-1)">← 이전</button>
@@ -208,19 +225,19 @@
     </div>
 
     <div class="page" id="page-employees">
-      <div class="page-header"><div class="page-title">직원 현황</div></div>
+      <div class="page-header"><div><div class="page-title">직원 현황</div></div></div>
       <div class="info-box">📌 연차 규정: 1년차 11일 · 2년차 15일 · 이후 3년 만기마다 1일 추가 (최대 25일)</div>
       <div class="card"><div class="card-title">👥 전체 직원 연차 현황</div><div id="emp-list"><div class="loading">불러오는 중...</div></div></div>
     </div>
 
     <div class="page" id="page-my-leave">
-      <div class="page-header"><div class="page-title">내 연차</div><div class="page-sub" id="my-leave-sub"></div></div>
+      <div class="page-header"><div><div class="page-title">내 연차</div><div class="page-sub" id="my-leave-sub"></div></div></div>
       <div class="metrics" style="grid-template-columns:repeat(3,1fr);" id="my-metrics"></div>
       <div class="card"><div class="card-title">📋 내 신청 내역</div><div id="my-requests"><div class="loading">불러오는 중...</div></div></div>
     </div>
 
     <div class="page" id="page-apply">
-      <div class="page-header"><div class="page-title">연차 신청</div></div>
+      <div class="page-header"><div><div class="page-title">연차 신청</div></div></div>
       <div class="card" style="max-width:480px;">
         <div class="notify" id="apply-notify">✅ 신청이 완료되었습니다. 관리자 승인을 기다려 주세요.</div>
         <div id="rem-info" style="background:var(--primary-light);border-radius:var(--radius-sm);padding:10px 14px;font-size:12px;color:var(--primary-dark);margin-bottom:14px;"></div>
@@ -238,7 +255,7 @@
     </div>
 
     <div class="page" id="page-my-calendar">
-      <div class="page-header"><div class="page-title">내 캘린더</div></div>
+      <div class="page-header"><div><div class="page-title">내 캘린더</div></div></div>
       <div class="card">
         <div class="cal-nav">
           <button class="cal-btn" onclick="changeMonth(-1)">← 이전</button>
@@ -254,34 +271,27 @@
 </div>
 
 <script>
-// ===== Supabase 설정 =====
 const SUPABASE_URL = 'https://yidswostdxaejjeikxhg.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlpZHN3b3N0ZHhhZWpqZWlreGhnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc5NjM1MDAsImV4cCI6MjA5MzUzOTUwMH0.DIP9Yqr7v0Z5y4bdqU5UkoNn1OL0dh1WuYhaiOxtaq4';
-const ADMIN_PW = 'Ljh9609!@#Abc';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlpZHN3b3N0ZHhhZWpqZWlreGhnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDYzNzg4NjQsImV4cCI6MjA2MTk1NDg2NH0.dBb0bj7Rqr7v0Z5y4bdqU5UkoNn1OL0dh1WuYhaiOxtaq4';
+const ADMIN_PW = 'ljh9609';
 const CY = new Date().getFullYear();
+let autoRefreshTimer = null;
+let prevPendingCount = 0;
 
-// Supabase API 호출 함수
-async function dbGet(table, filters) {
-  let url = SUPABASE_URL + '/rest/v1/' + table + '?select=*&order=id';
-  if (filters) url += '&' + filters;
+async function dbGet(table, extra) {
+  let url = SUPABASE_URL + '/rest/v1/' + table + '?select=*';
+  if(extra) url += '&' + extra;
   const res = await fetch(url, {
-    headers: {
-      'apikey': SUPABASE_ANON_KEY,
-      'Authorization': 'Bearer ' + SUPABASE_ANON_KEY
-    }
+    headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY }
   });
+  if(!res.ok) return [];
   return await res.json();
 }
 
 async function dbInsert(table, data) {
   const res = await fetch(SUPABASE_URL + '/rest/v1/' + table, {
     method: 'POST',
-    headers: {
-      'apikey': SUPABASE_ANON_KEY,
-      'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
-      'Content-Type': 'application/json',
-      'Prefer': 'return=minimal'
-    },
+    headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
     body: JSON.stringify(data)
   });
   return res.ok;
@@ -290,48 +300,57 @@ async function dbInsert(table, data) {
 async function dbUpdate(table, id, data) {
   const res = await fetch(SUPABASE_URL + '/rest/v1/' + table + '?id=eq.' + id, {
     method: 'PATCH',
-    headers: {
-      'apikey': SUPABASE_ANON_KEY,
-      'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
-      'Content-Type': 'application/json',
-      'Prefer': 'return=minimal'
-    },
+    headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
     body: JSON.stringify(data)
   });
   return res.ok;
 }
 
-let employees = [];
-let requests = [];
+let employees = [], requests = [];
 let currentMonth = new Date(CY, new Date().getMonth());
 let currentRole = null, currentEmpId = null, currentPage = 'dashboard';
 
-function calcLeave(years) {
-  if(years < 1) return 0;
-  if(years === 1) return 11;
-  if(years === 2) return 15;
-  return Math.min(15 + Math.floor((years-2)/3), 25);
-}
-
+function calcLeave(y) { if(y<1)return 0; if(y===1)return 11; if(y===2)return 15; return Math.min(15+Math.floor((y-2)/3),25); }
 function getEmp(id) { return employees.find(e=>e.id===id); }
-function getYears(e) { return CY - e.join_year; }
+function getYears(e) { return CY-e.join_year; }
 function getTotal(e) { return calcLeave(getYears(e)); }
 function getUsed(e) { return requests.filter(r=>r.emp_id===e.id&&r.status==='approved').reduce((s,r)=>s+Number(r.days),0); }
-function getRemaining(e) { return Math.max(0, getTotal(e)-getUsed(e)); }
-function avClass(idx) { return 'av-'+(idx%5); }
-function initials(name) { return name.slice(0,2); }
-
+function getRemaining(e) { return Math.max(0,getTotal(e)-getUsed(e)); }
+function avClass(i) { return 'av-'+(i%5); }
+function ini(n) { return n.slice(0,2); }
 function statusBadge(s) {
   const m={pending:'badge-pending',approved:'badge-approved',rejected:'badge-rejected'};
   const l={pending:'대기 중',approved:'승인됨',rejected:'거절됨'};
   return `<span class="badge ${m[s]}">${l[s]}</span>`;
 }
 
+// 로그인 상태 저장/복원
+function saveSession(role, empId) {
+  sessionStorage.setItem('role', role);
+  if(empId) sessionStorage.setItem('empId', empId);
+}
+function clearSession() {
+  sessionStorage.removeItem('role');
+  sessionStorage.removeItem('empId');
+}
+
 async function loadData() {
   try {
-    employees = await dbGet('employees');
+    employees = await dbGet('employees', 'order=id');
     requests = await dbGet('requests', 'order=created_at.desc');
+
+    // 새 신청 알림 (관리자만)
+    if(currentRole === 'admin') {
+      const pendingNow = requests.filter(r=>r.status==='pending').length;
+      if(prevPendingCount > 0 && pendingNow > prevPendingCount) {
+        showToast();
+      }
+      prevPendingCount = pendingNow;
+    }
+
+    // 직원 드롭다운 업데이트
     const sel = document.getElementById('emp-select');
+    const curVal = sel.value;
     sel.innerHTML = '<option value="">-- 직원 선택 --</option>';
     employees.forEach(e => {
       const opt = document.createElement('option');
@@ -339,9 +358,61 @@ async function loadData() {
       opt.textContent = e.name + ' (' + e.dept + ')';
       sel.appendChild(opt);
     });
-  } catch(err) {
-    console.error('데이터 로드 오류:', err);
+    if(curVal) sel.value = curVal;
+
+    // 마지막 업데이트 시간
+    const el = document.getElementById('last-updated');
+    if(el) el.textContent = '마지막 업데이트: ' + new Date().toLocaleTimeString('ko-KR');
+  } catch(err) { console.error(err); }
+}
+
+function showToast() {
+  const t = document.getElementById('toast');
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 4000);
+}
+
+// 30초마다 자동 갱신
+function startAutoRefresh() {
+  if(autoRefreshTimer) clearInterval(autoRefreshTimer);
+  autoRefreshTimer = setInterval(async () => {
+    await loadData();
+    renderAll();
+    if(currentPage==='calendar') renderCalendar('cal-body-a','cal-head-a','cal-title','cal-legend-a',null);
+    if(currentPage==='my-calendar') renderCalendar('cal-body-e','cal-head-e','cal-title-e','cal-legend-e',currentEmpId);
+  }, 30000);
+}
+
+function stopAutoRefresh() {
+  if(autoRefreshTimer) clearInterval(autoRefreshTimer);
+  autoRefreshTimer = null;
+}
+
+async function initApp(role, empId) {
+  currentRole = role;
+  currentEmpId = empId;
+  await loadData();
+
+  document.getElementById('login-overlay').style.display='none';
+  document.getElementById('main-app').style.display='flex';
+  document.getElementById('sidebar-year').textContent = CY+'년 연차 시스템';
+
+  if(role === 'admin') {
+    document.getElementById('admin-nav').style.display='block';
+    document.getElementById('employee-nav').style.display='none';
+    document.getElementById('dash-sub').textContent = CY+'년 전체 연차 현황';
+    document.getElementById('user-info-box').innerHTML=`<div class="user-avatar av-0">관리</div><div><div class="user-name">관리자</div><div class="user-role">전체 권한</div></div>`;
+    showPage('dashboard', document.querySelector('#admin-nav .nav-item'));
+  } else {
+    const emp = getEmp(empId);
+    const idx = employees.findIndex(e=>e.id===empId);
+    document.getElementById('admin-nav').style.display='none';
+    document.getElementById('employee-nav').style.display='block';
+    document.getElementById('my-leave-sub').textContent = emp.name+'님의 연차 현황';
+    document.getElementById('user-info-box').innerHTML=`<div class="user-avatar ${avClass(idx)}">${ini(emp.name)}</div><div><div class="user-name">${emp.name}</div><div class="user-role">${emp.dept}</div></div>`;
+    showPage('my-leave', document.querySelector('#employee-nav .nav-item'));
   }
+  startAutoRefresh();
 }
 
 async function adminLogin() {
@@ -350,37 +421,22 @@ async function adminLogin() {
     document.getElementById('admin-pw').value='';
     return;
   }
-  currentRole='admin'; currentEmpId=null;
-  await loadData();
-  document.getElementById('login-overlay').style.display='none';
-  document.getElementById('main-app').style.display='flex';
-  document.getElementById('admin-nav').style.display='block';
-  document.getElementById('employee-nav').style.display='none';
-  document.getElementById('sidebar-year').textContent=CY+'년 연차 시스템';
-  document.getElementById('dash-sub').textContent=CY+'년 전체 연차 현황';
-  document.getElementById('user-info-box').innerHTML=`<div class="user-avatar av-0">관리</div><div><div class="user-name">관리자</div><div class="user-role">전체 권한</div></div>`;
-  showPage('dashboard', document.querySelector('#admin-nav .nav-item'));
+  saveSession('admin', null);
+  await initApp('admin', null);
 }
 
 async function empLogin() {
-  const sel=document.getElementById('emp-select').value;
+  const sel = document.getElementById('emp-select').value;
   if(!sel){alert('직원을 선택해 주세요');return;}
-  currentRole='employee'; currentEmpId=parseInt(sel);
-  await loadData();
-  const emp=getEmp(currentEmpId);
-  const idx=employees.findIndex(e=>e.id===currentEmpId);
-  document.getElementById('login-overlay').style.display='none';
-  document.getElementById('main-app').style.display='flex';
-  document.getElementById('admin-nav').style.display='none';
-  document.getElementById('employee-nav').style.display='block';
-  document.getElementById('sidebar-year').textContent=CY+'년 연차 시스템';
-  document.getElementById('my-leave-sub').textContent=emp.name+'님의 연차 현황';
-  document.getElementById('user-info-box').innerHTML=`<div class="user-avatar ${avClass(idx)}">${initials(emp.name)}</div><div><div class="user-name">${emp.name}</div><div class="user-role">${emp.dept}</div></div>`;
-  showPage('my-leave', document.querySelector('#employee-nav .nav-item'));
+  saveSession('employee', sel);
+  await initApp('employee', parseInt(sel));
 }
 
 function logout() {
+  clearSession();
+  stopAutoRefresh();
   currentRole=null; currentEmpId=null;
+  prevPendingCount=0;
   document.getElementById('main-app').style.display='none';
   document.getElementById('login-overlay').style.display='flex';
   document.getElementById('admin-pw').value='';
@@ -399,7 +455,7 @@ function renderDashboard() {
   el.innerHTML=pending.map(r=>{
     const e=getEmp(r.emp_id); if(!e)return '';
     const idx=employees.findIndex(x=>x.id===e.id);
-    return `<div class="req-row"><div class="avatar ${avClass(idx)}">${initials(e.name)}</div><div class="req-info"><div class="req-name">${e.name} <span style="font-weight:400;font-size:11px;color:var(--gray-400)">${e.dept}</span></div><div class="req-detail">${r.type} · ${r.start_date} ~ ${r.end_date} · ${r.days}일</div></div>${statusBadge(r.status)}<div class="btn-row"><button class="btn btn-approve" onclick="decide(${r.id},'approved')">승인</button><button class="btn btn-reject" onclick="decide(${r.id},'rejected')">거절</button></div></div>`;
+    return `<div class="req-row"><div class="avatar ${avClass(idx)}">${ini(e.name)}</div><div class="req-info"><div class="req-name">${e.name} <span style="font-weight:400;font-size:11px;color:var(--gray-400)">${e.dept}</span></div><div class="req-detail">${r.type} · ${r.start_date} ~ ${r.end_date} · ${r.days}일</div></div>${statusBadge(r.status)}<div class="btn-row"><button class="btn btn-approve" onclick="decide(${r.id},'approved')">승인</button><button class="btn btn-reject" onclick="decide(${r.id},'rejected')">거절</button></div></div>`;
   }).join('');
 }
 
@@ -409,21 +465,21 @@ function renderAllRequests() {
   el.innerHTML=requests.map(r=>{
     const e=getEmp(r.emp_id); if(!e)return '';
     const idx=employees.findIndex(x=>x.id===e.id);
-    return `<div class="req-row"><div class="avatar ${avClass(idx)}">${initials(e.name)}</div><div class="req-info"><div class="req-name">${e.name} <span style="font-weight:400;font-size:11px;color:var(--gray-400)">${e.dept}</span></div><div class="req-detail">${r.type} · ${r.start_date} ~ ${r.end_date} · ${r.days}일${r.reason?' · '+r.reason:''}</div></div>${statusBadge(r.status)}${r.status==='pending'?`<div class="btn-row"><button class="btn btn-approve" onclick="decide(${r.id},'approved')">승인</button><button class="btn btn-reject" onclick="decide(${r.id},'rejected')">거절</button></div>`:''}</div>`;
+    return `<div class="req-row"><div class="avatar ${avClass(idx)}">${ini(e.name)}</div><div class="req-info"><div class="req-name">${e.name} <span style="font-weight:400;font-size:11px;color:var(--gray-400)">${e.dept}</span></div><div class="req-detail">${r.type} · ${r.start_date} ~ ${r.end_date} · ${r.days}일${r.reason?' · '+r.reason:''}</div></div>${statusBadge(r.status)}${r.status==='pending'?`<div class="btn-row"><button class="btn btn-approve" onclick="decide(${r.id},'approved')">승인</button><button class="btn btn-reject" onclick="decide(${r.id},'rejected')">거절</button></div>`:''}</div>`;
   }).join('');
 }
 
 function renderEmpProgress() {
   document.getElementById('emp-progress').innerHTML=employees.map((e,idx)=>{
     const total=getTotal(e),used=getUsed(e),rem=getRemaining(e),pct=total>0?Math.round((used/total)*100):0;
-    return `<div class="req-row"><div class="avatar ${avClass(idx)}">${initials(e.name)}</div><div class="progress-wrap"><div style="display:flex;justify-content:space-between;font-size:12px;"><span style="font-weight:600">${e.name}</span><span style="color:var(--gray-400)">잔여 ${rem}/${total}일</span></div><div class="progress-bar"><div class="progress-fill ${pct>80?'danger':''}" style="width:${pct}%"></div></div></div></div>`;
+    return `<div class="req-row"><div class="avatar ${avClass(idx)}">${ini(e.name)}</div><div class="progress-wrap"><div style="display:flex;justify-content:space-between;font-size:12px;"><span style="font-weight:600">${e.name}</span><span style="color:var(--gray-400)">잔여 ${rem}/${total}일</span></div><div class="progress-bar"><div class="progress-fill ${pct>80?'danger':''}" style="width:${pct}%"></div></div></div></div>`;
   }).join('');
 }
 
 function renderEmpList() {
   document.getElementById('emp-list').innerHTML=employees.map((e,idx)=>{
     const years=getYears(e),total=getTotal(e),used=getUsed(e),rem=getRemaining(e),pct=total>0?Math.round((used/total)*100):0;
-    return `<div class="req-row"><div class="avatar ${avClass(idx)}">${initials(e.name)}</div><div class="req-info"><div class="req-name">${e.name}</div><div class="req-detail">${e.dept} · 근속 ${years}년 · 연차 ${total}일</div></div><div style="min-width:160px"><div style="display:flex;justify-content:space-between;font-size:11px;color:var(--gray-400);margin-bottom:4px"><span>사용 ${used}일</span><span>잔여 ${rem}일</span></div><div class="progress-bar"><div class="progress-fill ${pct>80?'danger':''}" style="width:${pct}%"></div></div></div></div>`;
+    return `<div class="req-row"><div class="avatar ${avClass(idx)}">${ini(e.name)}</div><div class="req-info"><div class="req-name">${e.name}</div><div class="req-detail">${e.dept} · 근속 ${years}년 · 연차 ${total}일</div></div><div style="min-width:160px"><div style="display:flex;justify-content:space-between;font-size:11px;color:var(--gray-400);margin-bottom:4px"><span>사용 ${used}일</span><span>잔여 ${rem}일</span></div><div class="progress-bar"><div class="progress-fill ${pct>80?'danger':''}" style="width:${pct}%"></div></div></div></div>`;
   }).join('');
 }
 
@@ -526,11 +582,27 @@ function renderAll() {
   if(currentRole==='employee'){renderMyRequests();renderMyMetrics();}
 }
 
+// 초기화
 const todayStr=new Date().toISOString().slice(0,10);
 document.getElementById('start-date').value=todayStr;
 document.getElementById('end-date').value=todayStr;
 
-loadData();
+// 세션 복원 (새로고침해도 로그인 유지)
+async function restoreSession() {
+  const role = sessionStorage.getItem('role');
+  const empId = sessionStorage.getItem('empId');
+  if(role === 'admin') {
+    await loadData();
+    await initApp('admin', null);
+  } else if(role === 'employee' && empId) {
+    await loadData();
+    await initApp('employee', parseInt(empId));
+  } else {
+    await loadData();
+  }
+}
+
+restoreSession();
 </script>
 </body>
 </html>
