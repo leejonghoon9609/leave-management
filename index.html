@@ -522,7 +522,7 @@ function renderMyRequests() {
   const mine=requests.filter(r=>r.emp_id===currentEmpId);
   const el=document.getElementById('my-requests');
   if(!mine.length){el.innerHTML='<div class="empty">신청 내역이 없습니다</div>';return;}
-  el.innerHTML=mine.map(r=>`<div class="req-row"><div class="req-info"><div class="req-name">${r.type}</div><div class="req-detail">${r.start_date} ~ ${r.end_date} · ${r.days}일${r.reason?' · '+r.reason:''}</div></div>${statusBadge(r.status)}</div>`).join('');
+  el.innerHTML=mine.map(r=>`<div class="req-row"><div class="req-info"><div class="req-name">${r.type}</div><div class="req-detail">${r.start_date} ~ ${r.end_date} · ${r.days}일${r.reason?' · '+r.reason:''}</div>${r.status==='rejected'&&r.reject_reason?`<div style="font-size:11px;color:var(--red);margin-top:3px;">❌ 거절 사유: ${r.reject_reason}</div>`:''}</div>${statusBadge(r.status)}</div>`).join('');
 }
 
 function renderCalendar(bodyId, headId, titleId, legendId, empId) {
