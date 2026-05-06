@@ -586,7 +586,15 @@ async function adminApprove(id) {
 
 // ===== 팀장 결재 =====
 async function managerApprove(id) {
-  await dbUpdate('requests', id, { status:'manager-approved', manager_status:'approved', admin_status:'pending' });
+  const r = requests.find(function(x){ return x.id===id; });
+  const e = getEmpById(r.emp_id);
+  // 측량부는 팀장이 최종승인권자 → 바로 approved
+  if(e && e.dept === '측량부') {
+    await dbUpdate('requests', id, { status:'approved', manager_status:'approved', admin_status:'approved' });
+  } else {
+    // 나머지 부서는 팀장 승인 후 관리자에게
+    await dbUpdate('requests', id, { status:'manager-approved', manager_status:'approved', admin_status:'pending' });
+  }
   await loadData(); renderAll();
 }
 
