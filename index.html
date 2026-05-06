@@ -852,9 +852,8 @@ async function showPage(page, el) {
     if(currentRole === 'manager') {
       renderCalendar('cal-body-e','cal-head-e','cal-title-e','cal-legend-e', function(r){ const e=getEmpById(r.emp_id); return e && e.dept === myEmp.dept; });
     } else if(currentRole === 'viewer') {
-      // 뷰어(조은주): 사업관리 전체
-      const VIEWER_DEPT = ['사업관리', '사업관리(현장)'];
-      renderCalendar('cal-body-e','cal-head-e','cal-title-e','cal-legend-e', function(r){ const e=getEmpById(r.emp_id); return e && VIEWER_DEPT.includes(e.dept); });
+      // 뷰어(조은주): 사업관리만 (현장 제외)
+      renderCalendar('cal-body-e','cal-head-e','cal-title-e','cal-legend-e', function(r){ const e=getEmpById(r.emp_id); return e && e.dept === '사업관리'; });
     } else {
       renderCalendar('cal-body-e','cal-head-e','cal-title-e','cal-legend-e', function(r){ return r.emp_id === currentEmpId; });
     }
@@ -880,10 +879,9 @@ function changeMonth(dir) {
 }
 
 function renderViewerDashboard() {
-  // 사업관리 팀 전체 (남윤지 팀장 포함)
-  const VIEWER_DEPT = ['사업관리', '사업관리(현장)'];
-  const teamMembers = employees.filter(function(e){ return VIEWER_DEPT.includes(e.dept); });
-  const teamReqs = requests.filter(function(r){ const e=getEmpById(r.emp_id); return e && VIEWER_DEPT.includes(e.dept); });
+  // 사업관리만 (사업관리(현장) 제외, 남윤지 포함)
+  const teamMembers = employees.filter(function(e){ return e.dept === '사업관리'; });
+  const teamReqs = requests.filter(function(r){ const e=getEmpById(r.emp_id); return e && e.dept === '사업관리'; });
   const pending = teamReqs.filter(function(r){ return r.status==='pending'||r.status==='manager-approved'; });
   const approved = teamReqs.filter(function(r){ return r.status==='approved'; });
 
