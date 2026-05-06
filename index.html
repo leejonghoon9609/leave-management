@@ -213,6 +213,15 @@
       <div class="nav-item" onclick="showPage('apply',this)"><span>✏️</span> 신청하기</div>
     </div>
 
+    <!-- 뷰어 메뉴 (조은주) -->
+    <div id="viewer-nav" style="display:none;">
+      <div class="nav-section">팀 관리 메뉴</div>
+      <div class="nav-item" onclick="showPage('viewer-dashboard',this)"><span>📊</span> 팀 현황</div>
+      <div class="nav-item" onclick="showPage('my-calendar',this)"><span>📅</span> 팀 캘린더</div>
+      <div class="nav-item" onclick="showPage('my-leave',this)"><span>🏖️</span> 내 연차</div>
+      <div class="nav-item" onclick="showPage('apply',this)"><span>✏️</span> 신청하기</div>
+    </div>
+
     <!-- 직원 메뉴 -->
     <div id="employee-nav" style="display:none;">
       <div class="nav-section">직원 메뉴</div>
@@ -293,6 +302,23 @@
     <div class="page" id="page-manager-requests">
       <div class="page-header"><div><div class="page-title">팀 신청 관리</div><div class="page-sub">우리 팀 전체 신청 내역</div></div></div>
       <div class="card"><div class="card-title">📋 팀 전체 신청 내역</div><div id="manager-all-requests"><div class="loading">불러오는 중...</div></div></div>
+    </div>
+
+    <!-- 뷰어 대시보드 (조은주) -->
+    <div class="page" id="page-viewer-dashboard">
+      <div class="page-header">
+        <div><div class="page-title">팀 현황</div><div class="page-sub">사업관리 팀 연차 현황</div></div>
+        <div class="last-updated" id="viewer-last-updated"></div>
+      </div>
+      <div class="metrics" style="grid-template-columns:repeat(3,1fr);">
+        <div class="metric-card"><div class="metric-label">팀원 수</div><div class="metric-value" id="vm-total">-</div><div class="metric-unit">명</div></div>
+        <div class="metric-card amber"><div class="metric-label">대기 중</div><div class="metric-value" id="vm-pending">-</div><div class="metric-unit">건</div></div>
+        <div class="metric-card green"><div class="metric-label">승인된 신청</div><div class="metric-value" id="vm-approved">-</div><div class="metric-unit">건</div></div>
+      </div>
+      <div class="grid-2">
+        <div class="card"><div class="card-title">📈 사업관리 팀 연차 현황</div><div id="viewer-emp-progress"><div class="loading">불러오는 중...</div></div></div>
+        <div class="card"><div class="card-title">📋 팀 신청 내역</div><div id="viewer-requests"><div class="loading">불러오는 중...</div></div></div>
+      </div>
     </div>
 
     <!-- 내 연차 -->
@@ -519,23 +545,30 @@ async function empLogin() {
   await loadData();
   const empData = getEmpById(currentEmpId);
   if(!empData) { alert('직원 정보를 찾을 수 없습니다'); return; }
-  currentRole = empData.role === 'manager' ? 'manager' : 'employee';
+  currentRole = empData.role === 'manager' ? 'manager' : empData.role === 'viewer' ? 'viewer' : 'employee';
   saveSession(currentRole, currentEmpId);
   const idx = employees.findIndex(function(e){ return e.id === currentEmpId; });
   document.getElementById('login-overlay').style.display = 'none';
   document.getElementById('main-app').style.display = 'flex';
   document.getElementById('sidebar-year').textContent = CY + '년 연차 시스템';
   document.getElementById('my-leave-sub').textContent = empData.name + '님의 연차 현황';
-  document.getElementById('user-info-box').innerHTML = '<div class="user-avatar ' + avClass(idx) + '">' + ini(empData.name) + '</div><div><div class="user-name">' + empData.name + '</div><div class="user-role">' + (empData.role === 'manager' ? '팀장 · ' + empData.dept : empData.dept) + '</div></div>';
+  document.getElementById('user-info-box').innerHTML = '<div class="user-avatar ' + avClass(idx) + '">' + ini(empData.name) + '</div><div><div class="user-name">' + empData.name + '</div><div class="user-role">' + (empData.role === 'manager' ? '팀장 · ' + empData.dept : empData.role === 'viewer' ? '팀관리 · ' + empData.dept : empData.dept) + '</div></div>';
   document.getElementById('admin-nav').style.display = 'none';
   if(currentRole === 'manager') {
     document.getElementById('manager-nav').style.display = 'block';
     document.getElementById('employee-nav').style.display = 'none';
+    document.getElementById('viewer-nav').style.display = 'none';
     document.getElementById('manager-dash-sub').textContent = empData.dept + ' 팀 현황';
     showPage('manager-dashboard', document.querySelector('#manager-nav .nav-item'));
+  } else if(currentRole === 'viewer') {
+    document.getElementById('manager-nav').style.display = 'none';
+    document.getElementById('employee-nav').style.display = 'none';
+    document.getElementById('viewer-nav').style.display = 'block';
+    showPage('viewer-dashboard', document.querySelector('#viewer-nav .nav-item'));
   } else {
     document.getElementById('manager-nav').style.display = 'none';
     document.getElementById('employee-nav').style.display = 'block';
+    document.getElementById('viewer-nav').style.display = 'none';
     showPage('my-leave', document.querySelector('#employee-nav .nav-item'));
   }
   startAutoRefresh();
@@ -550,6 +583,7 @@ function logout() {
   document.getElementById('pw-error').classList.remove('show');
   document.getElementById('admin-nav').style.display = 'none';
   document.getElementById('manager-nav').style.display = 'none';
+  document.getElementById('viewer-nav').style.display = 'none';
   document.getElementById('employee-nav').style.display = 'none';
 }
 
@@ -768,10 +802,10 @@ async function submitLeave() {
   const days = type.includes('반차') ? 0.5 : Math.round((new Date(end)-new Date(start))/86400000)+1;
   if(days>rem) { alert('잔여 연차(' + rem + '일)가 부족합니다'); return; }
 
-  // 팀장이 신청하면 바로 관리자에게, 직원은 팀장 경유
-  // 총무부 팀장도 바로 관리자에게
+  // 팀장/뷰어 신청 → 바로 관리자, 직원은 팀장 경유, 총무부는 바로 관리자
   const isManager = empData.role === 'manager';
-  const isDirect = isManager || DIRECT_TO_ADMIN_DEPTS.includes(empData.dept);
+  const isViewer = empData.role === 'viewer';
+  const isDirect = isManager || isViewer || DIRECT_TO_ADMIN_DEPTS.includes(empData.dept);
   const initStatus = isDirect ? 'manager-approved' : 'pending';
   const initManagerStatus = isDirect ? 'approved' : 'pending';
   const initAdminStatus = isDirect ? 'pending' : 'waiting';
@@ -816,10 +850,12 @@ async function showPage(page, el) {
   if(page==='my-calendar') {
     const myEmp = getEmpById(currentEmpId);
     if(currentRole === 'manager') {
-      // 팀장: 본인 + 담당 부서 직원
       renderCalendar('cal-body-e','cal-head-e','cal-title-e','cal-legend-e', function(r){ const e=getEmpById(r.emp_id); return e && e.dept === myEmp.dept; });
+    } else if(currentRole === 'viewer') {
+      // 뷰어(조은주): 사업관리 전체
+      const VIEWER_DEPT = ['사업관리', '사업관리(현장)'];
+      renderCalendar('cal-body-e','cal-head-e','cal-title-e','cal-legend-e', function(r){ const e=getEmpById(r.emp_id); return e && VIEWER_DEPT.includes(e.dept); });
     } else {
-      // 직원: 본인만
       renderCalendar('cal-body-e','cal-head-e','cal-title-e','cal-legend-e', function(r){ return r.emp_id === currentEmpId; });
     }
   }
@@ -830,19 +866,55 @@ async function showPage(page, el) {
 function changeMonth(dir) {
   currentMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth()+dir);
   const myEmp = getEmpById(currentEmpId);
+  const VIEWER_DEPT = ['사업관리', '사업관리(현장)'];
   if(currentPage==='calendar') renderCalendar('cal-body-a','cal-head-a','cal-title','cal-legend-a', null);
   if(currentPage==='my-calendar') {
     if(currentRole === 'manager') {
       renderCalendar('cal-body-e','cal-head-e','cal-title-e','cal-legend-e', function(r){ const e=getEmpById(r.emp_id); return e && e.dept === myEmp.dept; });
+    } else if(currentRole === 'viewer') {
+      renderCalendar('cal-body-e','cal-head-e','cal-title-e','cal-legend-e', function(r){ const e=getEmpById(r.emp_id); return e && VIEWER_DEPT.includes(e.dept); });
     } else {
       renderCalendar('cal-body-e','cal-head-e','cal-title-e','cal-legend-e', function(r){ return r.emp_id === currentEmpId; });
     }
   }
 }
 
+function renderViewerDashboard() {
+  // 사업관리 팀 전체 (남윤지 팀장 포함)
+  const VIEWER_DEPT = ['사업관리', '사업관리(현장)'];
+  const teamMembers = employees.filter(function(e){ return VIEWER_DEPT.includes(e.dept); });
+  const teamReqs = requests.filter(function(r){ const e=getEmpById(r.emp_id); return e && VIEWER_DEPT.includes(e.dept); });
+  const pending = teamReqs.filter(function(r){ return r.status==='pending'||r.status==='manager-approved'; });
+  const approved = teamReqs.filter(function(r){ return r.status==='approved'; });
+
+  document.getElementById('vm-total').textContent = teamMembers.length;
+  document.getElementById('vm-pending').textContent = pending.length;
+  document.getElementById('vm-approved').textContent = approved.length;
+
+  const vlu = document.getElementById('viewer-last-updated');
+  if(vlu) vlu.textContent = '마지막 업데이트: ' + new Date().toLocaleTimeString('ko-KR');
+
+  // 팀 연차 현황
+  document.getElementById('viewer-emp-progress').innerHTML = teamMembers.map(function(e) {
+    const idx = employees.findIndex(function(x){ return x.id===e.id; });
+    const total=getTotal(e), used=getUsed(e), rem=getRemaining(e), pct=total>0?Math.round((used/total)*100):0;
+    return '<div class="req-row"><div class="avatar ' + avClass(idx) + '">' + ini(e.name) + '</div><div class="progress-wrap"><div style="display:flex;justify-content:space-between;font-size:12px;"><span style="font-weight:600">' + e.name + ' <span style="font-size:10px;color:var(--gray-400);">' + (e.role==='manager'?'팀장':'') + '</span></span><span style="color:var(--gray-400)">잔여 ' + rem + '/' + total + '일</span></div><div class="progress-bar"><div class="progress-fill ' + (pct>80?'danger':'') + '" style="width:' + pct + '%"></div></div></div></div>';
+  }).join('');
+
+  // 팀 신청 내역
+  const el = document.getElementById('viewer-requests');
+  if(!teamReqs.length) { el.innerHTML = '<div class="empty">신청 내역이 없습니다</div>'; return; }
+  el.innerHTML = teamReqs.map(function(r) {
+    const e=getEmpById(r.emp_id); if(!e) return '';
+    const idx=employees.findIndex(function(x){ return x.id===e.id; });
+    return '<div class="req-row"><div class="avatar ' + avClass(idx) + '">' + ini(e.name) + '</div><div class="req-info"><div class="req-name">' + e.name + '</div><div class="req-detail">' + r.type + ' · ' + r.start_date + ' ~ ' + r.end_date + ' · ' + r.days + '일' + (r.reason?' · '+r.reason:'') + '</div></div>' + statusBadge(r.status) + '</div>';
+  }).join('');
+}
+
 function renderAll() {
   if(currentRole==='admin') { renderAdminDashboard(); renderAllRequests(); renderEmpProgress(); renderEmpList(); }
   if(currentRole==='manager') { renderManagerDashboard(); renderManagerEmpProgress(); renderManagerAllRequests(); renderMyRequests(); renderMyMetrics(); }
+  if(currentRole==='viewer') { renderViewerDashboard(); renderMyRequests(); renderMyMetrics(); }
   if(currentRole==='employee') { renderMyRequests(); renderMyMetrics(); }
 }
 
@@ -866,22 +938,29 @@ async function restoreSession() {
     currentEmpId = parseInt(empId);
     const empData = getEmpById(currentEmpId);
     if(empData) {
-      currentRole = empData.role === 'manager' ? 'manager' : 'employee';
+      currentRole = empData.role === 'manager' ? 'manager' : empData.role === 'viewer' ? 'viewer' : 'employee';
       const idx = employees.findIndex(function(e){ return e.id===currentEmpId; });
       document.getElementById('login-overlay').style.display = 'none';
       document.getElementById('main-app').style.display = 'flex';
       document.getElementById('sidebar-year').textContent = CY + '년 연차 시스템';
       document.getElementById('my-leave-sub').textContent = empData.name + '님의 연차 현황';
-      document.getElementById('user-info-box').innerHTML = '<div class="user-avatar ' + avClass(idx) + '">' + ini(empData.name) + '</div><div><div class="user-name">' + empData.name + '</div><div class="user-role">' + (empData.role==='manager'?'팀장 · '+empData.dept:empData.dept) + '</div></div>';
+      document.getElementById('user-info-box').innerHTML = '<div class="user-avatar ' + avClass(idx) + '">' + ini(empData.name) + '</div><div><div class="user-name">' + empData.name + '</div><div class="user-role">' + (empData.role==='manager'?'팀장 · '+empData.dept:empData.role==='viewer'?'팀관리 · '+empData.dept:empData.dept) + '</div></div>';
       document.getElementById('admin-nav').style.display = 'none';
       if(currentRole === 'manager') {
         document.getElementById('manager-nav').style.display = 'block';
         document.getElementById('employee-nav').style.display = 'none';
+        document.getElementById('viewer-nav').style.display = 'none';
         document.getElementById('manager-dash-sub').textContent = empData.dept + ' 팀 현황';
         showPage('manager-dashboard', document.querySelector('#manager-nav .nav-item'));
+      } else if(currentRole === 'viewer') {
+        document.getElementById('manager-nav').style.display = 'none';
+        document.getElementById('employee-nav').style.display = 'none';
+        document.getElementById('viewer-nav').style.display = 'block';
+        showPage('viewer-dashboard', document.querySelector('#viewer-nav .nav-item'));
       } else {
         document.getElementById('manager-nav').style.display = 'none';
         document.getElementById('employee-nav').style.display = 'block';
+        document.getElementById('viewer-nav').style.display = 'none';
         showPage('my-leave', document.querySelector('#employee-nav .nav-item'));
       }
       startAutoRefresh();
