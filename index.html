@@ -933,9 +933,9 @@ function downloadExcel() {
     // 관리자: 전직원
     targetEmployees = employees;
   } else if(currentRole === 'manager') {
-    // 팀장: 본인 팀만
+    // 팀장: 본인 팀만 (이종훈 제외)
     const myEmp = getEmpById(currentEmpId);
-    targetEmployees = employees.filter(function(e){ return e.dept === myEmp.dept; });
+    targetEmployees = employees.filter(function(e){ return e.dept === myEmp.dept && e.name !== '이종훈'; });
   } else if(currentRole === 'viewer') {
     // 뷰어(조은주): 사업관리만 (현장 제외, 이종훈 제외)
     targetEmployees = employees.filter(function(e){ return e.dept === '사업관리' && e.name !== '이종훈'; });
