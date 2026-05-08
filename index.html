@@ -370,13 +370,18 @@
         <div id="rem-info" style="background:var(--primary-light);border-radius:var(--radius-sm);padding:10px 14px;font-size:12px;color:var(--primary-dark);margin-bottom:14px;"></div>
         <div class="form-group">
           <label class="form-label">신청 유형</label>
-          <select class="form-input" id="leave-type"><option>연차</option><option>반차 (오전)</option><option>반차 (오후)</option><option>병가</option></select>
+          <select class="form-input" id="leave-type" onchange="toggleMedicalUpload()"><option>연차</option><option>반차 (오전)</option><option>반차 (오후)</option><option>병가</option></select>
         </div>
         <div class="form-row-2">
           <div class="form-group"><label class="form-label">시작일</label><input type="date" class="form-input" id="start-date"></div>
           <div class="form-group"><label class="form-label">종료일</label><input type="date" class="form-input" id="end-date"></div>
         </div>
         <div class="form-group"><label class="form-label">사유 <span style="color:var(--red);">*필수</span></label><textarea class="form-input" rows="3" id="leave-reason" placeholder="휴가 사유를 입력하세요... (필수)"></textarea></div>
+        <div class="form-group" id="medical-upload-section" style="display:none;background:var(--blue-light);border:1px solid #B5D4F4;border-radius:var(--radius-sm);padding:12px;">
+          <label class="form-label" style="color:var(--blue-dark);">📎 진단서/사유서 첨부 <span style="font-weight:400;font-size:11px;">(나중에 제출 가능)</span></label>
+          <input type="file" class="form-input" id="medical-file" accept=".pdf,.jpg,.jpeg,.png" style="padding:6px;">
+          <div style="font-size:11px;color:var(--blue-dark);margin-top:6px;">💡 병가 승인 후 진단서/사유서 제출 시 연차에서 제외됩니다</div>
+        </div>
         <button class="btn btn-primary" onclick="submitLeave()">신청 제출</button>
       </div>
     </div>
@@ -697,8 +702,21 @@ function renderAllRequests() {
   el.innerHTML = requests.map(function(r) {
     const e = getEmpById(r.emp_id); if(!e) return '';
     const idx = employees.findIndex(function(x){ return x.id===e.id; });
-    return '<div class="req-row"><div class="avatar ' + avClass(idx) + '">' + ini(e.name) + '</div><div class="req-info"><div class="req-name">' + e.name + ' <span style="font-weight:400;font-size:11px;color:var(--gray-400)">' + e.dept + '</span></div><div class="req-detail">' + r.type + ' · ' + r.start_date + ' ~ ' + r.end_date + ' · ' + r.days + '일' + (r.reason ? ' · ' + r.reason : '') + '</div>' + (r.status==='rejected'&&r.reject_reason ? '<div style="font-size:11px;color:var(--red);margin-top:3px;">❌ 거절 사유: ' + r.reject_reason + '</div>' : '') + '</div>' + statusBadge(r.status) + (r.admin_status==='pending' ? '<div class="btn-row"><button class="btn btn-approve" onclick="adminApprove(' + r.id + ')">최종승인</button><button class="btn btn-reject" onclick="openRejectModal(' + r.id + ', \'admin\')">거절</button></div>' : '') + '</div>';
+    let docHtml = '';
+    if(r.type === '병가' && r.doc_status === 'submitted') {
+      docHtml = '<div style="background:var(--amber-light);border-radius:4px;padding:6px 8px;margin-top:6px;font-size:11px;color:var(--amber);">📎 진단서 제출됨 · <a href="' + r.doc_url + '" target="_blank" style="color:var(--blue);">첨부파일 확인</a> <button class="btn btn-approve" style="font-size:10px;padding:3px 8px;margin-left:6px;" onclick="confirmMedicalDoc(' + r.id + ')">✅ 연차 제외 확정</button></div>';
+    } else if(r.type === '병가' && r.doc_status === 'confirmed') {
+      docHtml = '<div style="font-size:11px;color:var(--primary-dark);margin-top:3px;">✅ 연차 제외 확정 <a href="' + r.doc_url + '" target="_blank" style="color:var(--blue);margin-left:4px;">📄 첨부파일</a></div>';
+    }
+    return '<div class="req-row"><div class="avatar ' + avClass(idx) + '">' + ini(e.name) + '</div><div class="req-info"><div class="req-name">' + e.name + ' <span style="font-weight:400;font-size:11px;color:var(--gray-400)">' + e.dept + '</span></div><div class="req-detail">' + r.type + ' · ' + r.start_date + ' ~ ' + r.end_date + ' · ' + r.days + '일' + (r.reason ? ' · ' + r.reason : '') + '</div>' + (r.status==='rejected'&&r.reject_reason ? '<div style="font-size:11px;color:var(--red);margin-top:3px;">❌ 거절 사유: ' + r.reject_reason + '</div>' : '') + docHtml + '</div>' + statusBadge(r.status) + (r.admin_status==='pending' ? '<div class="btn-row"><button class="btn btn-approve" onclick="adminApprove(' + r.id + ')">최종승인</button><button class="btn btn-reject" onclick="openRejectModal(' + r.id + ', \'admin\')">거절</button></div>' : '') + '</div>';
   }).join('');
+}
+
+async function confirmMedicalDoc(requestId) {
+  if(!confirm('진단서를 확인했습니다.\n이 병가를 연차에서 제외하시겠습니까?')) return;
+  await dbUpdate('requests', requestId, { doc_status: 'confirmed', status: 'approved', days: 0 });
+  alert('✅ 연차 제외가 확정되었습니다!');
+  await loadData(); renderAll();
 }
 
 function renderEmpProgress() {
@@ -837,8 +855,33 @@ function renderMyRequests() {
   const el = document.getElementById('my-requests');
   if(!mine.length) { el.innerHTML = '<div class="empty">신청 내역이 없습니다</div>'; return; }
   el.innerHTML = mine.map(function(r) {
-    return '<div class="req-row"><div class="req-info"><div class="req-name">' + r.type + '</div><div class="req-detail">' + r.start_date + ' ~ ' + r.end_date + ' · ' + r.days + '일' + (r.reason ? ' · ' + r.reason : '') + '</div>' + (r.status==='rejected'&&r.reject_reason ? '<div style="font-size:11px;color:var(--red);margin-top:3px;">❌ 거절 사유: ' + r.reject_reason + '</div>' : '') + '</div>' + statusBadge(r.status) + '</div>';
+    let docHtml = '';
+    if(r.type === '병가' && r.status === 'approved') {
+      if(r.doc_status === 'submitted') {
+        docHtml = '<div style="font-size:11px;color:var(--blue-dark);margin-top:4px;">📎 서류 제출 완료 ' + (r.doc_status === 'confirmed' ? '· ✅ 연차 제외 확정' : '· ⏳ 관리자 확인 대기') + '</div>';
+        if(r.doc_url) docHtml += '<a href="' + r.doc_url + '" target="_blank" style="font-size:11px;color:var(--blue);">📄 첨부파일 보기</a>';
+      } else {
+        docHtml = '<div style="margin-top:6px;"><label style="font-size:11px;color:var(--amber);font-weight:600;">📎 진단서/사유서 제출 (연차 제외 신청)</label><div style="display:flex;gap:6px;margin-top:4px;"><input type="file" id="doc-file-' + r.id + '" accept=".pdf,.jpg,.jpeg,.png" style="font-size:11px;flex:1;"><button class="btn btn-approve" style="font-size:11px;padding:4px 8px;" onclick="submitMedicalDoc(' + r.id + ')">제출</button></div></div>';
+      }
+    }
+    if(r.type === '병가' && r.doc_status === 'confirmed') {
+      docHtml += '<div style="font-size:11px;color:var(--primary-dark);margin-top:2px;">✅ 연차에서 제외됨</div>';
+    }
+    return '<div class="req-row" style="flex-wrap:wrap;"><div class="req-info" style="width:100%;"><div class="req-name">' + r.type + (r.type==='병가'&&r.doc_status==='confirmed'?' <span style="font-size:10px;color:var(--primary);">(연차제외)</span>':'') + '</div><div class="req-detail">' + r.start_date + ' ~ ' + r.end_date + ' · ' + (r.doc_status==='confirmed'?0:r.days) + '일' + (r.reason ? ' · ' + r.reason : '') + '</div>' + (r.status==='rejected'&&r.reject_reason ? '<div style="font-size:11px;color:var(--red);margin-top:3px;">❌ 거절 사유: ' + r.reject_reason + '</div>' : '') + docHtml + '</div>' + statusBadge(r.status) + '</div>';
   }).join('');
+}
+
+async function submitMedicalDoc(requestId) {
+  const fileInput = document.getElementById('doc-file-' + requestId);
+  if(!fileInput || !fileInput.files.length) { alert('파일을 선택해 주세요'); return; }
+  const fileUrl = await uploadMedicalFile(fileInput.files[0], requestId);
+  if(fileUrl) {
+    await dbUpdate('requests', requestId, { doc_url: fileUrl, doc_status: 'submitted' });
+    alert('✅ 진단서/사유서가 제출되었습니다!\n관리자 확인 후 연차에서 제외됩니다.');
+    await loadData(); renderAll();
+  } else {
+    alert('파일 업로드 실패. 다시 시도해 주세요.');
+  }
 }
 
 function renderCalendar(bodyId, headId, titleId, legendId, filterFn) {
@@ -899,6 +942,30 @@ function renderCalendar(bodyId, headId, titleId, legendId, filterFn) {
   }
 }
 
+function toggleMedicalUpload() {
+  const type = document.getElementById('leave-type').value;
+  document.getElementById('medical-upload-section').style.display = type === '병가' ? 'block' : 'none';
+}
+
+async function uploadMedicalFile(file, requestId) {
+  const ext = file.name.split('.').pop();
+  const fileName = 'medical_' + requestId + '_' + Date.now() + '.' + ext;
+  const res = await fetch(SUPABASE_URL + '/storage/v1/object/medical-docs/' + fileName, {
+    method: 'POST',
+    headers: {
+      'apikey': SUPABASE_ANON_KEY,
+      'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
+      'Content-Type': file.type,
+      'x-upsert': 'true'
+    },
+    body: file
+  });
+  if(res.ok) {
+    return SUPABASE_URL + '/storage/v1/object/public/medical-docs/' + fileName;
+  }
+  return null;
+}
+
 async function submitLeave() {
   const empData = getEmpById(currentEmpId);
   const rem = getRemaining(empData);
@@ -919,7 +986,24 @@ async function submitLeave() {
   const initManagerStatus = isDirect ? 'approved' : 'pending';
   const initAdminStatus = isDirect ? 'pending' : 'waiting';
 
-  await dbInsert('requests', { emp_id:currentEmpId, type, start_date:start, end_date:end, days, status:initStatus, manager_status:initManagerStatus, admin_status:initAdminStatus, reason, reject_reason:'' });
+  // 먼저 신청 저장
+  await dbInsert('requests', { emp_id:currentEmpId, type, start_date:start, end_date:end, days, status:initStatus, manager_status:initManagerStatus, admin_status:initAdminStatus, reason, reject_reason:'', doc_url:'', doc_status:'' });
+
+  // 병가이고 파일이 있으면 업로드
+  if(type === '병가') {
+    const fileInput = document.getElementById('medical-file');
+    if(fileInput && fileInput.files.length > 0) {
+      await loadData();
+      const latestReq = requests.find(function(r){ return r.emp_id === currentEmpId && r.type === '병가' && !r.doc_url; });
+      if(latestReq) {
+        const fileUrl = await uploadMedicalFile(fileInput.files[0], latestReq.id);
+        if(fileUrl) {
+          await dbUpdate('requests', latestReq.id, { doc_url: fileUrl, doc_status: 'submitted' });
+        }
+      }
+      fileInput.value = '';
+    }
+  }
 
   document.getElementById('leave-type').value = '연차';
   document.getElementById('start-date').value = new Date().toISOString().slice(0,10);
