@@ -703,7 +703,9 @@ function renderAllRequests() {
     const e = getEmpById(r.emp_id); if(!e) return '';
     const idx = employees.findIndex(function(x){ return x.id===e.id; });
     let docHtml = '';
-    if(r.type === '병가' && r.doc_status === 'submitted') {
+    if(r.type === '병가' && r.doc_status === 'manager-approved') {
+      docHtml = '<div style="background:var(--amber-light);border-radius:4px;padding:6px 8px;margin-top:6px;font-size:11px;color:var(--amber);">📎 팀장 승인된 진단서 · <a href="' + r.doc_url + '" target="_blank" style="color:var(--blue);">첨부파일 확인</a> <button class="btn btn-approve" style="font-size:10px;padding:3px 8px;margin-left:6px;" onclick="confirmMedicalDoc(' + r.id + ')">✅ 연차 제외 확정</button></div>';
+    } else if(r.type === '병가' && r.doc_status === 'submitted') {
       docHtml = '<div style="background:var(--amber-light);border-radius:4px;padding:6px 8px;margin-top:6px;font-size:11px;color:var(--amber);">📎 진단서 제출됨 · <a href="' + r.doc_url + '" target="_blank" style="color:var(--blue);">첨부파일 확인</a> <button class="btn btn-approve" style="font-size:10px;padding:3px 8px;margin-left:6px;" onclick="confirmMedicalDoc(' + r.id + ')">✅ 연차 제외 확정</button></div>';
     } else if(r.type === '병가' && r.doc_status === 'confirmed') {
       docHtml = '<div style="font-size:11px;color:var(--primary-dark);margin-top:3px;">✅ 연차 제외 확정 <a href="' + r.doc_url + '" target="_blank" style="color:var(--blue);margin-left:4px;">📄 첨부파일</a></div>';
@@ -839,8 +841,23 @@ function renderManagerAllRequests() {
   el.innerHTML = teamReqs.map(function(r) {
     const e = getEmpById(r.emp_id); if(!e) return '';
     const idx = employees.findIndex(function(x){ return x.id===e.id; });
-    return '<div class="req-row"><div class="avatar ' + avClass(idx) + '">' + ini(e.name) + '</div><div class="req-info"><div class="req-name">' + e.name + ' <span style="font-weight:400;font-size:11px;color:var(--gray-400)">' + e.position + '</span></div><div class="req-detail">' + r.type + ' · ' + r.start_date + ' ~ ' + r.end_date + ' · ' + r.days + '일' + (r.reason ? ' · ' + r.reason : '') + '</div>' + (r.status==='rejected'&&r.reject_reason ? '<div style="font-size:11px;color:var(--red);margin-top:3px;">❌ 거절 사유: ' + r.reject_reason + '</div>' : '') + '</div>' + statusBadge(r.status) + (r.status==='pending' ? '<div class="btn-row"><button class="btn btn-approve" onclick="managerApprove(' + r.id + ')">승인</button><button class="btn btn-reject" onclick="openRejectModal(" + r.id + ", \"manager\")">거절</button></div>' : '') + '</div>';
+    let docHtml = '';
+    if(r.type === '병가' && r.doc_status === 'pending') {
+      docHtml = '<div style="background:var(--amber-light);border-radius:4px;padding:6px 8px;margin-top:6px;font-size:11px;color:var(--amber);">📎 진단서 제출됨 · <a href="' + r.doc_url + '" target="_blank" style="color:var(--blue);">첨부파일 확인</a> <button class="btn btn-approve" style="font-size:10px;padding:3px 8px;margin-left:6px;" onclick="managerApproveMedical(' + r.id + ')">✅ 1차 승인 → 관리자 전달</button></div>';
+    } else if(r.type === '병가' && r.doc_status === 'manager-approved') {
+      docHtml = '<div style="font-size:11px;color:var(--blue-dark);margin-top:3px;">📎 진단서 관리자 전달 완료</div>';
+    } else if(r.type === '병가' && r.doc_status === 'confirmed') {
+      docHtml = '<div style="font-size:11px;color:var(--primary-dark);margin-top:3px;">✅ 연차 제외 확정</div>';
+    }
+    return '<div class="req-row"><div class="avatar ' + avClass(idx) + '">' + ini(e.name) + '</div><div class="req-info"><div class="req-name">' + e.name + ' <span style="font-weight:400;font-size:11px;color:var(--gray-400)">' + e.position + '</span></div><div class="req-detail">' + r.type + ' · ' + r.start_date + ' ~ ' + r.end_date + ' · ' + r.days + '일' + (r.reason ? ' · ' + r.reason : '') + '</div>' + (r.status==='rejected'&&r.reject_reason ? '<div style="font-size:11px;color:var(--red);margin-top:3px;">❌ 거절 사유: ' + r.reject_reason + '</div>' : '') + docHtml + '</div>' + statusBadge(r.status) + (r.status==='pending' ? '<div class="btn-row"><button class="btn btn-approve" onclick="managerApprove(' + r.id + ')">승인</button><button class="btn btn-reject" onclick="openRejectModal(' + r.id + ', \'manager\')">거절</button></div>' : '') + '</div>';
   }).join('');
+}
+
+async function managerApproveMedical(requestId) {
+  if(!confirm('진단서를 확인했습니다.\n관리자에게 전달하시겠습니까?')) return;
+  await dbUpdate('requests', requestId, { doc_status: 'manager-approved', doc_admin_status: 'pending' });
+  alert('✅ 관리자에게 전달되었습니다!');
+  await loadData(); renderAll();
 }
 
 function renderMyMetrics() {
@@ -876,8 +893,24 @@ async function submitMedicalDoc(requestId) {
   if(!fileInput || !fileInput.files.length) { alert('파일을 선택해 주세요'); return; }
   const fileUrl = await uploadMedicalFile(fileInput.files[0], requestId);
   if(fileUrl) {
-    await dbUpdate('requests', requestId, { doc_url: fileUrl, doc_status: 'submitted' });
-    alert('✅ 진단서/사유서가 제출되었습니다!\n관리자 확인 후 연차에서 제외됩니다.');
+    const r = requests.find(function(x){ return x.id===requestId; });
+    const empData = getEmpById(r.emp_id);
+    const isManager = empData.role === 'manager';
+    const isViewer = empData.role === 'viewer';
+    const isDirect = isManager || isViewer || DIRECT_TO_ADMIN_DEPTS.includes(empData.dept);
+
+    // 총무부/팀장/뷰어는 바로 관리자에게, 나머지는 팀장 경유
+    const docManagerStatus = isDirect ? 'approved' : 'pending';
+    const docAdminStatus = isDirect ? 'pending' : 'waiting';
+    const docStatus = isDirect ? 'manager-approved' : 'pending';
+
+    await dbUpdate('requests', requestId, {
+      doc_url: fileUrl,
+      doc_status: docStatus,
+      doc_manager_status: docManagerStatus,
+      doc_admin_status: docAdminStatus
+    });
+    alert('✅ 진단서/사유서가 제출되었습니다!\n' + (isDirect ? '관리자' : '팀장') + ' 확인 후 연차에서 제외됩니다.');
     await loadData(); renderAll();
   } else {
     alert('파일 업로드 실패. 다시 시도해 주세요.');
