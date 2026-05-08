@@ -976,7 +976,7 @@ async function submitLeave() {
   if(!start||!end) { alert('날짜를 선택해 주세요'); return; }
   if(!reason) { alert('사유를 입력해 주세요'); return; }
   const days = type.includes('반차') ? 0.5 : Math.round((new Date(end)-new Date(start))/86400000)+1;
-  if(days>rem) { alert('잔여 연차(' + rem + '일)가 부족합니다'); return; }
+  if(type !== '병가' && days>rem) { alert('잔여 연차(' + rem + '일)가 부족합니다'); return; }
 
   // 팀장/뷰어 신청 → 바로 관리자, 직원은 팀장 경유, 총무부는 바로 관리자
   const isManager = empData.role === 'manager';
