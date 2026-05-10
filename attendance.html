@@ -5,131 +5,113 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>근태 관리 시스템</title>
 <style>
-  :root {
-    --primary: #1D9E75; --primary-light: #E1F5EE; --primary-dark: #085041;
-    --blue: #378ADD; --blue-light: #E6F1FB; --blue-dark: #0C447C;
-    --amber: #BA7517; --amber-light: #FAEEDA;
-    --red: #E24B4A; --red-light: #FCEBEB; --red-dark: #791F1F;
-    --gray-50: #F8F8F8; --gray-100: #F1F1F1; --gray-200: #E0E0E0;
-    --gray-400: #9E9E9E; --gray-600: #5F5F5F; --gray-900: #1A1A1A;
-    --white: #ffffff; --radius: 10px; --radius-sm: 6px;
-  }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; background: var(--gray-50); color: var(--gray-900); min-height: 100vh; }
-
-  .login-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.45); display: flex; align-items: center; justify-content: center; z-index: 1000; }
-  .login-box { background: var(--white); border-radius: var(--radius); padding: 32px; width: 320px; text-align: center; }
-  .login-title { font-size: 18px; font-weight: 700; margin-bottom: 6px; }
-  .login-sub { font-size: 13px; color: var(--gray-400); margin-bottom: 24px; }
-  .login-input { width: 100%; padding: 10px 14px; font-size: 14px; border: 1px solid var(--gray-200); border-radius: var(--radius-sm); font-family: inherit; margin-bottom: 8px; }
-  .login-btn { width: 100%; padding: 11px; font-size: 14px; font-weight: 600; border: none; border-radius: var(--radius-sm); cursor: pointer; font-family: inherit; }
-  .login-btn-admin { background: var(--primary); color: var(--white); margin-bottom: 8px; }
-  .login-btn-emp { background: var(--gray-100); color: var(--gray-600); }
-  .login-error { font-size: 12px; color: var(--red); margin-bottom: 8px; display: none; }
-  .login-error.show { display: block; }
-  .divider { display: flex; align-items: center; gap: 8px; margin: 14px 0; }
-  .divider-line { flex: 1; height: 1px; background: var(--gray-200); }
-  .divider-text { font-size: 11px; color: var(--gray-400); }
-
-  .app { display: flex; min-height: 100vh; }
-  .sidebar { width: 220px; background: var(--white); border-right: 1px solid var(--gray-200); display: flex; flex-direction: column; padding: 24px 0; position: fixed; height: 100vh; overflow-y: auto; }
-  .main { margin-left: 220px; flex: 1; padding: 28px; }
-  .logo { padding: 0 20px 24px; border-bottom: 1px solid var(--gray-100); margin-bottom: 16px; }
-  .logo-title { font-size: 16px; font-weight: 700; color: var(--primary-dark); margin-top: 32px; }
-  .logo-sub { font-size: 11px; color: var(--gray-400); margin-top: 2px; }
-  .user-info { padding: 0 20px 16px; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid var(--gray-100); margin-bottom: 8px; }
-  .user-avatar { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; flex-shrink: 0; }
-  .user-name { font-size: 13px; font-weight: 600; }
-  .user-role { font-size: 11px; color: var(--gray-400); }
-  .nav-item { display: flex; align-items: center; gap: 10px; padding: 10px 20px; font-size: 13px; color: var(--gray-600); cursor: pointer; border-left: 3px solid transparent; }
-  .nav-item:hover { background: var(--gray-50); }
-  .nav-item.active { background: var(--primary-light); color: var(--primary-dark); border-left-color: var(--primary); font-weight: 600; }
-  .nav-section { font-size: 10px; color: var(--gray-400); padding: 12px 20px 4px; text-transform: uppercase; letter-spacing: 0.5px; }
-  .logout-btn { margin: 8px 20px 0; padding: 8px; font-size: 12px; color: var(--gray-400); background: none; border: 1px solid var(--gray-200); border-radius: var(--radius-sm); cursor: pointer; font-family: inherit; }
-
-  .page-header { margin-bottom: 24px; display: flex; align-items: flex-start; justify-content: space-between; }
-  .page-title { font-size: 20px; font-weight: 700; }
-  .page-sub { font-size: 13px; color: var(--gray-400); margin-top: 2px; }
-
-  .metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 24px; }
-  .metric-card { background: var(--white); border-radius: var(--radius); padding: 18px; border: 1px solid var(--gray-200); }
-  .metric-label { font-size: 11px; color: var(--gray-400); margin-bottom: 6px; }
-  .metric-value { font-size: 28px; font-weight: 700; line-height: 1; }
-  .metric-unit { font-size: 13px; color: var(--gray-400); margin-top: 4px; }
-  .metric-card.green .metric-value { color: var(--primary); }
-  .metric-card.blue .metric-value { color: var(--blue); }
-  .metric-card.amber .metric-value { color: var(--amber); }
-  .metric-card.red .metric-value { color: var(--red); }
-
-  .card { background: var(--white); border-radius: var(--radius); border: 1px solid var(--gray-200); padding: 20px; margin-bottom: 16px; }
-  .card-title { font-size: 14px; font-weight: 600; margin-bottom: 16px; }
-  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-
-  .att-row { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--gray-100); }
-  .att-row:last-child { border-bottom: none; }
-  .avatar { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; flex-shrink: 0; }
-  .av-0 { background: var(--primary-light); color: var(--primary-dark); }
-  .av-1 { background: var(--blue-light); color: var(--blue-dark); }
-  .av-2 { background: var(--amber-light); color: var(--amber); }
-  .av-3 { background: #EEEDFE; color: #3C3489; }
-  .av-4 { background: var(--red-light); color: var(--red-dark); }
-  .att-info { flex: 1; }
-  .att-name { font-size: 13px; font-weight: 600; }
-  .att-detail { font-size: 12px; color: var(--gray-400); margin-top: 1px; }
-
-  .badge { font-size: 11px; padding: 3px 9px; border-radius: 20px; font-weight: 600; white-space: nowrap; }
-  .badge-present { background: var(--primary-light); color: var(--primary-dark); }
-  .badge-late { background: var(--amber-light); color: var(--amber); }
-  .badge-absent { background: var(--red-light); color: var(--red-dark); }
-  .badge-off { background: var(--gray-100); color: var(--gray-600); }
-  .badge-early { background: var(--blue-light); color: var(--blue-dark); }
-
-  /* 출근 버튼 */
-  .checkin-card { background: var(--white); border-radius: var(--radius); border: 1px solid var(--gray-200); padding: 28px; text-align: center; margin-bottom: 16px; }
-  .checkin-time { font-size: 48px; font-weight: 700; color: var(--gray-900); margin-bottom: 4px; font-variant-numeric: tabular-nums; }
-  .checkin-date { font-size: 14px; color: var(--gray-400); margin-bottom: 24px; }
-  .checkin-btn { padding: 16px 40px; font-size: 16px; font-weight: 700; border: none; border-radius: 50px; cursor: pointer; font-family: inherit; transition: all 0.2s; }
-  .checkin-btn-in { background: var(--primary); color: var(--white); }
-  .checkin-btn-in:hover { background: var(--primary-dark); }
-  .checkin-btn-out { background: var(--red); color: var(--white); }
-  .checkin-btn-out:hover { background: var(--red-dark); }
-  .checkin-btn:disabled { background: var(--gray-200); color: var(--gray-400); cursor: not-allowed; }
-  .checkin-status { margin-top: 16px; font-size: 13px; color: var(--gray-600); }
-  .gps-info { background: var(--blue-light); border-radius: var(--radius-sm); padding: 10px 14px; font-size: 12px; color: var(--blue-dark); margin-top: 12px; display: none; }
-
-  .map-container { width: 100%; height: 300px; border-radius: var(--radius-sm); border: 1px solid var(--gray-200); margin-top: 12px; overflow: hidden; }
-
-  .empty { font-size: 13px; color: var(--gray-400); padding: 12px 0; text-align: center; }
-  .loading { font-size: 13px; color: var(--gray-400); padding: 12px 0; text-align: center; }
-  .page { display: none; }
-  .page.active { display: block; }
-
-  .live-badge { display: flex; align-items: center; gap: 6px; padding: 4px 12px; background: var(--primary-light); border-radius: 20px; font-size: 11px; color: var(--primary-dark); margin: 0 20px 16px; }
-  .live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--primary); animation: pulse 2s infinite; }
-  @keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:0.3;} }
-
-  .last-updated { font-size: 11px; color: var(--gray-400); }
-
-  .filter-bar { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
-  .filter-btn { padding: 6px 14px; font-size: 12px; border-radius: 20px; border: 1px solid var(--gray-200); background: var(--white); cursor: pointer; font-family: inherit; }
-  .filter-btn.active { background: var(--primary); color: var(--white); border-color: var(--primary); font-weight: 600; }
-
-  .excel-btn { margin: 8px 20px 0; padding: 8px; font-size: 12px; color: var(--primary-dark); background: var(--primary-light); border: 1px solid #9FE1CB; border-radius: var(--radius-sm); cursor: pointer; font-family: inherit; }
-
-  @media (max-width: 768px) {
-    .sidebar { width: 100%; height: auto; position: relative; }
-    .main { margin-left: 0; padding: 16px; }
-    .metrics { grid-template-columns: repeat(2,1fr); }
-    .grid-2 { grid-template-columns: 1fr; }
-    .app { flex-direction: column; }
-  }
+:root {
+--primary: #1D9E75; --primary-light: #E1F5EE; --primary-dark: #085041;
+--blue: #378ADD; --blue-light: #E6F1FB; --blue-dark: #0C447C;
+--amber: #BA7517; --amber-light: #FAEEDA;
+--red: #E24B4A; --red-light: #FCEBEB; --red-dark: #791F1F;
+--gray-50: #F8F8F8; --gray-100: #F1F1F1; --gray-200: #E0E0E0;
+--gray-400: #9E9E9E; --gray-600: #5F5F5F; --gray-900: #1A1A1A;
+--white: #ffffff; --radius: 10px; --radius-sm: 6px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; background: var(--gray-50); color: var(--gray-900); min-height: 100vh; }
+.login-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.45); display: flex; align-items: center; justify-content: center; z-index: 1000; }
+.login-box { background: var(--white); border-radius: var(--radius); padding: 32px; width: 320px; text-align: center; }
+.login-title { font-size: 18px; font-weight: 700; margin-bottom: 6px; }
+.login-sub { font-size: 13px; color: var(--gray-400); margin-bottom: 24px; }
+.login-input { width: 100%; padding: 10px 14px; font-size: 14px; border: 1px solid var(--gray-200); border-radius: var(--radius-sm); font-family: inherit; margin-bottom: 8px; }
+.login-btn { width: 100%; padding: 11px; font-size: 14px; font-weight: 600; border: none; border-radius: var(--radius-sm); cursor: pointer; font-family: inherit; }
+.login-btn-admin { background: var(--primary); color: var(--white); margin-bottom: 8px; }
+.login-btn-emp { background: var(--gray-100); color: var(--gray-600); }
+.login-error { font-size: 12px; color: var(--red); margin-bottom: 8px; display: none; }
+.login-error.show { display: block; }
+.divider { display: flex; align-items: center; gap: 8px; margin: 14px 0; }
+.divider-line { flex: 1; height: 1px; background: var(--gray-200); }
+.divider-text { font-size: 11px; color: var(--gray-400); }
+.app { display: flex; min-height: 100vh; }
+.sidebar { width: 220px; background: var(--white); border-right: 1px solid var(--gray-200); display: flex; flex-direction: column; padding: 24px 0; position: fixed; height: 100vh; overflow-y: auto; }
+.main { margin-left: 220px; flex: 1; padding: 28px; }
+.logo { padding: 0 20px 24px; border-bottom: 1px solid var(--gray-100); margin-bottom: 16px; }
+.logo-title { font-size: 16px; font-weight: 700; color: var(--primary-dark); margin-top: 32px; }
+.logo-sub { font-size: 11px; color: var(--gray-400); margin-top: 2px; }
+.user-info { padding: 0 20px 16px; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid var(--gray-100); margin-bottom: 8px; }
+.user-avatar { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; flex-shrink: 0; }
+.user-name { font-size: 13px; font-weight: 600; }
+.user-role { font-size: 11px; color: var(--gray-400); }
+.nav-item { display: flex; align-items: center; gap: 10px; padding: 10px 20px; font-size: 13px; color: var(--gray-600); cursor: pointer; border-left: 3px solid transparent; }
+.nav-item:hover { background: var(--gray-50); }
+.nav-item.active { background: var(--primary-light); color: var(--primary-dark); border-left-color: var(--primary); font-weight: 600; }
+.nav-section { font-size: 10px; color: var(--gray-400); padding: 12px 20px 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+.logout-btn { margin: 8px 20px 0; padding: 8px; font-size: 12px; color: var(--gray-400); background: none; border: 1px solid var(--gray-200); border-radius: var(--radius-sm); cursor: pointer; font-family: inherit; }
+.page-header { margin-bottom: 24px; display: flex; align-items: flex-start; justify-content: space-between; }
+.page-title { font-size: 20px; font-weight: 700; }
+.page-sub { font-size: 13px; color: var(--gray-400); margin-top: 2px; }
+.metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 24px; }
+.metric-card { background: var(--white); border-radius: var(--radius); padding: 18px; border: 1px solid var(--gray-200); }
+.metric-label { font-size: 11px; color: var(--gray-400); margin-bottom: 6px; }
+.metric-value { font-size: 28px; font-weight: 700; line-height: 1; }
+.metric-unit { font-size: 13px; color: var(--gray-400); margin-top: 4px; }
+.metric-card.green .metric-value { color: var(--primary); }
+.metric-card.blue .metric-value { color: var(--blue); }
+.metric-card.amber .metric-value { color: var(--amber); }
+.metric-card.red .metric-value { color: var(--red); }
+.card { background: var(--white); border-radius: var(--radius); border: 1px solid var(--gray-200); padding: 20px; margin-bottom: 16px; }
+.card-title { font-size: 14px; font-weight: 600; margin-bottom: 16px; }
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.att-row { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--gray-100); }
+.att-row:last-child { border-bottom: none; }
+.avatar { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; flex-shrink: 0; }
+.av-0 { background: var(--primary-light); color: var(--primary-dark); }
+.av-1 { background: var(--blue-light); color: var(--blue-dark); }
+.av-2 { background: var(--amber-light); color: var(--amber); }
+.av-3 { background: #EEEDFE; color: #3C3489; }
+.av-4 { background: var(--red-light); color: var(--red-dark); }
+.att-info { flex: 1; }
+.att-name { font-size: 13px; font-weight: 600; }
+.att-detail { font-size: 12px; color: var(--gray-400); margin-top: 1px; }
+.badge { font-size: 11px; padding: 3px 9px; border-radius: 20px; font-weight: 600; white-space: nowrap; }
+.badge-present { background: var(--primary-light); color: var(--primary-dark); }
+.badge-late { background: var(--amber-light); color: var(--amber); }
+.badge-absent { background: var(--red-light); color: var(--red-dark); }
+.badge-off { background: var(--gray-100); color: var(--gray-600); }
+.badge-early { background: var(--blue-light); color: var(--blue-dark); }
+.checkin-card { background: var(--white); border-radius: var(--radius); border: 1px solid var(--gray-200); padding: 28px; text-align: center; margin-bottom: 16px; }
+.checkin-time { font-size: 48px; font-weight: 700; color: var(--gray-900); margin-bottom: 4px; font-variant-numeric: tabular-nums; }
+.checkin-date { font-size: 14px; color: var(--gray-400); margin-bottom: 24px; }
+.checkin-btn { padding: 16px 40px; font-size: 16px; font-weight: 700; border: none; border-radius: 50px; cursor: pointer; font-family: inherit; transition: all 0.2s; }
+.checkin-btn-in { background: var(--primary); color: var(--white); }
+.checkin-btn-in:hover { background: var(--primary-dark); }
+.checkin-btn-out { background: var(--red); color: var(--white); }
+.checkin-btn-out:hover { background: var(--red-dark); }
+.checkin-btn:disabled { background: var(--gray-200); color: var(--gray-400); cursor: not-allowed; }
+.checkin-status { margin-top: 16px; font-size: 13px; color: var(--gray-600); }
+.gps-info { background: var(--blue-light); border-radius: var(--radius-sm); padding: 10px 14px; font-size: 12px; color: var(--blue-dark); margin-top: 12px; display: none; }
+.empty { font-size: 13px; color: var(--gray-400); padding: 12px 0; text-align: center; }
+.loading { font-size: 13px; color: var(--gray-400); padding: 12px 0; text-align: center; }
+.page { display: none; }
+.page.active { display: block; }
+.live-badge { display: flex; align-items: center; gap: 6px; padding: 4px 12px; background: var(--primary-light); border-radius: 20px; font-size: 11px; color: var(--primary-dark); margin: 0 20px 16px; }
+.live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--primary); animation: pulse 2s infinite; }
+@keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:0.3;} }
+.last-updated { font-size: 11px; color: var(--gray-400); }
+.filter-bar { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+.filter-btn { padding: 6px 14px; font-size: 12px; border-radius: 20px; border: 1px solid var(--gray-200); background: var(--white); cursor: pointer; font-family: inherit; }
+.filter-btn.active { background: var(--primary); color: var(--white); border-color: var(--primary); font-weight: 600; }
+.excel-btn { margin: 8px 20px 0; padding: 8px; font-size: 12px; color: var(--primary-dark); background: var(--primary-light); border: 1px solid #9FE1CB; border-radius: var(--radius-sm); cursor: pointer; font-family: inherit; }
+@media (max-width: 768px) {
+.sidebar { width: 100%; height: auto; position: relative; }
+.main { margin-left: 0; padding: 16px; }
+.metrics { grid-template-columns: repeat(2,1fr); }
+.grid-2 { grid-template-columns: 1fr; }
+.app { flex-direction: column; }
+}
 </style>
 </head>
 <body>
 
 <div class="login-overlay" id="login-overlay">
   <div class="login-box">
-    <div style="text-align:center;margin-bottom:16px;margin-top:-8px;"><img src="data:image/png;base64,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" style="width:100%;max-width:280px;height:auto;" alt="대원항업주식회사"></div>
     <div style="font-size:36px;margin-bottom:8px;">📊</div>
     <div class="login-title">근태 관리 시스템</div>
     <div class="login-sub">접속할 계정을 선택해 주세요</div>
@@ -145,13 +127,11 @@
 <div class="app" id="main-app" style="display:none;">
   <div class="sidebar">
     <div class="logo">
-      <div style="margin-left:-4px;"><img src="data:image/png;base64,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" style="max-width:170px;height:auto;" alt="대원항업주식회사"></div>
       <div class="logo-title">📊 근태관리</div>
       <div class="logo-sub" id="sidebar-year"></div>
     </div>
     <div class="user-info" id="user-info-box"></div>
     <div class="live-badge"><div class="live-dot"></div><span>실시간 연동 중</span></div>
-
     <div id="admin-nav" style="display:none;">
       <div class="nav-section">관리자 메뉴</div>
       <div class="nav-item" onclick="showPage('dashboard',this)"><span>📊</span> 대시보드</div>
@@ -159,13 +139,11 @@
       <div class="nav-item" onclick="showPage('monthly',this)"><span>📅</span> 월별 현황</div>
       <div class="nav-item" onclick="showPage('employees',this)"><span>👥</span> 직원 현황</div>
     </div>
-
     <div id="employee-nav" style="display:none;">
       <div class="nav-section">직원 메뉴</div>
       <div class="nav-item" onclick="showPage('checkin',this)"><span>🏃</span> 출퇴근</div>
       <div class="nav-item" onclick="showPage('my-records',this)"><span>📋</span> 내 근태 기록</div>
     </div>
-
     <button class="excel-btn" onclick="downloadExcel()">📥 엑셀 다운로드</button>
     <button class="logout-btn" onclick="logout()">🚪 로그아웃</button>
   </div>
@@ -193,7 +171,7 @@
     <div class="page" id="page-records">
       <div class="page-header"><div><div class="page-title">근태 기록</div></div></div>
       <div class="filter-bar">
-        <input type="date" id="filter-date" style="padding:6px 12px;font-size:12px;border:1px solid var(--gray-200);border-radius:20px;font-family:inherit;">
+        <input type="date" id="filter-date" style="padding:6px 12px;font-size:12px;border:1px solid var(--gray-200);border-radius:20px;font-family:inherit;" onchange="renderRecords()">
         <button class="filter-btn active" onclick="setFilter('all',this)">전체</button>
         <button class="filter-btn" onclick="setFilter('present',this)">출근</button>
         <button class="filter-btn" onclick="setFilter('late',this)">지각</button>
@@ -254,7 +232,6 @@ const SUPABASE_URL = 'https://yidswostdxaejjeikxhg.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlpZHN3b3N0ZHhhZWpqZWlreGhnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc5NjM1MDAsImV4cCI6MjA5MzUzOTUwMH0.DIP9Yqr7v0Z5y4bdqU5UkoNn1OL0dh1WuYhaiOxtaq4';
 const ADMIN_PW = 'ljh9609';
 const CHECKIN_HOUR = 9;
-const CHECKOUT_HOUR = 18;
 
 let employees = [], attendances = [];
 let currentRole = null, currentEmpId = null, currentPage = 'dashboard';
@@ -263,11 +240,50 @@ let myCurrentMonth = new Date();
 let currentFilter = 'all';
 let clockTimer = null, autoRefreshTimer = null;
 
+// ✅ KST 기준 날짜/시간 헬퍼 함수들
+function nowKST() {
+  // 현재 시각을 KST(UTC+9) 기준 Date 객체처럼 다루기 위한 offset 적용
+  return new Date(new Date().getTime() + 9 * 60 * 60 * 1000);
+}
+
+function todayStrKST() {
+  // KST 기준 오늘 날짜 "YYYY-MM-DD"
+  return nowKST().toISOString().slice(0, 10);
+}
+
+function nowISOKST() {
+  // KST 시각을 "YYYY-MM-DDTHH:mm:ss+09:00" 형식으로 반환
+  const now = new Date();
+  const kst = new Date(now.getTime() + 9 * 60 * 60 * 1000);
+  const str = kst.toISOString().slice(0, 19); // "YYYY-MM-DDTHH:mm:ss"
+  return str + '+09:00';
+}
+
+function parseTimeKST(isoStr) {
+  // DB에서 가져온 ISO 시간 문자열을 KST 로컬타임으로 파싱
+  if (!isoStr) return null;
+  return new Date(isoStr);
+}
+
+function formatTimeKST(isoStr) {
+  // ISO 문자열 → KST 시:분 표시
+  if (!isoStr) return '-';
+  const d = parseTimeKST(isoStr);
+  return d.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Seoul' });
+}
+
+function formatDateKST(isoStr) {
+  if (!isoStr) return '-';
+  const d = parseTimeKST(isoStr);
+  return d.toLocaleDateString('ko-KR', { timeZone: 'Asia/Seoul' });
+}
+
+// DB 헬퍼
 async function dbGet(table, extra) {
   let url = SUPABASE_URL + '/rest/v1/' + table + '?select=*';
-  if(extra) url += '&' + extra;
+  if (extra) url += '&' + extra;
   const res = await fetch(url, { headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY } });
-  if(!res.ok) return [];
+  if (!res.ok) return [];
   return await res.json();
 }
 
@@ -291,17 +307,24 @@ async function dbUpdate(table, id, data) {
 
 function avClass(i) { return 'av-' + (i % 5); }
 function ini(n) { return n ? n.slice(0, 2) : ''; }
-function todayStr() { return new Date().toISOString().slice(0, 10); }
-function getEmpById(id) { return employees.find(function(e){ return e.id === id; }); }
+function getEmpById(id) { return employees.find(function(e) { return e.id === id; }); }
 
 function statusBadge(s) {
-  const m = { present:'badge-present', late:'badge-late', absent:'badge-absent', off:'badge-off', early:'badge-early' };
-  const l = { present:'정상출근', late:'지각', absent:'결근', off:'휴무', early:'조퇴' };
-  return '<span class="badge ' + (m[s]||'badge-off') + '">' + (l[s]||s) + '</span>';
+  const m = { present: 'badge-present', late: 'badge-late', absent: 'badge-absent', off: 'badge-off', early: 'badge-early' };
+  const l = { present: '정상출근', late: '지각', absent: '결근', off: '휴무', early: '조퇴' };
+  return '<span class="badge ' + (m[s] || 'badge-off') + '">' + (l[s] || s) + '</span>';
 }
 
-function saveSession(role, empId) { sessionStorage.setItem('att_role', role); if(empId) sessionStorage.setItem('att_empId', String(empId)); else sessionStorage.removeItem('att_empId'); }
-function clearSession() { sessionStorage.removeItem('att_role'); sessionStorage.removeItem('att_empId'); }
+function saveSession(role, empId) {
+  sessionStorage.setItem('att_role', role);
+  if (empId) sessionStorage.setItem('att_empId', String(empId));
+  else sessionStorage.removeItem('att_empId');
+}
+
+function clearSession() {
+  sessionStorage.removeItem('att_role');
+  sessionStorage.removeItem('att_empId');
+}
 
 async function loadData() {
   try {
@@ -316,22 +339,22 @@ async function loadData() {
     const curVal = sel.value;
     sel.innerHTML = '<option value="">-- 직원 선택 --</option>';
     const excluded = ['이종훈', '송규헌'];
-    employees.filter(function(e){ return !excluded.includes(e.name); }).forEach(function(e) {
+    employees.filter(function(e) { return !excluded.includes(e.name); }).forEach(function(e) {
       const opt = document.createElement('option');
       opt.value = e.id;
       opt.textContent = e.name + ' (' + e.dept + ')';
       sel.appendChild(opt);
     });
-    if(curVal) sel.value = curVal;
+    if (curVal) sel.value = curVal;
 
     const lu = document.getElementById('last-updated');
-    if(lu) lu.textContent = '업데이트: ' + new Date().toLocaleTimeString('ko-KR');
-  } catch(err) { console.error(err); }
+    if (lu) lu.textContent = '업데이트: ' + new Date().toLocaleTimeString('ko-KR', { timeZone: 'Asia/Seoul' });
+  } catch (err) { console.error(err); }
 }
 
 async function adminLogin() {
   const pw = document.getElementById('admin-pw').value;
-  if(pw !== ADMIN_PW && pw !== 'sgh2511') {
+  if (pw !== ADMIN_PW && pw !== 'sgh2511') {
     document.getElementById('pw-error').classList.add('show');
     document.getElementById('admin-pw').value = '';
     return;
@@ -345,21 +368,21 @@ async function adminLogin() {
   document.getElementById('employee-nav').style.display = 'none';
   document.getElementById('sidebar-year').textContent = new Date().getFullYear() + '년 근태 시스템';
   document.getElementById('user-info-box').innerHTML = '<div class="user-avatar av-0">관리</div><div><div class="user-name">관리자</div><div class="user-role">전체 권한</div></div>';
-  document.getElementById('dash-date').textContent = new Date().toLocaleDateString('ko-KR') + ' 근태 현황';
+  document.getElementById('dash-date').textContent = new Date().toLocaleDateString('ko-KR', { timeZone: 'Asia/Seoul' }) + ' 근태 현황';
   showPage('dashboard', document.querySelector('#admin-nav .nav-item'));
   startAutoRefresh();
 }
 
 async function empLogin() {
   const sel = document.getElementById('emp-select').value;
-  if(!sel) { alert('직원을 선택해 주세요'); return; }
+  if (!sel) { alert('직원을 선택해 주세요'); return; }
   currentEmpId = parseInt(sel);
   await loadData();
   const empData = getEmpById(currentEmpId);
-  if(!empData) { alert('직원 정보를 찾을 수 없습니다'); return; }
+  if (!empData) { alert('직원 정보를 찾을 수 없습니다'); return; }
   currentRole = 'employee';
   saveSession('employee', currentEmpId);
-  const idx = employees.findIndex(function(e){ return e.id === currentEmpId; });
+  const idx = employees.findIndex(function(e) { return e.id === currentEmpId; });
   document.getElementById('login-overlay').style.display = 'none';
   document.getElementById('main-app').style.display = 'flex';
   document.getElementById('admin-nav').style.display = 'none';
@@ -374,7 +397,7 @@ async function empLogin() {
 
 function logout() {
   clearSession(); stopAutoRefresh();
-  if(clockTimer) clearInterval(clockTimer);
+  if (clockTimer) clearInterval(clockTimer);
   currentRole = null; currentEmpId = null;
   document.getElementById('main-app').style.display = 'none';
   document.getElementById('login-overlay').style.display = 'flex';
@@ -385,93 +408,89 @@ function logout() {
 }
 
 function startClock() {
-  if(clockTimer) clearInterval(clockTimer);
+  if (clockTimer) clearInterval(clockTimer);
   function tick() {
     const now = new Date();
-    document.getElementById('current-time').textContent = now.toLocaleTimeString('ko-KR');
-    document.getElementById('current-date').textContent = now.toLocaleDateString('ko-KR', {weekday:'long', year:'numeric', month:'long', day:'numeric'});
+    document.getElementById('current-time').textContent = now.toLocaleTimeString('ko-KR', { timeZone: 'Asia/Seoul' });
+    document.getElementById('current-date').textContent = now.toLocaleDateString('ko-KR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'Asia/Seoul' });
   }
   tick();
   clockTimer = setInterval(tick, 1000);
 }
 
 function startAutoRefresh() {
-  if(autoRefreshTimer) clearInterval(autoRefreshTimer);
+  if (autoRefreshTimer) clearInterval(autoRefreshTimer);
   autoRefreshTimer = setInterval(async function() {
     await loadData(); renderAll();
   }, 30000);
 }
 
-function stopAutoRefresh() { if(autoRefreshTimer) clearInterval(autoRefreshTimer); }
+function stopAutoRefresh() { if (autoRefreshTimer) clearInterval(autoRefreshTimer); }
 
 function getTodayAttendance(empId) {
-  const today = todayStr();
-  return attendances.find(function(a){ return a.emp_id === empId && a.att_date === today; });
+  const today = todayStrKST(); // ✅ KST 기준 오늘
+  return attendances.find(function(a) { return a.emp_id === empId && a.att_date === today; });
 }
 
 function getStatus(att) {
-  if(!att) return 'absent';
-  if(!att.checkin_time) return 'absent';
-  const checkinHour = parseInt(att.checkin_time.split('T')[1].split(':')[0]);
-  const checkinMin = parseInt(att.checkin_time.split('T')[1].split(':')[1]);
-  if(checkinHour > CHECKIN_HOUR || (checkinHour === CHECKIN_HOUR && checkinMin > 0)) return 'late';
+  if (!att || !att.checkin_time) return 'absent';
+  // ✅ KST 기준으로 시:분 추출
+  const d = new Date(att.checkin_time);
+  const kstHour = parseInt(d.toLocaleString('ko-KR', { hour: '2-digit', hour12: false, timeZone: 'Asia/Seoul' }));
+  const kstMin = parseInt(d.toLocaleString('ko-KR', { minute: '2-digit', timeZone: 'Asia/Seoul' }));
+  if (kstHour > CHECKIN_HOUR || (kstHour === CHECKIN_HOUR && kstMin > 0)) return 'late';
   return 'present';
 }
 
 async function doCheckIn() {
-  const today = todayStr();
+  const today = todayStrKST(); // ✅ KST 기준 날짜
   const existing = getTodayAttendance(currentEmpId);
-  if(existing) { alert('이미 출근 처리되었습니다'); return; }
+  if (existing) { alert('이미 출근 처리되었습니다'); return; }
 
   const btn = document.getElementById('btn-checkin');
   btn.disabled = true;
   btn.textContent = '위치 확인 중...';
 
+  // ✅ KST 기준 지각 여부 계산
+  const now = new Date();
+  const kstHour = parseInt(now.toLocaleString('ko-KR', { hour: '2-digit', hour12: false, timeZone: 'Asia/Seoul' }));
+  const kstMin = parseInt(now.toLocaleString('ko-KR', { minute: '2-digit', timeZone: 'Asia/Seoul' }));
+  const isLate = kstHour > CHECKIN_HOUR || (kstHour === CHECKIN_HOUR && kstMin > 0);
+  const nowISO = nowISOKST(); // ✅ KST ISO 저장
+
   navigator.geolocation.getCurrentPosition(
     async function(pos) {
       const lat = pos.coords.latitude;
       const lng = pos.coords.longitude;
-      const now = new Date().toISOString();
-      const hour = new Date().getHours();
-      const min = new Date().getMinutes();
-      const isLate = hour > CHECKIN_HOUR || (hour === CHECKIN_HOUR && min > 0);
-
       await dbInsert('attendances', {
         emp_id: currentEmpId,
         att_date: today,
-        checkin_time: now,
+        checkin_time: nowISO,
         checkin_lat: lat,
         checkin_lng: lng,
         status: isLate ? 'late' : 'present'
       });
-
       document.getElementById('gps-info').style.display = 'block';
-      document.getElementById('gps-info').textContent = '📍 출근 위치: 위도 ' + lat.toFixed(4) + ', 경도 ' + lng.toFixed(4);
-      document.getElementById('checkin-status').textContent = '✅ ' + new Date().toLocaleTimeString('ko-KR') + ' 출근 완료' + (isLate ? ' (지각)' : '');
+      document.getElementById('gps-info').innerHTML = '📍 출근 위치: <a href="https://maps.google.com/?q=' + lat + ',' + lng + '" target="_blank" style="color:var(--blue);">지도에서 보기</a>';
+      document.getElementById('checkin-status').textContent = '✅ ' + formatTimeKST(nowISO) + ' 출근 완료' + (isLate ? ' (지각)' : '');
       document.getElementById('btn-checkin').disabled = true;
       document.getElementById('btn-checkout').disabled = false;
-
       await loadData(); renderAll();
     },
-    function(err) {
-      // GPS 실패시 위치 없이 출근
-      const now = new Date().toISOString();
-      const hour = new Date().getHours();
-      const min = new Date().getMinutes();
-      const isLate = hour > CHECKIN_HOUR || (hour === CHECKIN_HOUR && min > 0);
-      dbInsert('attendances', {
+    async function() {
+      // GPS 실패 시 위치 없이 출근
+      await dbInsert('attendances', {
         emp_id: currentEmpId,
         att_date: today,
-        checkin_time: now,
+        checkin_time: nowISO,
         checkin_lat: null,
         checkin_lng: null,
         status: isLate ? 'late' : 'present'
-      }).then(async function() {
-        document.getElementById('checkin-status').textContent = '✅ ' + new Date().toLocaleTimeString('ko-KR') + ' 출근 완료 (GPS 없음)';
-        document.getElementById('btn-checkin').disabled = true;
-        document.getElementById('btn-checkout').disabled = false;
-        await loadData(); renderAll();
       });
+      document.getElementById('checkin-status').textContent = '✅ ' + formatTimeKST(nowISO) + ' 출근 완료 (GPS 없음)';
+      document.getElementById('btn-checkin').disabled = true;
+      document.getElementById('btn-checkout').disabled = false;
+      await loadData(); renderAll();
     },
     { timeout: 10000 }
   );
@@ -479,27 +498,27 @@ async function doCheckIn() {
 
 async function doCheckOut() {
   const existing = getTodayAttendance(currentEmpId);
-  if(!existing) { alert('출근 기록이 없습니다'); return; }
-  if(existing.checkout_time) { alert('이미 퇴근 처리되었습니다'); return; }
+  if (!existing) { alert('출근 기록이 없습니다'); return; }
+  if (existing.checkout_time) { alert('이미 퇴근 처리되었습니다'); return; }
 
   const btn = document.getElementById('btn-checkout');
   btn.disabled = true;
   btn.textContent = '위치 확인 중...';
 
+  const nowISO = nowISOKST(); // ✅ KST ISO 저장
+
   navigator.geolocation.getCurrentPosition(
     async function(pos) {
       const lat = pos.coords.latitude;
       const lng = pos.coords.longitude;
-      const now = new Date().toISOString();
-      await dbUpdate('attendances', existing.id, { checkout_time: now, checkout_lat: lat, checkout_lng: lng });
-      document.getElementById('checkin-status').textContent = '🏠 ' + new Date().toLocaleTimeString('ko-KR') + ' 퇴근 완료';
+      await dbUpdate('attendances', existing.id, { checkout_time: nowISO, checkout_lat: lat, checkout_lng: lng });
+      document.getElementById('checkin-status').textContent = '🏠 ' + formatTimeKST(nowISO) + ' 퇴근 완료';
       document.getElementById('btn-checkout').disabled = true;
       await loadData(); renderAll();
     },
     async function() {
-      const now = new Date().toISOString();
-      await dbUpdate('attendances', existing.id, { checkout_time: now, checkout_lat: null, checkout_lng: null });
-      document.getElementById('checkin-status').textContent = '🏠 ' + new Date().toLocaleTimeString('ko-KR') + ' 퇴근 완료 (GPS 없음)';
+      await dbUpdate('attendances', existing.id, { checkout_time: nowISO, checkout_lat: null, checkout_lng: null });
+      document.getElementById('checkin-status').textContent = '🏠 ' + formatTimeKST(nowISO) + ' 퇴근 완료 (GPS 없음)';
       document.getElementById('btn-checkout').disabled = true;
       await loadData(); renderAll();
     },
@@ -508,78 +527,74 @@ async function doCheckOut() {
 }
 
 function renderDashboard() {
-  const today = todayStr();
-  const todayAtts = attendances.filter(function(a){ return a.att_date === today; });
+  const today = todayStrKST(); // ✅ KST 기준
+  const todayAtts = attendances.filter(function(a) { return a.att_date === today; });
   let present = 0, late = 0, checkout = 0;
   todayAtts.forEach(function(a) {
     const s = getStatus(a);
-    if(s === 'present') present++;
-    if(s === 'late') late++;
-    if(a.checkout_time) checkout++;
+    if (s === 'present') present++;
+    if (s === 'late') late++;
+    if (a.checkout_time) checkout++;
   });
-  const activeEmps = employees.filter(function(e){ return e.role !== 'admin'; });
+  const activeEmps = employees.filter(function(e) { return e.role !== 'admin'; });
   const absent = activeEmps.length - todayAtts.length;
-
   document.getElementById('m-present').textContent = present;
   document.getElementById('m-late').textContent = late;
   document.getElementById('m-absent').textContent = Math.max(0, absent);
   document.getElementById('m-checkout').textContent = checkout;
 
-  // 출근 목록
   const el = document.getElementById('today-list');
-  if(!todayAtts.length) { el.innerHTML = '<div class="empty">오늘 출근 기록이 없습니다</div>'; }
+  if (!todayAtts.length) { el.innerHTML = '<div class="empty">오늘 출근 기록이 없습니다</div>'; }
   else {
     el.innerHTML = todayAtts.map(function(a) {
-      const e = getEmpById(a.emp_id); if(!e) return '';
-      const idx = employees.findIndex(function(x){ return x.id===e.id; });
+      const e = getEmpById(a.emp_id); if (!e) return '';
+      const idx = employees.findIndex(function(x) { return x.id === e.id; });
       const s = getStatus(a);
-      const checkinTime = a.checkin_time ? new Date(a.checkin_time).toLocaleTimeString('ko-KR', {hour:'2-digit',minute:'2-digit'}) : '-';
-      const checkoutTime = a.checkout_time ? new Date(a.checkout_time).toLocaleTimeString('ko-KR', {hour:'2-digit',minute:'2-digit'}) : '-';
-      const gpsHtml = a.checkin_lat ? '<a href="https://maps.google.com/?q=' + a.checkin_lat + ',' + a.checkin_lng + '" target="_blank" style="font-size:11px;color:var(--blue);">📍 위치보기</a>' : '';
-      return '<div class="att-row"><div class="avatar ' + avClass(idx) + '">' + ini(e.name) + '</div><div class="att-info"><div class="att-name">' + e.name + ' <span style="font-weight:400;font-size:11px;color:var(--gray-400);">' + e.dept + '</span></div><div class="att-detail">출근 ' + checkinTime + ' · 퇴근 ' + checkoutTime + ' ' + gpsHtml + '</div></div>' + statusBadge(s) + '</div>';
+      const checkinTime = formatTimeKST(a.checkin_time);
+      const checkoutTime = formatTimeKST(a.checkout_time);
+      const gpsHtml = a.checkin_lat ? ' <a href="https://maps.google.com/?q=' + a.checkin_lat + ',' + a.checkin_lng + '" target="_blank" style="font-size:11px;color:var(--blue);">📍 위치보기</a>' : '';
+      return '<div class="att-row"><div class="avatar ' + avClass(idx) + '">' + ini(e.name) + '</div><div class="att-info"><div class="att-name">' + e.name + ' <span style="font-weight:400;font-size:11px;color:var(--gray-400);">' + e.dept + '</span></div><div class="att-detail">출근 ' + checkinTime + ' · 퇴근 ' + checkoutTime + gpsHtml + '</div></div>' + statusBadge(s) + '</div>';
     }).join('');
   }
 
-  // 미출근/지각 목록
   const absentEl = document.getElementById('absent-list');
-  const absentEmps = activeEmps.filter(function(e){ return !todayAtts.find(function(a){ return a.emp_id===e.id; }); });
-  const lateAtts = todayAtts.filter(function(a){ return getStatus(a)==='late'; });
-  if(!absentEmps.length && !lateAtts.length) { absentEl.innerHTML = '<div class="empty">미출근/지각 직원이 없습니다 🎉</div>'; }
+  const absentEmps = activeEmps.filter(function(e) { return !todayAtts.find(function(a) { return a.emp_id === e.id; }); });
+  const lateAtts = todayAtts.filter(function(a) { return getStatus(a) === 'late'; });
+  if (!absentEmps.length && !lateAtts.length) { absentEl.innerHTML = '<div class="empty">미출근/지각 직원이 없습니다 🎉</div>'; }
   else {
     absentEl.innerHTML = absentEmps.map(function(e) {
-      const idx = employees.findIndex(function(x){ return x.id===e.id; });
+      const idx = employees.findIndex(function(x) { return x.id === e.id; });
       return '<div class="att-row"><div class="avatar ' + avClass(idx) + '">' + ini(e.name) + '</div><div class="att-info"><div class="att-name">' + e.name + '</div><div class="att-detail">' + e.dept + '</div></div>' + statusBadge('absent') + '</div>';
     }).join('') + lateAtts.map(function(a) {
-      const e = getEmpById(a.emp_id); if(!e) return '';
-      const idx = employees.findIndex(function(x){ return x.id===e.id; });
-      const t = new Date(a.checkin_time).toLocaleTimeString('ko-KR', {hour:'2-digit',minute:'2-digit'});
-      return '<div class="att-row"><div class="avatar ' + avClass(idx) + '">' + ini(e.name) + '</div><div class="att-info"><div class="att-name">' + e.name + '</div><div class="att-detail">' + t + ' 출근</div></div>' + statusBadge('late') + '</div>';
+      const e = getEmpById(a.emp_id); if (!e) return '';
+      const idx = employees.findIndex(function(x) { return x.id === e.id; });
+      return '<div class="att-row"><div class="avatar ' + avClass(idx) + '">' + ini(e.name) + '</div><div class="att-info"><div class="att-name">' + e.name + '</div><div class="att-detail">' + formatTimeKST(a.checkin_time) + ' 출근</div></div>' + statusBadge('late') + '</div>';
     }).join('');
   }
 }
 
 function setFilter(f, el) {
   currentFilter = f;
-  document.querySelectorAll('.filter-btn').forEach(function(b){ b.classList.remove('active'); });
-  if(el) el.classList.add('active');
+  document.querySelectorAll('.filter-btn').forEach(function(b) { b.classList.remove('active'); });
+  if (el) el.classList.add('active');
   renderRecords();
 }
 
 function renderRecords() {
   const dateEl = document.getElementById('filter-date');
-  const filterDate = dateEl ? dateEl.value || todayStr() : todayStr();
-  let filtered = attendances.filter(function(a){ return a.att_date === filterDate; });
-  if(currentFilter !== 'all') {
-    filtered = filtered.filter(function(a){ return getStatus(a) === currentFilter; });
+  const filterDate = dateEl ? dateEl.value || todayStrKST() : todayStrKST(); // ✅ KST 기준
+  let filtered = attendances.filter(function(a) { return a.att_date === filterDate; });
+  if (currentFilter !== 'all') {
+    filtered = filtered.filter(function(a) { return getStatus(a) === currentFilter; });
   }
   const el = document.getElementById('records-list');
-  if(!filtered.length) { el.innerHTML = '<div class="empty">기록이 없습니다</div>'; return; }
+  if (!filtered.length) { el.innerHTML = '<div class="empty">기록이 없습니다</div>'; return; }
   el.innerHTML = filtered.map(function(a) {
-    const e = getEmpById(a.emp_id); if(!e) return '';
-    const idx = employees.findIndex(function(x){ return x.id===e.id; });
+    const e = getEmpById(a.emp_id); if (!e) return '';
+    const idx = employees.findIndex(function(x) { return x.id === e.id; });
     const s = getStatus(a);
-    const checkinTime = a.checkin_time ? new Date(a.checkin_time).toLocaleTimeString('ko-KR', {hour:'2-digit',minute:'2-digit'}) : '-';
-    const checkoutTime = a.checkout_time ? new Date(a.checkout_time).toLocaleTimeString('ko-KR', {hour:'2-digit',minute:'2-digit'}) : '-';
+    const checkinTime = formatTimeKST(a.checkin_time);
+    const checkoutTime = formatTimeKST(a.checkout_time);
     const gpsHtml = a.checkin_lat ? ' <a href="https://maps.google.com/?q=' + a.checkin_lat + ',' + a.checkin_lng + '" target="_blank" style="font-size:11px;color:var(--blue);">📍 위치</a>' : '';
     return '<div class="att-row"><div class="avatar ' + avClass(idx) + '">' + ini(e.name) + '</div><div class="att-info"><div class="att-name">' + e.name + ' <span style="font-weight:400;font-size:11px;color:var(--gray-400);">' + e.dept + '</span></div><div class="att-detail">출근 ' + checkinTime + ' · 퇴근 ' + checkoutTime + gpsHtml + '</div></div>' + statusBadge(s) + '</div>';
   }).join('');
@@ -589,45 +604,45 @@ function renderMonthly() {
   const y = currentMonth.getFullYear(), m = currentMonth.getMonth();
   const months = ['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'];
   document.getElementById('monthly-title').textContent = y + '년 ' + months[m];
-  const prefix = y + '-' + String(m+1).padStart(2,'0');
-  const monthAtts = attendances.filter(function(a){ return a.att_date && a.att_date.startsWith(prefix); });
-  const activeEmps = employees.filter(function(e){ return e.role !== 'admin'; });
+  const prefix = y + '-' + String(m + 1).padStart(2, '0');
+  const monthAtts = attendances.filter(function(a) { return a.att_date && a.att_date.startsWith(prefix); });
+  const activeEmps = employees.filter(function(e) { return e.role !== 'admin'; });
   const el = document.getElementById('monthly-list');
   el.innerHTML = '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:12px;"><thead><tr style="background:var(--gray-50);"><th style="padding:8px;text-align:left;border-bottom:1px solid var(--gray-200);">이름</th><th style="padding:8px;text-align:center;border-bottom:1px solid var(--gray-200);">출근</th><th style="padding:8px;text-align:center;border-bottom:1px solid var(--gray-200);">지각</th><th style="padding:8px;text-align:center;border-bottom:1px solid var(--gray-200);">결근</th><th style="padding:8px;text-align:center;border-bottom:1px solid var(--gray-200);">출근율</th></tr></thead><tbody>' +
     activeEmps.map(function(e, idx) {
-      const myAtts = monthAtts.filter(function(a){ return a.emp_id===e.id; });
-      const workDays = new Date(y, m+1, 0).getDate();
-      const present = myAtts.filter(function(a){ return getStatus(a)==='present'; }).length;
-      const late = myAtts.filter(function(a){ return getStatus(a)==='late'; }).length;
+      const myAtts = monthAtts.filter(function(a) { return a.emp_id === e.id; });
+      const workDays = new Date(y, m + 1, 0).getDate();
+      const present = myAtts.filter(function(a) { return getStatus(a) === 'present'; }).length;
+      const late = myAtts.filter(function(a) { return getStatus(a) === 'late'; }).length;
       const absent = workDays - myAtts.length;
-      const rate = Math.round((myAtts.length/workDays)*100);
-      return '<tr style="border-bottom:1px solid var(--gray-100);"><td style="padding:8px;"><div style="display:flex;align-items:center;gap:8px;"><div class="avatar ' + avClass(idx) + '" style="width:28px;height:28px;font-size:10px;">' + ini(e.name) + '</div>' + e.name + '</div></td><td style="padding:8px;text-align:center;color:var(--primary);font-weight:600;">' + present + '</td><td style="padding:8px;text-align:center;color:var(--amber);font-weight:600;">' + late + '</td><td style="padding:8px;text-align:center;color:var(--red);font-weight:600;">' + Math.max(0,absent) + '</td><td style="padding:8px;text-align:center;"><span style="background:' + (rate>=90?'var(--primary-light)':rate>=70?'var(--amber-light)':'var(--red-light)') + ';color:' + (rate>=90?'var(--primary-dark)':rate>=70?'var(--amber)':'var(--red-dark)') + ';padding:2px 8px;border-radius:20px;font-weight:600;">' + rate + '%</span></td></tr>';
+      const rate = Math.round((myAtts.length / workDays) * 100);
+      return '<tr style="border-bottom:1px solid var(--gray-100);"><td style="padding:8px;"><div style="display:flex;align-items:center;gap:8px;"><div class="avatar ' + avClass(idx) + '" style="width:28px;height:28px;font-size:10px;">' + ini(e.name) + '</div>' + e.name + '</div></td><td style="padding:8px;text-align:center;color:var(--primary);font-weight:600;">' + present + '</td><td style="padding:8px;text-align:center;color:var(--amber);font-weight:600;">' + late + '</td><td style="padding:8px;text-align:center;color:var(--red);font-weight:600;">' + Math.max(0, absent) + '</td><td style="padding:8px;text-align:center;"><span style="background:' + (rate >= 90 ? 'var(--primary-light)' : rate >= 70 ? 'var(--amber-light)' : 'var(--red-light)') + ';color:' + (rate >= 90 ? 'var(--primary-dark)' : rate >= 70 ? 'var(--amber)' : 'var(--red-dark)') + ';padding:2px 8px;border-radius:20px;font-weight:600;">' + rate + '%</span></td></tr>';
     }).join('') + '</tbody></table></div>';
 }
 
 function renderEmpList() {
   const el = document.getElementById('emp-list');
-  const today = todayStr();
+  const today = todayStrKST(); // ✅ KST 기준
   el.innerHTML = employees.map(function(e, idx) {
-    const att = attendances.find(function(a){ return a.emp_id===e.id && a.att_date===today; });
+    const att = attendances.find(function(a) { return a.emp_id === e.id && a.att_date === today; });
     const s = getStatus(att);
-    return '<div class="att-row"><div class="avatar ' + avClass(idx) + '">' + ini(e.name) + '</div><div class="att-info"><div class="att-name">' + e.name + ' <span style="font-weight:400;font-size:11px;color:var(--gray-400);">' + e.position + '</span></div><div class="att-detail">' + e.dept + '</div></div>' + statusBadge(att ? s : 'absent') + '</div>';
+    return '<div class="att-row"><div class="avatar ' + avClass(idx) + '">' + ini(e.name) + '</div><div class="att-info"><div class="att-name">' + e.name + ' <span style="font-weight:400;font-size:11px;color:var(--gray-400);">' + (e.position || '') + '</span></div><div class="att-detail">' + e.dept + '</div></div>' + statusBadge(att ? s : 'absent') + '</div>';
   }).join('');
 }
 
 function renderCheckin() {
   const att = getTodayAttendance(currentEmpId);
-  if(att) {
-    const checkinTime = new Date(att.checkin_time).toLocaleTimeString('ko-KR', {hour:'2-digit',minute:'2-digit'});
+  if (att) {
+    const checkinTime = formatTimeKST(att.checkin_time);
     document.getElementById('btn-checkin').disabled = true;
-    document.getElementById('btn-checkout').disabled = !!att.checkout_time;
-    if(att.checkout_time) {
-      const checkoutTime = new Date(att.checkout_time).toLocaleTimeString('ko-KR', {hour:'2-digit',minute:'2-digit'});
-      document.getElementById('checkin-status').textContent = '✅ 출근 ' + checkinTime + ' · 퇴근 ' + checkoutTime;
+    if (att.checkout_time) {
+      document.getElementById('btn-checkout').disabled = true;
+      document.getElementById('checkin-status').textContent = '✅ 출근 ' + checkinTime + ' · 🏠 퇴근 ' + formatTimeKST(att.checkout_time);
     } else {
+      document.getElementById('btn-checkout').disabled = false;
       document.getElementById('checkin-status').textContent = '✅ ' + checkinTime + ' 출근 완료 · 퇴근 전';
     }
-    if(att.checkin_lat) {
+    if (att.checkin_lat) {
       document.getElementById('gps-info').style.display = 'block';
       document.getElementById('gps-info').innerHTML = '📍 출근 위치: <a href="https://maps.google.com/?q=' + att.checkin_lat + ',' + att.checkin_lng + '" target="_blank" style="color:var(--blue);">지도에서 보기</a>';
     }
@@ -635,130 +650,113 @@ function renderCheckin() {
     document.getElementById('btn-checkin').disabled = false;
     document.getElementById('btn-checkout').disabled = true;
     document.getElementById('checkin-status').textContent = '오늘 출근 기록이 없습니다';
+    document.getElementById('gps-info').style.display = 'none';
   }
+  renderMyWeek();
+}
 
-  // 이번 주 기록
-  const weekEl = document.getElementById('my-week-records');
-  const myAtts = attendances.filter(function(a){ return a.emp_id===currentEmpId; }).slice(0,7);
-  if(!myAtts.length) { weekEl.innerHTML = '<div class="empty">기록이 없습니다</div>'; return; }
-  weekEl.innerHTML = myAtts.map(function(a) {
+function renderMyWeek() {
+  const el = document.getElementById('my-week-records');
+  // 이번 주 월~오늘
+  const today = new Date();
+  const day = today.getDay();
+  const monday = new Date(today);
+  monday.setDate(today.getDate() - (day === 0 ? 6 : day - 1));
+
+  const weekAtts = attendances.filter(function(a) {
+    if (a.emp_id !== currentEmpId) return false;
+    const d = new Date(a.att_date);
+    return d >= monday && d <= today;
+  });
+
+  if (!weekAtts.length) { el.innerHTML = '<div class="empty">이번 주 기록이 없습니다</div>'; return; }
+  el.innerHTML = weekAtts.map(function(a) {
     const s = getStatus(a);
-    const checkinTime = a.checkin_time ? new Date(a.checkin_time).toLocaleTimeString('ko-KR', {hour:'2-digit',minute:'2-digit'}) : '-';
-    const checkoutTime = a.checkout_time ? new Date(a.checkout_time).toLocaleTimeString('ko-KR', {hour:'2-digit',minute:'2-digit'}) : '-';
+    const checkinTime = formatTimeKST(a.checkin_time);
+    const checkoutTime = formatTimeKST(a.checkout_time);
     return '<div class="att-row"><div class="att-info"><div class="att-name">' + a.att_date + '</div><div class="att-detail">출근 ' + checkinTime + ' · 퇴근 ' + checkoutTime + '</div></div>' + statusBadge(s) + '</div>';
   }).join('');
 }
 
-function renderMyMonthly() {
+function renderMyRecords() {
   const y = myCurrentMonth.getFullYear(), m = myCurrentMonth.getMonth();
   const months = ['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'];
   document.getElementById('my-monthly-title').textContent = y + '년 ' + months[m];
-  const prefix = y + '-' + String(m+1).padStart(2,'0');
-  const myAtts = attendances.filter(function(a){ return a.emp_id===currentEmpId && a.att_date && a.att_date.startsWith(prefix); });
-  const workDays = new Date(y, m+1, 0).getDate();
-  const present = myAtts.filter(function(a){ return getStatus(a)==='present'; }).length;
-  const late = myAtts.filter(function(a){ return getStatus(a)==='late'; }).length;
+  const prefix = y + '-' + String(m + 1).padStart(2, '0');
+  const myAtts = attendances.filter(function(a) { return a.emp_id === currentEmpId && a.att_date && a.att_date.startsWith(prefix); });
+  const workDays = new Date(y, m + 1, 0).getDate();
+  const present = myAtts.filter(function(a) { return getStatus(a) === 'present'; }).length;
+  const late = myAtts.filter(function(a) { return getStatus(a) === 'late'; }).length;
   const absent = Math.max(0, workDays - myAtts.length);
+
   document.getElementById('my-monthly-metrics').innerHTML =
     '<div class="metric-card green"><div class="metric-label">정상출근</div><div class="metric-value">' + present + '</div><div class="metric-unit">일</div></div>' +
     '<div class="metric-card amber"><div class="metric-label">지각</div><div class="metric-value">' + late + '</div><div class="metric-unit">일</div></div>' +
     '<div class="metric-card red"><div class="metric-label">결근</div><div class="metric-value">' + absent + '</div><div class="metric-unit">일</div></div>' +
-    '<div class="metric-card blue"><div class="metric-label">출근율</div><div class="metric-value">' + Math.round((myAtts.length/workDays)*100) + '</div><div class="metric-unit">%</div></div>';
+    '<div class="metric-card blue"><div class="metric-label">출근율</div><div class="metric-value">' + (workDays > 0 ? Math.round((myAtts.length / workDays) * 100) : 0) + '</div><div class="metric-unit">%</div></div>';
 
   const el = document.getElementById('my-records-list');
-  if(!myAtts.length) { el.innerHTML = '<div class="empty">기록이 없습니다</div>'; return; }
+  if (!myAtts.length) { el.innerHTML = '<div class="empty">기록이 없습니다</div>'; return; }
   el.innerHTML = myAtts.map(function(a) {
     const s = getStatus(a);
-    const checkinTime = a.checkin_time ? new Date(a.checkin_time).toLocaleTimeString('ko-KR', {hour:'2-digit',minute:'2-digit'}) : '-';
-    const checkoutTime = a.checkout_time ? new Date(a.checkout_time).toLocaleTimeString('ko-KR', {hour:'2-digit',minute:'2-digit'}) : '-';
-    const gpsHtml = a.checkin_lat ? ' <a href="https://maps.google.com/?q=' + a.checkin_lat + ',' + a.checkin_lng + '" target="_blank" style="font-size:11px;color:var(--blue);">📍</a>' : '';
-    return '<div class="att-row"><div class="att-info"><div class="att-name">' + a.att_date + '</div><div class="att-detail">출근 ' + checkinTime + ' · 퇴근 ' + checkoutTime + gpsHtml + '</div></div>' + statusBadge(s) + '</div>';
+    return '<div class="att-row"><div class="att-info"><div class="att-name">' + a.att_date + '</div><div class="att-detail">출근 ' + formatTimeKST(a.checkin_time) + ' · 퇴근 ' + formatTimeKST(a.checkout_time) + '</div></div>' + statusBadge(s) + '</div>';
   }).join('');
 }
 
 function changeMonth(dir) {
-  currentMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth()+dir);
+  currentMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + dir);
   renderMonthly();
 }
 
 function changeMyMonth(dir) {
-  myCurrentMonth = new Date(myCurrentMonth.getFullYear(), myCurrentMonth.getMonth()+dir);
-  renderMyMonthly();
+  myCurrentMonth = new Date(myCurrentMonth.getFullYear(), myCurrentMonth.getMonth() + dir);
+  renderMyRecords();
 }
 
 function downloadExcel() {
-  const BOM = '\uFEFF';
-  let csv = '이름,부서,날짜,출근시간,퇴근시간,상태,출근위치\n';
+  const today = todayStrKST();
+  let csv = '\uFEFF이름,부서,날짜,출근시간,퇴근시간,상태\n';
   attendances.forEach(function(a) {
-    const e = getEmpById(a.emp_id); if(!e) return;
-    const s = getStatus(a);
-    const statusLabel = {present:'정상출근',late:'지각',absent:'결근',off:'휴무'}[s]||s;
-    const checkinTime = a.checkin_time ? new Date(a.checkin_time).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'}) : '-';
-    const checkoutTime = a.checkout_time ? new Date(a.checkout_time).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'}) : '-';
-    const gps = a.checkin_lat ? a.checkin_lat+','+a.checkin_lng : '-';
-    csv += '"'+e.name+'","'+e.dept+'","'+a.att_date+'","'+checkinTime+'","'+checkoutTime+'","'+statusLabel+'","'+gps+'"\n';
+    const e = getEmpById(a.emp_id);
+    if (!e) return;
+    csv += [e.name, e.dept, a.att_date, formatTimeKST(a.checkin_time), formatTimeKST(a.checkout_time), a.status || getStatus(a)].join(',') + '\n';
   });
-  const blob = new Blob([BOM+csv], {type:'text/csv;charset=utf-8;'});
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
-  a.href = url; a.download = '근태현황_'+new Date().toISOString().slice(0,10)+'.csv';
+  a.href = url; a.download = '근태기록_' + today + '.csv';
   a.click(); URL.revokeObjectURL(url);
 }
 
 async function showPage(page, el) {
   currentPage = page;
-  document.querySelectorAll('.page').forEach(function(p){ p.classList.remove('active'); });
-  const pageEl = document.getElementById('page-'+page);
-  if(pageEl) pageEl.classList.add('active');
-  document.querySelectorAll('.nav-item').forEach(function(n){ n.classList.remove('active'); });
-  if(el) el.classList.add('active');
+  document.querySelectorAll('.page').forEach(function(p) { p.classList.remove('active'); });
+  const pageEl = document.getElementById('page-' + page);
+  if (pageEl) pageEl.classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(function(n) { n.classList.remove('active'); });
+  if (el) el.classList.add('active');
   await loadData();
   renderAll();
-}
 
-function renderAll() {
-  if(currentRole==='admin') { renderDashboard(); renderRecords(); renderMonthly(); renderEmpList(); }
-  if(currentRole==='employee') { renderCheckin(); renderMyMonthly(); }
-}
-
-async function restoreSession() {
-  const role = sessionStorage.getItem('att_role');
-  const empId = sessionStorage.getItem('att_empId');
-  await loadData();
-  if(role === 'admin') {
-    currentRole = 'admin';
-    document.getElementById('login-overlay').style.display = 'none';
-    document.getElementById('main-app').style.display = 'flex';
-    document.getElementById('admin-nav').style.display = 'block';
-    document.getElementById('employee-nav').style.display = 'none';
-    document.getElementById('sidebar-year').textContent = new Date().getFullYear() + '년 근태 시스템';
-    document.getElementById('user-info-box').innerHTML = '<div class="user-avatar av-0">관리</div><div><div class="user-name">관리자</div><div class="user-role">전체 권한</div></div>';
-    document.getElementById('dash-date').textContent = new Date().toLocaleDateString('ko-KR') + ' 근태 현황';
-    showPage('dashboard', document.querySelector('#admin-nav .nav-item'));
-    startAutoRefresh();
-  } else if(role === 'employee' && empId) {
-    currentEmpId = parseInt(empId);
-    const empData = getEmpById(currentEmpId);
-    if(empData) {
-      currentRole = 'employee';
-      const idx = employees.findIndex(function(e){ return e.id===currentEmpId; });
-      document.getElementById('login-overlay').style.display = 'none';
-      document.getElementById('main-app').style.display = 'flex';
-      document.getElementById('admin-nav').style.display = 'none';
-      document.getElementById('employee-nav').style.display = 'block';
-      document.getElementById('sidebar-year').textContent = new Date().getFullYear() + '년 근태 시스템';
-      document.getElementById('user-info-box').innerHTML = '<div class="user-avatar ' + avClass(idx) + '">' + ini(empData.name) + '</div><div><div class="user-name">' + empData.name + '</div><div class="user-role">' + empData.dept + '</div></div>';
-      document.getElementById('checkin-sub').textContent = empData.name + '님';
-      showPage('checkin', document.querySelector('#employee-nav .nav-item'));
-      startClock();
-      startAutoRefresh();
-    }
+  // 근태 기록 페이지에서 날짜 기본값 설정
+  if (page === 'records') {
+    const dateEl = document.getElementById('filter-date');
+    if (dateEl && !dateEl.value) dateEl.value = todayStrKST();
   }
 }
 
-document.getElementById('filter-date').value = todayStr();
-document.getElementById('filter-date').addEventListener('change', function(){ renderRecords(); });
-restoreSession();
+function renderAll() {
+  if (currentRole === 'admin') {
+    renderDashboard();
+    renderRecords();
+    renderMonthly();
+    renderEmpList();
+  }
+  if (currentRole === 'employee') {
+    renderCheckin();
+    renderMyRecords();
+  }
+}
 </script>
 </body>
 </html>
