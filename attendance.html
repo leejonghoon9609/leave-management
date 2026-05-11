@@ -765,8 +765,21 @@ function changeMyMonth(dir) {
 
 function downloadExcel() {
   const today = todayStrKST();
+  let targetAtts;
+  if (currentRole === 'admin') {
+    // 관리자: 전직원 (admin 제외)
+    const adminIds = employees.filter(function(e) { return e.role === 'admin'; }).map(function(e) { return e.id; });
+    targetAtts = attendances.filter(function(a) { return !adminIds.includes(a.emp_id); });
+  } else if (currentRole === 'teamleader') {
+    // 팀장: 본인 + 자기 팀원만
+    const visibleIds = getVisibleEmployees().map(function(e) { return e.id; });
+    targetAtts = attendances.filter(function(a) { return visibleIds.includes(a.emp_id); });
+  } else {
+    // 직원: 본인만
+    targetAtts = attendances.filter(function(a) { return a.emp_id === currentEmpId; });
+  }
   let csv = '\uFEFF이름,부서,날짜,출근시간,퇴근시간,상태\n';
-  attendances.forEach(function(a) {
+  targetAtts.forEach(function(a) {
     const e = getEmpById(a.emp_id);
     if (!e) return;
     csv += [e.name, e.dept, a.att_date, formatTimeKST(a.checkin_time), formatTimeKST(a.checkout_time), a.status || getStatus(a)].join(',') + '\n';
