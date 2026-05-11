@@ -753,6 +753,7 @@ function stopAutoRefresh() { if(autoRefreshTimer) clearInterval(autoRefreshTimer
 
 // ===== 연차 렌더 =====
 function renderAdminLeaveDashboard() {
+  const activeEmps = employees.filter(function(e){ return e.role !== 'admin'; });
   const adminPending = requests.filter(function(r){ return r.admin_status==='pending'; });
   const docAdminPending = requests.filter(function(r){ return r.type==='병가' && r.status==='approved' && r.doc_url && (r.doc_status==='submitted'||r.doc_status==='manager-approved') && r.doc_status!=='confirmed'; });
   const approved = requests.filter(function(r){ return r.status==='approved'; });
