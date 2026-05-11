@@ -813,6 +813,7 @@ function renderManagerLeaveDashboard() {
   const teamReqs = requests.filter(function(r){ const e=getEmpById(r.emp_id); return e && e.dept===myEmp.dept && r.emp_id!==currentEmpId; });
   const pending = teamReqs.filter(function(r){ return r.status==='pending'; });
   const docManagerPending = teamReqs.filter(function(r){ return r.type==='병가' && r.status==='approved' && r.doc_url && r.doc_status==='pending'; });
+  const allManagerPending = pending.concat(docManagerPending);
   document.getElementById('mm-total').textContent = teamMembers.length;
   document.getElementById('mm-pending').textContent = pending.length + docManagerPending.length;
   document.getElementById('mm-approved').textContent = teamReqs.filter(function(r){ return r.manager_status==='approved'; }).length;
