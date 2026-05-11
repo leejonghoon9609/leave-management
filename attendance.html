@@ -516,7 +516,7 @@ async function doCheckIn() {
       document.getElementById('btn-checkout').disabled = false;
       await loadData(); renderAll();
     },
-    { timeout: 10000 }
+    { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
   );
 }
 
@@ -546,7 +546,7 @@ async function doCheckOut() {
       document.getElementById('btn-checkout').disabled = true;
       await loadData(); renderAll();
     },
-    { timeout: 10000 }
+    { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
   );
 }
 
