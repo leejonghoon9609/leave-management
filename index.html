@@ -774,7 +774,7 @@ function renderAdminLeaveDashboard() {
   const activeEmps = employees.filter(function(e){ return e.role !== 'admin'; });
   if(!employees.length) { return; } // 데이터 로드 전이면 스킵
   const adminPending = requests.filter(function(r){ return r.admin_status==='pending'; });
-  const docAdminPending = requests.filter(function(r){ return r.type==='병가' && r.status==='approved' && r.doc_url && (r.doc_status==='submitted'||r.doc_status==='manager-approved') && r.doc_status!=='confirmed'; });
+  const docAdminPending = requests.filter(function(r){ return (r.type==='병가'||r.type==='예비군/민방위') && r.status==='approved' && r.doc_url && (r.doc_status==='submitted'||r.doc_status==='manager-approved') && r.doc_status!=='confirmed'; });
   const approved = requests.filter(function(r){ return r.status==='approved'; });
   const allAdminPending = adminPending.concat(docAdminPending.filter(function(d){ return !adminPending.find(function(a){ return a.id===d.id; }); }));
   document.getElementById('m-total').textContent = activeEmps.length;
@@ -828,7 +828,7 @@ function renderManagerLeaveDashboard() {
   const teamMembers = employees.filter(function(e){ return e.dept===myEmp.dept && e.id!==currentEmpId && e.role!=='admin'; });
   const teamReqs = requests.filter(function(r){ const e=getEmpById(r.emp_id); return e && e.dept===myEmp.dept && r.emp_id!==currentEmpId; });
   const pending = teamReqs.filter(function(r){ return r.status==='pending'; });
-  const docManagerPending = teamReqs.filter(function(r){ return r.type==='병가' && r.status==='approved' && r.doc_url && r.doc_status==='pending'; });
+  const docManagerPending = teamReqs.filter(function(r){ return (r.type==='병가'||r.type==='예비군/민방위') && r.status==='approved' && r.doc_url && r.doc_status==='pending'; });
   const allManagerPending = pending.concat(docManagerPending);
   document.getElementById('mm-total').textContent = teamMembers.length;
   document.getElementById('mm-pending').textContent = pending.length + docManagerPending.length;
@@ -973,7 +973,9 @@ async function managerApprove(id) {
   await loadData(); renderAll();
 }
 async function confirmMedicalDoc(requestId) {
-  if(!confirm('진단서를 확인했습니다.\n이 병가를 연차에서 제외하시겠습니까?')) return;
+  const r=requests.find(function(x){ return x.id===requestId; });
+  const typeName=r&&r.type==='예비군/민방위'?'예비군/민방위':'병가';
+  if(!confirm(typeName+' 서류를 확인했습니다.\n연차에서 제외하시겠습니까?')) return;
   await dbUpdate('requests', requestId, { doc_status:'confirmed', status:'approved', days:0 });
   await loadData(); renderAll();
 }
@@ -1076,12 +1078,16 @@ async function submitLeave() {
   const initManagerStatus=isDirect?'approved':'pending';
   const initAdminStatus=isDirect?'pending':'waiting';
   await dbInsert('requests', { emp_id:currentEmpId, type, start_date:start, end_date:end, days, status:initStatus, manager_status:initManagerStatus, admin_status:initAdminStatus, reason, reject_reason:'', doc_url:'', doc_status:'' });
-  if(type==='병가') {
+  if(type==='병가'||type==='예비군/민방위') {
     const fileInput=document.getElementById('medical-file');
     if(fileInput&&fileInput.files.length>0) {
       await loadData();
-      const latestReq=requests.find(function(r){ return r.emp_id===currentEmpId&&r.type==='병가'&&!r.doc_url; });
-      if(latestReq) { const fileUrl=await uploadMedicalFile(fileInput.files[0],latestReq.id); if(fileUrl) await dbUpdate('requests',latestReq.id,{doc_url:fileUrl,doc_status:'submitted'}); }
+      const latestReq=requests.find(function(r){ return r.emp_id===currentEmpId&&r.type===type&&!r.doc_url; });
+      if(latestReq) {
+        const fileUrl=await uploadMedicalFile(fileInput.files[0],latestReq.id);
+        // 통지서 첨부 시 days:0 (연차 차감 없음)
+        if(fileUrl) await dbUpdate('requests',latestReq.id,{doc_url:fileUrl,doc_status:'submitted',days:0});
+      }
       fileInput.value='';
     }
   }
