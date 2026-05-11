@@ -157,6 +157,7 @@ body { font-family: "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; backgrou
   .app { flex-direction: column; }
 }
 </style>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 </head>
 <body>
 
@@ -229,7 +230,7 @@ body { font-family: "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; backgrou
       <div class="nav-item" onclick="showPage('records',this)"><span>📋</span> 근태 기록</div>
       <div class="nav-item" onclick="showPage('monthly',this)"><span>📅</span> 월별 현황</div>
       <div class="nav-item" onclick="showPage('att-employees',this)"><span>👥</span> 직원 현황</div>
-      <div id="att-download-area-admin" style="padding:4px 0;"><button class="excel-btn" onclick="downloadAttExcel()" style="margin:4px 20px 0;">📥 근태현황 다운로드(.xls)</button></div>
+      <div id="att-download-area-admin" style="padding:4px 0;"><button class="excel-btn" onclick="downloadAttExcel()" style="margin:4px 20px 0;">📥 근태현황 다운로드(.xlsx)</button></div>
       <div class="nav-divider"></div>
       <div class="nav-section">📋 연차관리</div>
       <div class="nav-item" onclick="showPage('leave-dashboard',this)"><span>📊</span> 대시보드</div>
@@ -244,7 +245,7 @@ body { font-family: "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; backgrou
       <div class="nav-item" onclick="showPage('checkin',this)" style="color:var(--red);font-weight:700;"><span>🏃</span> 출퇴근 등록</div>
       <div class="nav-item" onclick="showPage('att-dashboard',this)"><span>📊</span> 팀 출퇴근현황</div>
       <div class="nav-item" onclick="showPage('records',this)"><span>📋</span> 근태 기록</div>
-      <div style="padding:4px 0;"><button class="excel-btn" onclick="downloadAttExcel()" style="margin:4px 20px 0;">📥 근태현황 다운로드(.xls)</button></div>
+      <div style="padding:4px 0;"><button class="excel-btn" onclick="downloadAttExcel()" style="margin:4px 20px 0;">📥 근태현황 다운로드(.xlsx)</button></div>
       <div class="nav-divider"></div>
       <div class="nav-section">📋 연차관리</div>
       <div class="nav-item" onclick="showPage('apply',this)"><span>✏️</span> 신청하기</div>
@@ -259,7 +260,7 @@ body { font-family: "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; backgrou
       <div class="nav-section">⏱ 근태관리</div>
       <div class="nav-item" onclick="showPage('checkin',this)" style="color:var(--red);font-weight:700;"><span>🏃</span> 출퇴근 등록</div>
       <div class="nav-item" onclick="showPage('my-records',this)"><span>📋</span> 내 근태 기록</div>
-      <div style="padding:4px 0;"><button class="excel-btn" onclick="downloadAttExcel()" style="margin:4px 20px 0;">📥 근태현황 다운로드(.xls)</button></div>
+      <div style="padding:4px 0;"><button class="excel-btn" onclick="downloadAttExcel()" style="margin:4px 20px 0;">📥 근태현황 다운로드(.xlsx)</button></div>
       <div class="nav-divider"></div>
       <div class="nav-section">📋 연차관리</div>
       <div class="nav-item" onclick="showPage('apply',this)"><span>✏️</span> 신청하기</div>
@@ -268,7 +269,7 @@ body { font-family: "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; backgrou
     </div>
 
     <div class="nav-divider" style="margin:8px 20px;"></div>
-    <button class="excel-btn" onclick="downloadLeaveExcel()">📥 연차현황 다운로드(.xls)</button>
+    <button class="excel-btn" onclick="downloadLeaveExcel()">📥 연차현황 다운로드(.xlsx)</button>
     <button class="logout-btn" onclick="logout()">🚪 로그아웃</button>
   </div>
 
@@ -1312,24 +1313,20 @@ function downloadLeaveExcel() {
   if(currentRole==='admin') targetEmps=employees.filter(function(e){ return e.role!=='admin'; });
   else if(currentRole==='manager'||currentRole==='viewer') { const myEmp=getEmpById(currentEmpId); targetEmps=employees.filter(function(e){ return e.dept===myEmp.dept&&e.role!=='admin'; }); }
   else targetEmps=employees.filter(function(e){ return e.id===currentEmpId; });
-  const th='style="background:#1D9E75;color:white;font-weight:bold;text-align:center;border:1px solid #999;"';
-  const td='style="text-align:center;border:1px solid #ccc;"';
-  const tdl='style="text-align:left;border:1px solid #ccc;"';
-  let html='<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel"><head><meta charset="UTF-8"></head><body><table>';
-  html+='<tr><th '+th+'>이름</th><th '+th+'>직급</th><th '+th+'>부서</th><th '+th+'>근속연수</th><th '+th+'>총연차</th><th '+th+'>사용연차</th><th '+th+'>남은연차</th><th '+th+'>사용내역</th></tr>';
+  const rows=[['이름','직급','부서','근속연수','총연차','사용연차','남은연차','사용내역']];
   targetEmps.forEach(function(e) {
     const years=getYears(e),total=getTotal(e),used=getUsed(e),rem=getRemaining(e);
     const detail=requests.filter(function(r){ return r.emp_id===e.id&&r.status==='approved'; }).map(function(r) {
       function fmt(d){ const p=d.split('-'); return parseInt(p[1])+'/'+parseInt(p[2]); }
       return fmt(r.start_date)+(r.start_date!==r.end_date?'~'+fmt(r.end_date):'')+'('+r.days+'일)';
     }).join(', ');
-    html+='<tr><td '+td+'>'+e.name+'</td><td '+td+'>'+(e.position||'')+'</td><td '+td+'>'+e.dept+'</td><td '+td+'>'+years+'년</td><td '+td+'>'+total+'일</td><td style="text-align:center;border:1px solid #ccc;color:#BA7517;font-weight:bold;">'+used+'일</td><td style="text-align:center;border:1px solid #ccc;color:#085041;font-weight:bold;">'+rem+'일</td><td '+tdl+'>'+detail+'</td></tr>';
+    rows.push([e.name, e.position||'', e.dept, years+'년', total+'일', used+'일', rem+'일', detail]);
   });
-  html+='</table></body></html>';
-  const blob=new Blob(['\uFEFF'+html],{type:'application/vnd.ms-excel;charset=utf-8;'});
-  const url=URL.createObjectURL(blob);
-  const a=document.createElement('a');
-  a.href=url; a.download='연차현황_'+today+'.xls'; a.click(); URL.revokeObjectURL(url);
+  const wb=XLSX.utils.book_new();
+  const ws=XLSX.utils.aoa_to_sheet(rows);
+  ws['!cols']=[{wch:10},{wch:10},{wch:16},{wch:10},{wch:8},{wch:10},{wch:10},{wch:40}];
+  XLSX.utils.book_append_sheet(wb, ws, '연차현황');
+  XLSX.writeFile(wb, '연차현황_'+today+'.xlsx');
 }
 
 function downloadAttExcel() {
@@ -1339,21 +1336,17 @@ function downloadAttExcel() {
   else if(currentRole==='manager'||currentRole==='viewer') { const visIds=getVisibleEmployees().map(function(e){ return e.id; }); targetAtts=attendances.filter(function(a){ return visIds.includes(a.emp_id); }); }
   else targetAtts=attendances.filter(function(a){ return a.emp_id===currentEmpId; });
   const statusMap={'present':'정상출근','late':'지각','absent':'결근','off':'휴무'};
-  const th='style="background:#1D9E75;color:white;font-weight:bold;text-align:center;border:1px solid #999;"';
-  const td='style="text-align:center;border:1px solid #ccc;"';
-  let html='<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel"><head><meta charset="UTF-8"></head><body><table>';
-  html+='<tr><th '+th+'>이름</th><th '+th+'>부서</th><th '+th+'>날짜</th><th '+th+'>출근시간</th><th '+th+'>퇴근시간</th><th '+th+'>상태</th></tr>';
+  const rows=[['이름','부서','날짜','출근시간','퇴근시간','상태']];
   targetAtts.forEach(function(a) {
     const e=getEmpById(a.emp_id); if(!e) return;
     const s=a.status||getAttStatus(a);
-    const sc=s==='present'?'color:#085041':s==='late'?'color:#BA7517':'color:#E24B4A';
-    html+='<tr><td '+td+'>'+e.name+'</td><td '+td+'>'+e.dept+'</td><td '+td+'>'+a.att_date+'</td><td '+td+'>'+formatTimeKST(a.checkin_time)+'</td><td '+td+'>'+formatTimeKST(a.checkout_time)+'</td><td style="text-align:center;border:1px solid #ccc;'+sc+'font-weight:bold;">'+(statusMap[s]||s)+'</td></tr>';
+    rows.push([e.name, e.dept, a.att_date, formatTimeKST(a.checkin_time), formatTimeKST(a.checkout_time), statusMap[s]||s]);
   });
-  html+='</table></body></html>';
-  const blob=new Blob(['\uFEFF'+html],{type:'application/vnd.ms-excel;charset=utf-8;'});
-  const url=URL.createObjectURL(blob);
-  const a=document.createElement('a');
-  a.href=url; a.download='근태기록_'+today+'.xls'; a.click(); URL.revokeObjectURL(url);
+  const wb=XLSX.utils.book_new();
+  const ws=XLSX.utils.aoa_to_sheet(rows);
+  ws['!cols']=[{wch:10},{wch:16},{wch:12},{wch:10},{wch:10},{wch:10}];
+  XLSX.utils.book_append_sheet(wb, ws, '근태기록');
+  XLSX.writeFile(wb, '근태기록_'+today+'.xlsx');
 }
 
 // ===== 전체 렌더 =====
