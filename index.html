@@ -229,7 +229,7 @@ body { font-family: "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; backgrou
       <div class="nav-item" onclick="showPage('records',this)"><span>📋</span> 근태 기록</div>
       <div class="nav-item" onclick="showPage('monthly',this)"><span>📅</span> 월별 현황</div>
       <div class="nav-item" onclick="showPage('att-employees',this)"><span>👥</span> 직원 현황</div>
-      <div id="att-download-area-admin" style="padding:4px 0;"><button class="excel-btn" onclick="downloadAttExcel()" style="margin:4px 20px 0;">📥 근태현황 다운로드(.xlsx)</button></div>
+      <div id="att-download-area-admin" style="padding:4px 0;"><button class="excel-btn" onclick="downloadAttExcel()" style="margin:4px 20px 0;">📥 근태현황 다운로드(.csv)</button></div>
       <div class="nav-divider"></div>
       <div class="nav-section">📋 연차관리</div>
       <div class="nav-item" onclick="showPage('leave-dashboard',this)"><span>📊</span> 대시보드</div>
@@ -244,7 +244,7 @@ body { font-family: "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; backgrou
       <div class="nav-item" onclick="showPage('checkin',this)" style="color:var(--red);font-weight:700;"><span>🏃</span> 출퇴근 등록</div>
       <div class="nav-item" onclick="showPage('att-dashboard',this)"><span>📊</span> 팀 출퇴근현황</div>
       <div class="nav-item" onclick="showPage('records',this)"><span>📋</span> 근태 기록</div>
-      <div style="padding:4px 0;"><button class="excel-btn" onclick="downloadAttExcel()" style="margin:4px 20px 0;">📥 근태현황 다운로드(.xlsx)</button></div>
+      <div style="padding:4px 0;"><button class="excel-btn" onclick="downloadAttExcel()" style="margin:4px 20px 0;">📥 근태현황 다운로드(.csv)</button></div>
       <div class="nav-divider"></div>
       <div class="nav-section">📋 연차관리</div>
       <div class="nav-item" onclick="showPage('apply',this)"><span>✏️</span> 신청하기</div>
@@ -259,7 +259,7 @@ body { font-family: "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; backgrou
       <div class="nav-section">⏱ 근태관리</div>
       <div class="nav-item" onclick="showPage('checkin',this)" style="color:var(--red);font-weight:700;"><span>🏃</span> 출퇴근 등록</div>
       <div class="nav-item" onclick="showPage('my-records',this)"><span>📋</span> 내 근태 기록</div>
-      <div style="padding:4px 0;"><button class="excel-btn" onclick="downloadAttExcel()" style="margin:4px 20px 0;">📥 근태현황 다운로드(.xlsx)</button></div>
+      <div style="padding:4px 0;"><button class="excel-btn" onclick="downloadAttExcel()" style="margin:4px 20px 0;">📥 근태현황 다운로드(.csv)</button></div>
       <div class="nav-divider"></div>
       <div class="nav-section">📋 연차관리</div>
       <div class="nav-item" onclick="showPage('apply',this)"><span>✏️</span> 신청하기</div>
@@ -268,7 +268,7 @@ body { font-family: "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; backgrou
     </div>
 
     <div class="nav-divider" style="margin:8px 20px;"></div>
-    <button class="excel-btn" onclick="downloadLeaveExcel()">📥 연차현황 다운로드(.xlsx)</button>
+    <button class="excel-btn" onclick="downloadLeaveExcel()">📥 연차현황 다운로드(.csv)</button>
     <button class="logout-btn" onclick="logout()">🚪 로그아웃</button>
   </div>
 
@@ -1312,20 +1312,19 @@ function downloadLeaveExcel() {
   if(currentRole==='admin') targetEmps=employees.filter(function(e){ return e.role!=='admin'; });
   else if(currentRole==='manager'||currentRole==='viewer') { const myEmp=getEmpById(currentEmpId); targetEmps=employees.filter(function(e){ return e.dept===myEmp.dept&&e.role!=='admin'; }); }
   else targetEmps=employees.filter(function(e){ return e.id===currentEmpId; });
-  let html='<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="UTF-8"><!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>연차현황</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]--></head><body><table border="1"><tr style="background:#1D9E75;color:white;font-weight:bold;"><td>이름</td><td>직급</td><td>부서</td><td>근속연수</td><td>총연차</td><td>사용연차</td><td>남은연차</td><td>사용내역</td></tr>';
+  let csv='\uFEFF이름,직급,부서,근속연수,총연차,사용연차,남은연차,사용내역\n';
   targetEmps.forEach(function(e) {
     const years=getYears(e),total=getTotal(e),used=getUsed(e),rem=getRemaining(e);
     const detail=requests.filter(function(r){ return r.emp_id===e.id&&r.status==='approved'; }).map(function(r) {
       function fmt(d){ const p=d.split('-'); return parseInt(p[1])+'/'+parseInt(p[2]); }
       return fmt(r.start_date)+(r.start_date!==r.end_date?'~'+fmt(r.end_date):'')+'('+r.days+'일)';
     }).join(', ');
-    html+='<tr><td>'+e.name+'</td><td>'+(e.position||'')+'</td><td>'+e.dept+'</td><td>'+years+'년</td><td>'+total+'일</td><td>'+used+'일</td><td>'+rem+'일</td><td>'+detail+'</td></tr>';
+    csv+='"'+e.name+'","'+(e.position||'')+'","'+e.dept+'","'+years+'년","'+total+'일","'+used+'일","'+rem+'일","'+detail+'"\n';
   });
-  html+='</table></body></html>';
-  const blob=new Blob([html],{type:'application/vnd.ms-excel;charset=utf-8;'});
+  const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
   const url=URL.createObjectURL(blob);
   const a=document.createElement('a');
-  a.href=url; a.download='연차현황_'+today+'.xls'; a.click(); URL.revokeObjectURL(url);
+  a.href=url; a.download='연차현황_'+today+'.csv'; a.click(); URL.revokeObjectURL(url);
 }
 
 function downloadAttExcel() {
@@ -1335,17 +1334,16 @@ function downloadAttExcel() {
   else if(currentRole==='manager'||currentRole==='viewer') { const visIds=getVisibleEmployees().map(function(e){ return e.id; }); targetAtts=attendances.filter(function(a){ return visIds.includes(a.emp_id); }); }
   else targetAtts=attendances.filter(function(a){ return a.emp_id===currentEmpId; });
   const statusMap={'present':'정상출근','late':'지각','absent':'결근','off':'휴무'};
-  let html='<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="UTF-8"><!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>근태기록</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]--></head><body><table border="1"><tr style="background:#1D9E75;color:white;font-weight:bold;"><td>이름</td><td>부서</td><td>날짜</td><td>출근시간</td><td>퇴근시간</td><td>상태</td></tr>';
+  let csv='\uFEFF이름,부서,날짜,출근시간,퇴근시간,상태\n';
   targetAtts.forEach(function(a) {
     const e=getEmpById(a.emp_id); if(!e) return;
     const s=a.status||getAttStatus(a);
-    html+='<tr><td>'+e.name+'</td><td>'+e.dept+'</td><td>'+a.att_date+'</td><td>'+formatTimeKST(a.checkin_time)+'</td><td>'+formatTimeKST(a.checkout_time)+'</td><td>'+(statusMap[s]||s)+'</td></tr>';
+    csv+=e.name+','+e.dept+','+a.att_date+','+formatTimeKST(a.checkin_time)+','+formatTimeKST(a.checkout_time)+','+(statusMap[s]||s)+'\n';
   });
-  html+='</table></body></html>';
-  const blob=new Blob([html],{type:'application/vnd.ms-excel;charset=utf-8;'});
+  const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
   const url=URL.createObjectURL(blob);
   const a=document.createElement('a');
-  a.href=url; a.download='근태기록_'+today+'.xls'; a.click(); URL.revokeObjectURL(url);
+  a.href=url; a.download='근태기록_'+today+'.csv'; a.click(); URL.revokeObjectURL(url);
 }
 
 // ===== 전체 렌더 =====
