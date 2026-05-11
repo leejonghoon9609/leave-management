@@ -760,6 +760,7 @@ function renderAdminLeaveDashboard() {
   const adminPending = requests.filter(function(r){ return r.admin_status==='pending'; });
   const docAdminPending = requests.filter(function(r){ return r.type==='병가' && r.status==='approved' && r.doc_url && (r.doc_status==='submitted'||r.doc_status==='manager-approved') && r.doc_status!=='confirmed'; });
   const approved = requests.filter(function(r){ return r.status==='approved'; });
+  const allAdminPending = adminPending.concat(docAdminPending.filter(function(d){ return !adminPending.find(function(a){ return a.id===d.id; }); }));
   document.getElementById('m-total').textContent = activeEmps.length;
   document.getElementById('m-pending').textContent = adminPending.length + docAdminPending.length;
   document.getElementById('m-approved').textContent = approved.length;
