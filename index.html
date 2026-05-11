@@ -479,11 +479,15 @@ const TEAM_LEADERS = {
   '조윤미': '총무부',
   '송규헌': '측량부',
   '박영범': '사업관리(현장)',
-  '남윤지': '사업관리',
+  '남윤지': '사업관리'
+};
+// 뷰어: 팀 현황은 볼 수 있지만 승인/거절 불가
+const TEAM_VIEWERS = {
   '조은주': '사업관리'
 };
 function isTeamLeader(name) { return !!TEAM_LEADERS[name]; }
-function getLeaderDept(name) { return TEAM_LEADERS[name] || null; }
+function isTeamViewer(name) { return !!TEAM_VIEWERS[name]; }
+function getLeaderDept(name) { return TEAM_LEADERS[name] || TEAM_VIEWERS[name] || null; }
 
 let employees = [], requests = [], attendances = [];
 let currentRole = null, currentEmpId = null, currentPage = 'leave-dashboard';
@@ -692,6 +696,8 @@ async function empLogin() {
   // 역할 결정
   if(empData.role === 'manager' || isTeamLeader(empData.name)) {
     currentRole = 'manager';
+  } else if(isTeamViewer(empData.name)) {
+    currentRole = 'viewer';
   } else {
     currentRole = 'employee';
   }
@@ -711,6 +717,12 @@ async function empLogin() {
     document.getElementById('manager-nav').style.display = 'block';
     document.getElementById('employee-nav').style.display = 'none';
     document.getElementById('manager-dash-sub').textContent = empData.dept + ' 팀 현황';
+    showPage('manager-dashboard', document.querySelector('#manager-nav .nav-item'));
+  } else if(currentRole === 'viewer') {
+    document.getElementById('admin-nav').style.display = 'none';
+    document.getElementById('manager-nav').style.display = 'block';
+    document.getElementById('employee-nav').style.display = 'none';
+    document.getElementById('manager-dash-sub').textContent = empData.dept + ' 팀 현황 (조회)';
     showPage('manager-dashboard', document.querySelector('#manager-nav .nav-item'));
   } else {
     document.getElementById('admin-nav').style.display = 'none';
@@ -826,7 +838,8 @@ function renderManagerLeaveDashboard() {
       const idx = employees.findIndex(function(x){ return x.id===e.id; });
       const isDocWaiting = r.type==='병가' && r.status==='approved' && r.doc_url && r.doc_status==='pending';
       let docHtml = isDocWaiting ? '<div style="background:var(--amber-light);border-radius:4px;padding:6px 8px;margin-top:6px;font-size:11px;color:var(--amber);">📎 진단서 확인 대기 · <a href="'+r.doc_url+'" target="_blank" style="color:var(--blue);">첨부파일 보기</a> <button class="btn btn-approve" style="font-size:10px;padding:3px 8px;margin-left:6px;" onclick="managerApproveMedical('+r.id+')">✅ 1차 승인 → 관리자 전달</button></div>' : '';
-      const btnHtml = !isDocWaiting ? '<div class="btn-row"><button class="btn btn-approve" onclick="managerApprove('+r.id+')">승인</button><button class="btn btn-reject" onclick="openRejectModal('+r.id+',\'manager\')">거절</button></div>' : '';
+      const isViewer = currentRole === 'viewer';
+      const btnHtml = (!isDocWaiting && !isViewer) ? '<div class="btn-row"><button class="btn btn-approve" onclick="managerApprove('+r.id+')">승인</button><button class="btn btn-reject" onclick="openRejectModal('+r.id+',\'manager\')">거절</button></div>' : '';
       return '<div class="req-row"><div class="avatar ' + avClass(idx) + '">' + ini(e.name) + '</div><div class="req-info"><div class="req-name">' + e.name + '</div><div class="req-detail">' + r.type + ' · ' + r.start_date + ' ~ ' + r.end_date + ' · ' + r.days + '일' + (r.reason?' · <span style="color:var(--blue);">'+r.reason+'</span>':'') + '</div>' + docHtml + '</div>' + leaveBadge(r.status) + btnHtml + '</div>';
     }).join('');
   }
@@ -852,7 +865,8 @@ function renderManagerAllRequests() {
     const idx=employees.findIndex(function(x){ return x.id===e.id; });
     let docHtml = '';
     if(r.type==='병가' && r.doc_status==='pending') docHtml = '<div style="background:var(--amber-light);border-radius:4px;padding:6px 8px;margin-top:6px;font-size:11px;color:var(--amber);">📎 진단서 제출 · <a href="'+r.doc_url+'" target="_blank" style="color:var(--blue);">첨부파일</a> <button class="btn btn-approve" style="font-size:10px;padding:3px 8px;margin-left:6px;" onclick="managerApproveMedical('+r.id+')">✅ 1차 승인</button></div>';
-    return '<div class="req-row"><div class="avatar ' + avClass(idx) + '">' + ini(e.name) + '</div><div class="req-info"><div class="req-name">' + e.name + '</div><div class="req-detail">' + r.type + ' · ' + r.start_date + ' ~ ' + r.end_date + ' · ' + r.days + '일' + (r.reason?' · '+r.reason:'') + '</div>' + (r.status==='rejected'&&r.reject_reason?'<div style="font-size:11px;color:var(--red);margin-top:3px;">❌ 거절: '+r.reject_reason+'</div>':'') + docHtml + '</div>' + leaveBadge(r.status) + (r.status==='pending'?'<div class="btn-row"><button class="btn btn-approve" onclick="managerApprove('+r.id+')">승인</button><button class="btn btn-reject" onclick="openRejectModal('+r.id+',\'manager\')">거절</button></div>':'') + '</div>';
+    const showBtn2 = r.status==='pending' && currentRole!=='viewer';
+    return '<div class="req-row"><div class="avatar ' + avClass(idx) + '">' + ini(e.name) + '</div><div class="req-info"><div class="req-name">' + e.name + '</div><div class="req-detail">' + r.type + ' · ' + r.start_date + ' ~ ' + r.end_date + ' · ' + r.days + '일' + (r.reason?' · '+r.reason:'') + '</div>' + (r.status==='rejected'&&r.reject_reason?'<div style="font-size:11px;color:var(--red);margin-top:3px;">❌ 거절: '+r.reject_reason+'</div>':'') + docHtml + '</div>' + leaveBadge(r.status) + (showBtn2?'<div class="btn-row"><button class="btn btn-approve" onclick="managerApprove('+r.id+')">승인</button><button class="btn btn-reject" onclick="openRejectModal('+r.id+',\'manager\')">거절</button></div>':'') + '</div>';
   }).join('');
 }
 
@@ -1351,6 +1365,15 @@ function renderAll() {
     else if(currentPage==='checkin') renderCheckin();
     else renderManagerLeaveDashboard();
   }
+  if(currentRole==='viewer') {
+    if(currentPage==='manager-dashboard') renderManagerLeaveDashboard();
+    else if(currentPage==='manager-requests') renderManagerAllRequests();
+    else if(currentPage==='my-leave'||currentPage==='apply') renderMyLeave();
+    else if(currentPage==='att-dashboard') renderAttDashboard();
+    else if(currentPage==='records') renderAttRecords();
+    else if(currentPage==='checkin') renderCheckin();
+    else renderManagerLeaveDashboard();
+  }
   if(currentRole==='employee') {
     if(currentPage==='my-leave'||currentPage==='apply') renderMyLeave();
     else if(currentPage==='checkin') renderCheckin();
@@ -1404,7 +1427,7 @@ async function restoreSession() {
     currentEmpId=parseInt(empId);
     const empData=getEmpById(currentEmpId);
     if(empData) {
-      currentRole=(empData.role==='manager'||isTeamLeader(empData.name))?'manager':'employee';
+      currentRole=(empData.role==='manager'||isTeamLeader(empData.name))?'manager':isTeamViewer(empData.name)?'viewer':'employee';
       const idx=employees.findIndex(function(e){ return e.id===currentEmpId; });
       document.getElementById('login-overlay').style.display='none';
       document.getElementById('main-app').style.display='flex';
