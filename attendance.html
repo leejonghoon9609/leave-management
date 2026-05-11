@@ -245,7 +245,8 @@ const TEAM_LEADERS = {
   '조윤미': '총무부',
   '송규헌': '측량부',
   '박영범': '사업관리(현장)',
-  '남윤지': '사업관리'
+  '남윤지': '사업관리',
+  '조은주': '사업관리'
 };
 function isTeamLeader(name) { return !!TEAM_LEADERS[name]; }
 function getLeaderDept(name) { return TEAM_LEADERS[name] || null; }
@@ -348,7 +349,7 @@ async function loadData() {
     const sel = document.getElementById('emp-select');
     const curVal = sel.value;
     sel.innerHTML = '<option value="">-- 직원 선택 --</option>';
-    const excluded = ['이종훈', '송규헌'];
+    const excluded = ['이종훈'];
     employees.filter(function(e) { return !excluded.includes(e.name); }).forEach(function(e) {
       const opt = document.createElement('option');
       opt.value = e.id;
