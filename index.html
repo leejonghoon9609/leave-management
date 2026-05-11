@@ -157,7 +157,7 @@ body { font-family: "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; backgrou
   .app { flex-direction: column; }
 }
 </style>
-<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
 </head>
 <body>
 
@@ -1313,18 +1313,37 @@ function downloadLeaveExcel() {
   if(currentRole==='admin') targetEmps=employees.filter(function(e){ return e.role!=='admin'; });
   else if(currentRole==='manager'||currentRole==='viewer') { const myEmp=getEmpById(currentEmpId); targetEmps=employees.filter(function(e){ return e.dept===myEmp.dept&&e.role!=='admin'; }); }
   else targetEmps=employees.filter(function(e){ return e.id===currentEmpId; });
-  const rows=[['이름','직급','부서','근속연수','총연차','사용연차','남은연차','사용내역']];
+  const headerStyle={font:{bold:true,color:{rgb:'FFFFFFFF'},sz:11},fill:{fgColor:{rgb:'FF1D9E75'}},alignment:{horizontal:'center',vertical:'center'},border:{top:{style:'thin',color:{rgb:'FF999999'}},bottom:{style:'thin',color:{rgb:'FF999999'}},left:{style:'thin',color:{rgb:'FF999999'}},right:{style:'thin',color:{rgb:'FF999999'}}}};
+  const cellCenter={alignment:{horizontal:'center',vertical:'center'},border:{top:{style:'thin',color:{rgb:'FFCCCCCC'}},bottom:{style:'thin',color:{rgb:'FFCCCCCC'}},left:{style:'thin',color:{rgb:'FFCCCCCC'}},right:{style:'thin',color:{rgb:'FFCCCCCC'}}}};
+  const cellLeft={alignment:{horizontal:'left',vertical:'center'},border:{top:{style:'thin',color:{rgb:'FFCCCCCC'}},bottom:{style:'thin',color:{rgb:'FFCCCCCC'}},left:{style:'thin',color:{rgb:'FFCCCCCC'}},right:{style:'thin',color:{rgb:'FFCCCCCC'}}}};
+  const headers=['이름','직급','부서','근속연수','총연차','사용연차','남은연차','사용내역'];
+  const wb=XLSX.utils.book_new();
+  const wsData=[headers];
   targetEmps.forEach(function(e) {
     const years=getYears(e),total=getTotal(e),used=getUsed(e),rem=getRemaining(e);
     const detail=requests.filter(function(r){ return r.emp_id===e.id&&r.status==='approved'; }).map(function(r) {
       function fmt(d){ const p=d.split('-'); return parseInt(p[1])+'/'+parseInt(p[2]); }
       return fmt(r.start_date)+(r.start_date!==r.end_date?'~'+fmt(r.end_date):'')+'('+r.days+'일)';
     }).join(', ');
-    rows.push([e.name, e.position||'', e.dept, years+'년', total+'일', used+'일', rem+'일', detail]);
+    wsData.push([e.name, e.position||'', e.dept, years+'년', total+'일', used+'일', rem+'일', detail]);
   });
-  const wb=XLSX.utils.book_new();
-  const ws=XLSX.utils.aoa_to_sheet(rows);
-  ws['!cols']=[{wch:10},{wch:10},{wch:16},{wch:10},{wch:8},{wch:10},{wch:10},{wch:40}];
+  const ws=XLSX.utils.aoa_to_sheet(wsData);
+  ws['!cols']=[{wch:10},{wch:10},{wch:16},{wch:10},{wch:8},{wch:10},{wch:10},{wch:50}];
+  ws['!rows']=[{hpt:20}];
+  headers.forEach(function(_,i){
+    const cell=XLSX.utils.encode_cell({r:0,c:i});
+    if(ws[cell]) ws[cell].s=headerStyle;
+  });
+  for(var r=1;r<wsData.length;r++){
+    for(var c=0;c<8;c++){
+      var cell=XLSX.utils.encode_cell({r:r,c:c});
+      if(!ws[cell]) continue;
+      if(c===5) ws[cell].s=Object.assign({},cellCenter,{font:{bold:true,color:{rgb:'FFBA7517'}}});
+      else if(c===6) ws[cell].s=Object.assign({},cellCenter,{font:{bold:true,color:{rgb:'FF085041'}}});
+      else if(c===7) ws[cell].s=cellLeft;
+      else ws[cell].s=cellCenter;
+    }
+  }
   XLSX.utils.book_append_sheet(wb, ws, '연차현황');
   XLSX.writeFile(wb, '연차현황_'+today+'.xlsx');
 }
@@ -1336,15 +1355,36 @@ function downloadAttExcel() {
   else if(currentRole==='manager'||currentRole==='viewer') { const visIds=getVisibleEmployees().map(function(e){ return e.id; }); targetAtts=attendances.filter(function(a){ return visIds.includes(a.emp_id); }); }
   else targetAtts=attendances.filter(function(a){ return a.emp_id===currentEmpId; });
   const statusMap={'present':'정상출근','late':'지각','absent':'결근','off':'휴무'};
-  const rows=[['이름','부서','날짜','출근시간','퇴근시간','상태']];
+  const statusColor={'present':'FF085041','late':'FFBA7517','absent':'FFE24B4A','off':'FF5F5F5F'};
+  const headerStyle={font:{bold:true,color:{rgb:'FFFFFFFF'},sz:11},fill:{fgColor:{rgb:'FF1D9E75'}},alignment:{horizontal:'center',vertical:'center'},border:{top:{style:'thin',color:{rgb:'FF999999'}},bottom:{style:'thin',color:{rgb:'FF999999'}},left:{style:'thin',color:{rgb:'FF999999'}},right:{style:'thin',color:{rgb:'FF999999'}}}};
+  const cellStyle={alignment:{horizontal:'center',vertical:'center'},border:{top:{style:'thin',color:{rgb:'FFCCCCCC'}},bottom:{style:'thin',color:{rgb:'FFCCCCCC'}},left:{style:'thin',color:{rgb:'FFCCCCCC'}},right:{style:'thin',color:{rgb:'FFCCCCCC'}}}};
+  const headers=['이름','부서','날짜','출근시간','퇴근시간','상태'];
+  const wb=XLSX.utils.book_new();
+  const wsData=[headers];
   targetAtts.forEach(function(a) {
     const e=getEmpById(a.emp_id); if(!e) return;
     const s=a.status||getAttStatus(a);
-    rows.push([e.name, e.dept, a.att_date, formatTimeKST(a.checkin_time), formatTimeKST(a.checkout_time), statusMap[s]||s]);
+    wsData.push([e.name, e.dept, a.att_date, formatTimeKST(a.checkin_time), formatTimeKST(a.checkout_time), statusMap[s]||s]);
   });
-  const wb=XLSX.utils.book_new();
-  const ws=XLSX.utils.aoa_to_sheet(rows);
+  const ws=XLSX.utils.aoa_to_sheet(wsData);
   ws['!cols']=[{wch:10},{wch:16},{wch:12},{wch:10},{wch:10},{wch:10}];
+  ws['!rows']=[{hpt:20}];
+  // 헤더 스타일
+  headers.forEach(function(_,i){
+    const cell=XLSX.utils.encode_cell({r:0,c:i});
+    if(ws[cell]) ws[cell].s=headerStyle;
+  });
+  // 데이터 스타일
+  for(var r=1;r<wsData.length;r++){
+    var s=wsData[r][5];
+    var sKey=Object.keys(statusMap).find(function(k){ return statusMap[k]===s; })||'off';
+    for(var c=0;c<6;c++){
+      var cell=XLSX.utils.encode_cell({r:r,c:c});
+      if(!ws[cell]) continue;
+      if(c===5){ ws[cell].s=Object.assign({},cellStyle,{font:{bold:true,color:{rgb:statusColor[sKey]||'FF333333'}}}); }
+      else { ws[cell].s=cellStyle; }
+    }
+  }
   XLSX.utils.book_append_sheet(wb, ws, '근태기록');
   XLSX.writeFile(wb, '근태기록_'+today+'.xlsx');
 }
