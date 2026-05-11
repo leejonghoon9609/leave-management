@@ -43,8 +43,8 @@ body { font-family: "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; backgrou
 .nav-item { display: flex; align-items: center; gap: 10px; padding: 10px 20px; font-size: 13px; color: var(--gray-600); cursor: pointer; border-left: 3px solid transparent; }
 .nav-item:hover { background: var(--gray-50); }
 .nav-item.active { background: var(--primary-light); color: var(--primary-dark); border-left-color: var(--primary); font-weight: 600; }
-.nav-section { font-size: 12px; color: var(--gray-900); padding: 14px 20px 6px; font-weight: 700; letter-spacing: 0; }
-.nav-divider { height: 1px; background: var(--gray-100); margin: 8px 0; }
+.nav-section { font-size: 14px; color: var(--gray-900); padding: 14px 20px 6px; font-weight: 700; letter-spacing: 0; }
+.nav-divider { height: 2px; background: var(--gray-900); margin: 12px 0; }
 .logout-btn { margin: 8px 20px 0; padding: 8px; font-size: 12px; color: var(--gray-400); background: none; border: 1px solid var(--gray-200); border-radius: var(--radius-sm); cursor: pointer; font-family: inherit; }
 .excel-btn { margin: 8px 20px 0; padding: 8px; font-size: 12px; color: var(--primary-dark); background: var(--primary-light); border: 1px solid #9FE1CB; border-radius: var(--radius-sm); cursor: pointer; font-family: inherit; }
 .live-badge { display: flex; align-items: center; gap: 6px; padding: 4px 12px; background: var(--primary-light); border-radius: 20px; font-size: 11px; color: var(--primary-dark); margin: 0 20px 16px; }
@@ -264,6 +264,7 @@ body { font-family: "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; backgrou
       <div class="nav-item" onclick="showPage('my-calendar',this)"><span>📅</span> 캘린더</div>
     </div>
 
+    <div class="nav-divider" style="margin:12px 20px;"></div>
     <button class="excel-btn" onclick="downloadAttExcel()">📥 근태현황 다운로드</button>
     <button class="excel-btn" onclick="downloadLeaveExcel()">📥 연차현황 다운로드</button>
     <button class="logout-btn" onclick="logout()">🚪 로그아웃</button>
@@ -764,7 +765,8 @@ function renderAdminLeaveDashboard() {
   const avg = activeEmps.length > 0 ? Math.round(activeEmps.reduce(function(s,e){ return s+getRemaining(e); },0)/activeEmps.length) : 0;
   document.getElementById('m-avg').textContent = avg;
   const el = document.getElementById('pending-list');
-  const allAdminPending = adminPending.concat(docAdminPending.filter(function(d){ return !adminPending.find(function(a){ return a.id===d.id; }); }));
+  if(!allAdminPending.length) { el.innerHTML = '<div class="empty">결재 대기 신청이 없습니다</div>'; }
+  else {
   if(!allAdminPending.length) { el.innerHTML = '<div class="empty">\uacb0\uc7ac \ub300\uae30 \uc2e0\uccad\uc774 \uc5c6\uc2b5\ub2c8\ub2e4</div>'; return; }
   el.innerHTML = allAdminPending.map(function(r) {
     const e = getEmpById(r.emp_id); if(!e) return '';
@@ -774,6 +776,7 @@ function renderAdminLeaveDashboard() {
     const btnHtml = r.admin_status==='pending' ? '<div class="btn-row"><button class="btn btn-approve" onclick="adminApprove('+r.id+')">최종승인</button><button class="btn btn-reject" onclick="openRejectModal('+r.id+',\'admin\')">거절</button></div>' : '';
     return '<div class="req-row"><div class="avatar ' + avClass(idx) + '">' + ini(e.name) + '</div><div class="req-info"><div class="req-name">' + e.name + ' <span style="font-weight:400;font-size:11px;color:var(--gray-400)">' + e.dept + '</span></div><div class="req-detail">' + r.type + ' · ' + r.start_date + ' ~ ' + r.end_date + ' · ' + r.days + '일' + (r.reason?' · <span style="color:var(--blue);">'+r.reason+'</span>':'') + '</div>' + docHtml + '</div>' + (r.status==='manager-approved'?'<span class="badge badge-manager-approved">팀장승인</span>':leaveBadge(r.status)) + btnHtml + '</div>';
   }).join('');
+  }
   document.getElementById('emp-progress').innerHTML = activeEmps.map(function(e, idx) {
     const total=getTotal(e), used=getUsed(e), rem=getRemaining(e), pct=total>0?Math.round((used/total)*100):0;
     return '<div class="req-row"><div class="avatar ' + avClass(idx) + '">' + ini(e.name) + '</div><div class="progress-wrap"><div style="display:flex;justify-content:space-between;font-size:12px;"><span style="font-weight:600">' + e.name + '</span><span style="color:var(--gray-400)">잔여 '+rem+'/'+total+'일</span></div><div class="progress-bar"><div class="progress-fill ' + (pct>80?'danger':'') + '" style="width:'+pct+'%"></div></div></div></div>';
@@ -811,7 +814,8 @@ function renderManagerLeaveDashboard() {
   document.getElementById('mm-pending').textContent = pending.length + docManagerPending.length;
   document.getElementById('mm-approved').textContent = teamReqs.filter(function(r){ return r.manager_status==='approved'; }).length;
   const el = document.getElementById('manager-pending-list');
-  const allManagerPending = pending.concat(docManagerPending);
+  if(!allManagerPending.length) { el.innerHTML = '<div class="empty">대기 중인 신청이 없습니다</div>'; }
+  else {
   if(!allManagerPending.length) { el.innerHTML = '<div class="empty">대기 중인 신청이 없습니다</div>'; return; }
   el.innerHTML = allManagerPending.map(function(r) {
     const e = getEmpById(r.emp_id); if(!e) return '';
@@ -821,6 +825,7 @@ function renderManagerLeaveDashboard() {
     const btnHtml = !isDocWaiting ? '<div class="btn-row"><button class="btn btn-approve" onclick="managerApprove('+r.id+')">승인</button><button class="btn btn-reject" onclick="openRejectModal('+r.id+',\'manager\')">거절</button></div>' : '';
     return '<div class="req-row"><div class="avatar ' + avClass(idx) + '">' + ini(e.name) + '</div><div class="req-info"><div class="req-name">' + e.name + '</div><div class="req-detail">' + r.type + ' · ' + r.start_date + ' ~ ' + r.end_date + ' · ' + r.days + '일' + (r.reason?' · <span style="color:var(--blue);">'+r.reason+'</span>':'') + '</div>' + docHtml + '</div>' + leaveBadge(r.status) + btnHtml + '</div>';
   }).join('');
+  }
   document.getElementById('manager-emp-progress').innerHTML = teamMembers.map(function(e) {
     const idx=employees.findIndex(function(x){ return x.id===e.id; });
     const total=getTotal(e), used=getUsed(e), rem=getRemaining(e), pct=total>0?Math.round((used/total)*100):0;
