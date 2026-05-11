@@ -44,7 +44,7 @@ body { font-family: "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; backgrou
 .nav-item:hover { background: var(--gray-50); }
 .nav-item.active { background: var(--primary-light); color: var(--primary-dark); border-left-color: var(--primary); font-weight: 600; }
 .nav-section { font-size: 14px; color: var(--gray-900); padding: 14px 20px 6px; font-weight: 700; letter-spacing: 0; }
-.nav-divider { height: 2px; background: var(--gray-900); margin: 12px 0; }
+.nav-divider { height: 1px; background: var(--gray-400); margin: 8px 0; }
 .logout-btn { margin: 8px 20px 0; padding: 8px; font-size: 12px; color: var(--gray-400); background: none; border: 1px solid var(--gray-200); border-radius: var(--radius-sm); cursor: pointer; font-family: inherit; }
 .excel-btn { margin: 8px 20px 0; padding: 8px; font-size: 12px; color: var(--primary-dark); background: var(--primary-light); border: 1px solid #9FE1CB; border-radius: var(--radius-sm); cursor: pointer; font-family: inherit; }
 .live-badge { display: flex; align-items: center; gap: 6px; padding: 4px 12px; background: var(--primary-light); border-radius: 20px; font-size: 11px; color: var(--primary-dark); margin: 0 20px 16px; }
@@ -264,9 +264,9 @@ body { font-family: "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; backgrou
       <div class="nav-item" onclick="showPage('my-calendar',this)"><span>📅</span> 캘린더</div>
     </div>
 
-    <div class="nav-divider" style="margin:12px 20px;"></div>
-    <button class="excel-btn" onclick="downloadAttExcel()">📥 근태현황 다운로드</button>
-    <button class="excel-btn" onclick="downloadLeaveExcel()">📥 연차현황 다운로드</button>
+    <button class="excel-btn" onclick="downloadAttExcel()">📥 근태현황 다운로드(.xlsx)</button>
+    <div class="nav-divider" style="margin:8px 20px;"></div>
+    <button class="excel-btn" onclick="downloadLeaveExcel()">📥 연차현황 다운로드(.xlsx)</button>
     <button class="logout-btn" onclick="logout()">🚪 로그아웃</button>
   </div>
 
@@ -1323,7 +1323,7 @@ function downloadLeaveExcel() {
   const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
   const url=URL.createObjectURL(blob);
   const a=document.createElement('a');
-  a.href=url; a.download='연차현황_'+today+'.csv'; a.click(); URL.revokeObjectURL(url);
+  a.href=url; a.download='연차현황_'+today+'.xlsx'; a.click(); URL.revokeObjectURL(url);
 }
 
 function downloadAttExcel() {
@@ -1341,7 +1341,7 @@ function downloadAttExcel() {
   const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
   const url=URL.createObjectURL(blob);
   const a=document.createElement('a');
-  a.href=url; a.download='근태기록_'+today+'.csv'; a.click(); URL.revokeObjectURL(url);
+  a.href=url; a.download='근태기록_'+today+'.xlsx'; a.click(); URL.revokeObjectURL(url);
 }
 
 // ===== 전체 렌더 =====
