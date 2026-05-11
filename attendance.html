@@ -240,6 +240,16 @@ let myCurrentMonth = new Date();
 let currentFilter = 'all';
 let clockTimer = null, autoRefreshTimer = null;
 
+// 팀장 설정: 이름 -> 담당 부서
+const TEAM_LEADERS = {
+  '조윤미': '총무부',
+  '송규헌': '측량부',
+  '박영범': '사업관리(현장)',
+  '남윤지': '사업관리'
+};
+function isTeamLeader(name) { return !!TEAM_LEADERS[name]; }
+function getLeaderDept(name) { return TEAM_LEADERS[name] || null; }
+
 // ✅ KST 기준 날짜/시간 헬퍼 함수들
 function nowKST() {
   // 현재 시각을 KST(UTC+9) 기준 Date 객체처럼 다루기 위한 offset 적용
@@ -380,17 +390,33 @@ async function empLogin() {
   await loadData();
   const empData = getEmpById(currentEmpId);
   if (!empData) { alert('직원 정보를 찾을 수 없습니다'); return; }
-  currentRole = 'employee';
-  saveSession('employee', currentEmpId);
+
+  // 팀장 여부 판단
+  if (isTeamLeader(empData.name)) {
+    currentRole = 'teamleader';
+  } else {
+    currentRole = 'employee';
+  }
+  saveSession(currentRole, currentEmpId);
+
   const idx = employees.findIndex(function(e) { return e.id === currentEmpId; });
   document.getElementById('login-overlay').style.display = 'none';
   document.getElementById('main-app').style.display = 'flex';
-  document.getElementById('admin-nav').style.display = 'none';
-  document.getElementById('employee-nav').style.display = 'block';
   document.getElementById('sidebar-year').textContent = new Date().getFullYear() + '년 근태 시스템';
-  document.getElementById('user-info-box').innerHTML = '<div class="user-avatar ' + avClass(idx) + '">' + ini(empData.name) + '</div><div><div class="user-name">' + empData.name + '</div><div class="user-role">' + empData.dept + '</div></div>';
-  document.getElementById('checkin-sub').textContent = empData.name + '님';
-  showPage('checkin', document.querySelector('#employee-nav .nav-item'));
+  document.getElementById('user-info-box').innerHTML = '<div class="user-avatar ' + avClass(idx) + '">' + ini(empData.name) + '</div><div><div class="user-name">' + empData.name + '</div><div class="user-role">' + (currentRole === 'teamleader' ? '팀장 · ' : '') + empData.dept + '</div></div>';
+
+  if (currentRole === 'teamleader') {
+    // 팀장: 관리자용 네비게이션 표시 (대시보드+근태기록), 출퇰근 화면도 표시
+    document.getElementById('admin-nav').style.display = 'block';
+    document.getElementById('employee-nav').style.display = 'block';
+    document.getElementById('checkin-sub').textContent = empData.name + '님';
+    showPage('dashboard', document.querySelector('#admin-nav .nav-item'));
+  } else {
+    document.getElementById('admin-nav').style.display = 'none';
+    document.getElementById('employee-nav').style.display = 'block';
+    document.getElementById('checkin-sub').textContent = empData.name + '님';
+    showPage('checkin', document.querySelector('#employee-nav .nav-item'));
+  }
   startClock();
   startAutoRefresh();
 }
@@ -550,8 +576,10 @@ async function doCheckOut() {
 }
 
 function renderDashboard() {
-  const today = todayStrKST(); // ✅ KST 기준
-  const todayAtts = attendances.filter(function(a) { return a.att_date === today; });
+  const today = todayStrKST();
+  const visEmps = getVisibleEmployees();
+  const visAtts = getVisibleAttendances();
+  const todayAtts = visAtts.filter(function(a) { return a.att_date === today; });
   let present = 0, late = 0, checkout = 0;
   todayAtts.forEach(function(a) {
     const s = getStatus(a);
@@ -559,7 +587,7 @@ function renderDashboard() {
     if (s === 'late') late++;
     if (a.checkout_time) checkout++;
   });
-  const activeEmps = employees.filter(function(e) { return e.role !== 'admin'; });
+  const activeEmps = visEmps.filter(function(e) { return e.role !== 'admin'; });
   const absent = activeEmps.length - todayAtts.length;
   document.getElementById('m-present').textContent = present;
   document.getElementById('m-late').textContent = late;
@@ -606,7 +634,7 @@ function setFilter(f, el) {
 function renderRecords() {
   const dateEl = document.getElementById('filter-date');
   const filterDate = dateEl ? dateEl.value || todayStrKST() : todayStrKST(); // ✅ KST 기준
-  let filtered = attendances.filter(function(a) { return a.att_date === filterDate; });
+  let filtered = getVisibleAttendances().filter(function(a) { return a.att_date === filterDate; });
   if (currentFilter !== 'all') {
     filtered = filtered.filter(function(a) { return getStatus(a) === currentFilter; });
   }
@@ -628,8 +656,8 @@ function renderMonthly() {
   const months = ['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'];
   document.getElementById('monthly-title').textContent = y + '년 ' + months[m];
   const prefix = y + '-' + String(m + 1).padStart(2, '0');
-  const monthAtts = attendances.filter(function(a) { return a.att_date && a.att_date.startsWith(prefix); });
-  const activeEmps = employees.filter(function(e) { return e.role !== 'admin'; });
+  const monthAtts = getVisibleAttendances().filter(function(a) { return a.att_date && a.att_date.startsWith(prefix); });
+  const activeEmps = getVisibleEmployees().filter(function(e) { return e.role !== 'admin'; });
   const el = document.getElementById('monthly-list');
   el.innerHTML = '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:12px;"><thead><tr style="background:var(--gray-50);"><th style="padding:8px;text-align:left;border-bottom:1px solid var(--gray-200);">이름</th><th style="padding:8px;text-align:center;border-bottom:1px solid var(--gray-200);">출근</th><th style="padding:8px;text-align:center;border-bottom:1px solid var(--gray-200);">지각</th><th style="padding:8px;text-align:center;border-bottom:1px solid var(--gray-200);">결근</th><th style="padding:8px;text-align:center;border-bottom:1px solid var(--gray-200);">출근율</th></tr></thead><tbody>' +
     activeEmps.map(function(e, idx) {
@@ -646,7 +674,7 @@ function renderMonthly() {
 function renderEmpList() {
   const el = document.getElementById('emp-list');
   const today = todayStrKST(); // ✅ KST 기준
-  el.innerHTML = employees.map(function(e, idx) {
+  el.innerHTML = getVisibleEmployees().map(function(e, idx) {
     const att = attendances.find(function(a) { return a.emp_id === e.id && a.att_date === today; });
     const s = getStatus(att);
     return '<div class="att-row"><div class="avatar ' + avClass(idx) + '">' + ini(e.name) + '</div><div class="att-info"><div class="att-name">' + e.name + ' <span style="font-weight:400;font-size:11px;color:var(--gray-400);">' + (e.position || '') + '</span></div><div class="att-detail">' + e.dept + '</div></div>' + statusBadge(att ? s : 'absent') + '</div>';
@@ -766,14 +794,35 @@ async function showPage(page, el) {
   }
 }
 
+function getVisibleEmployees() {
+  // 관리자: 전체, 팀장: 자기 부서만, 직원: 해당없음
+  if (currentRole === 'admin') return employees;
+  if (currentRole === 'teamleader') {
+    const empData = getEmpById(currentEmpId);
+    if (!empData) return [];
+    const dept = getLeaderDept(empData.name);
+    return employees.filter(function(e) { return e.dept === dept; });
+  }
+  return employees;
+}
+
+function getVisibleAttendances() {
+  if (currentRole === 'admin') return attendances;
+  if (currentRole === 'teamleader') {
+    const visibleEmpIds = getVisibleEmployees().map(function(e) { return e.id; });
+    return attendances.filter(function(a) { return visibleEmpIds.includes(a.emp_id); });
+  }
+  return attendances;
+}
+
 function renderAll() {
-  if (currentRole === 'admin') {
+  if (currentRole === 'admin' || currentRole === 'teamleader') {
     renderDashboard();
     renderRecords();
     renderMonthly();
     renderEmpList();
   }
-  if (currentRole === 'employee') {
+  if (currentRole === 'teamleader' || currentRole === 'employee') {
     renderCheckin();
     renderMyRecords();
   }
