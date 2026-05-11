@@ -675,7 +675,7 @@ function renderMonthly() {
 function renderEmpList() {
   const el = document.getElementById('emp-list');
   const today = todayStrKST(); // ✅ KST 기준
-  el.innerHTML = getVisibleEmployees().map(function(e, idx) {
+  el.innerHTML = getVisibleEmployees().filter(function(e) { return e.role !== 'admin'; }).map(function(e, idx) {
     const att = attendances.find(function(a) { return a.emp_id === e.id && a.att_date === today; });
     const s = getStatus(att);
     return '<div class="att-row"><div class="avatar ' + avClass(idx) + '">' + ini(e.name) + '</div><div class="att-info"><div class="att-name">' + e.name + ' <span style="font-weight:400;font-size:11px;color:var(--gray-400);">' + (e.position || '') + '</span></div><div class="att-detail">' + e.dept + '</div></div>' + statusBadge(att ? s : 'absent') + '</div>';
