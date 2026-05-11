@@ -756,6 +756,7 @@ function stopAutoRefresh() { if(autoRefreshTimer) clearInterval(autoRefreshTimer
 // ===== 연차 렌더 =====
 function renderAdminLeaveDashboard() {
   const activeEmps = employees.filter(function(e){ return e.role !== 'admin'; });
+  if(!employees.length) { return; } // 데이터 로드 전이면 스킵
   const adminPending = requests.filter(function(r){ return r.admin_status==='pending'; });
   const docAdminPending = requests.filter(function(r){ return r.type==='병가' && r.status==='approved' && r.doc_url && (r.doc_status==='submitted'||r.doc_status==='manager-approved') && r.doc_status!=='confirmed'; });
   const approved = requests.filter(function(r){ return r.status==='approved'; });
@@ -1359,7 +1360,6 @@ async function showPage(page, el) {
   if(pageEl) pageEl.classList.add('active');
   document.querySelectorAll('.nav-item').forEach(function(n){ n.classList.remove('active'); });
   if(el) el.classList.add('active');
-  await loadData();
   renderAll();
   if(page==='calendar') renderCalendar('cal-body-a','cal-head-a','cal-title','cal-legend-a',null);
   if(page==='my-calendar') {
