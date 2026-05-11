@@ -753,20 +753,25 @@ function stopAutoRefresh() { if(autoRefreshTimer) clearInterval(autoRefreshTimer
 
 // ===== 연차 렌더 =====
 function renderAdminLeaveDashboard() {
-  const activeEmps = employees.filter(function(e){ return e.role !== 'admin'; });
   const adminPending = requests.filter(function(r){ return r.admin_status==='pending'; });
+  const docAdminPending = requests.filter(function(r){ return r.type==='\ubc19\uac00' && r.status==='approved' && r.doc_url && (r.doc_status==='submitted'||r.doc_status==='manager-approved') && r.doc_status!=='confirmed'; });
   const approved = requests.filter(function(r){ return r.status==='approved'; });
   document.getElementById('m-total').textContent = activeEmps.length;
-  document.getElementById('m-pending').textContent = adminPending.length;
+  document.getElementById('m-pending').textContent = adminPending.length + docAdminPending.length;
   document.getElementById('m-approved').textContent = approved.length;
   const avg = activeEmps.length > 0 ? Math.round(activeEmps.reduce(function(s,e){ return s+getRemaining(e); },0)/activeEmps.length) : 0;
   document.getElementById('m-avg').textContent = avg;
   const el = document.getElementById('pending-list');
-  if(!adminPending.length) { el.innerHTML = '<div class="empty">결재 대기 신청이 없습니다</div>'; return; }
-  el.innerHTML = adminPending.map(function(r) {
+  const allAdminPending = adminPending.concat(docAdminPending.filter(function(d){ return !adminPending.find(function(a){ return a.id===d.id; }); }));
+  if(!allAdminPending.length) { el.innerHTML = '<div class="empty">\uacb0\uc7ac \ub300\uae30 \uc2e0\uccad\uc774 \uc5c6\uc2b5\ub2c8\ub2e4</div>'; return; }
+  el.innerHTML = allAdminPending.map(function(r) {
     const e = getEmpById(r.emp_id); if(!e) return '';
     const idx = employees.findIndex(function(x){ return x.id===e.id; });
-    return '<div class="req-row"><div class="avatar ' + avClass(idx) + '">' + ini(e.name) + '</div><div class="req-info"><div class="req-name">' + e.name + ' <span style="font-weight:400;font-size:11px;color:var(--gray-400)">' + e.dept + '</span></div><div class="req-detail">' + r.type + ' · ' + r.start_date + ' ~ ' + r.end_date + ' · ' + r.days + '일' + (r.reason?' · <span style="color:var(--blue);">'+r.reason+'</span>':'') + '</div></div>' + (r.status==='manager-approved'?'<span class="badge badge-manager-approved">팀장승인</span>':leaveBadge(r.status)) + '<div class="btn-row"><button class="btn btn-approve" onclick="adminApprove('+r.id+')">최종승인</button><button class="btn btn-reject" onclick="openRejectModal('+r.id+',\'admin\')">거절</button></div></div>';
+    const isDocWaiting = r.type==='\ubc19\uac00' && r.status==='approved' && r.doc_url && (r.doc_status==='submitted'||r.doc_status==='manager-approved');
+    let docHtml = isDocWaiting ? '<div style="background:var(--amber-light);border-radius:4px;padding:6px 8px;margin-top:6px;font-size:11px;color:var(--amber);">\ud83d\udcce \uc9c4\ub2e8\uc11c \ud655\uc778 \ub300\uae30 \xb7 <a href="'+r.doc_url+'" target="_blank" style="color:var(--blue);">\ucca8\ubd80\ud30c\uc77c \ubcf4\uae30</a> <button class="btn btn-approve" style="font-size:10px;padding:3px 8px;margin-left:6px;" onclick="confirmMedicalDoc('+r.id+')">\u2705 \uc5f0\ucc28 \uc81c\uc678 \ud655\uc815</button></div>' : '';
+    const btnHtml = r.admin_status==='pending' ? '<div class="btn-row"><button class="btn btn-approve" onclick="adminApprove('+r.id+')">\ucd5c\uc885\uc2b9\uc778</button><button class="btn btn-reject" onclick="openRejectModal('+r.id+',\'admin\')">\uac70\uc808</button></div>' : '';
+    return '<div class="req-row"><div class="avatar ' + avClass(idx) + '">' + ini(e.name) + '</div><div class="req-info"><div class="req-name">' + e.name + ' <span style="font-weight:400;font-size:11px;color:var(--gray-400)">' + e.dept + '</span></div><div class="req-detail">' + r.type + ' \xb7 ' + r.start_date + ' ~ ' + r.end_date + ' \xb7 ' + r.days + '\uc77c' + (r.reason?' \xb7 <span style="color:var(--blue);">'+r.reason+'</span>':'') + '</div>' + docHtml + '</div>' + (r.status==='manager-approved'?'<span class="badge badge-manager-approved">\ud300\uc7a5\uc2b9\uc778</span>':leaveBadge(r.status)) + btnHtml + '</div>';
+  }).join('');
   }).join('');
   document.getElementById('emp-progress').innerHTML = activeEmps.map(function(e, idx) {
     const total=getTotal(e), used=getUsed(e), rem=getRemaining(e), pct=total>0?Math.round((used/total)*100):0;
@@ -800,15 +805,21 @@ function renderManagerLeaveDashboard() {
   const teamMembers = employees.filter(function(e){ return e.dept===myEmp.dept && e.id!==currentEmpId && e.role!=='admin'; });
   const teamReqs = requests.filter(function(r){ const e=getEmpById(r.emp_id); return e && e.dept===myEmp.dept && r.emp_id!==currentEmpId; });
   const pending = teamReqs.filter(function(r){ return r.status==='pending'; });
+  const docManagerPending = teamReqs.filter(function(r){ return r.type==='야가' && r.status==='approved' && r.doc_url && r.doc_status==='pending'; });
   document.getElementById('mm-total').textContent = teamMembers.length;
-  document.getElementById('mm-pending').textContent = pending.length;
+  document.getElementById('mm-pending').textContent = pending.length + docManagerPending.length;
   document.getElementById('mm-approved').textContent = teamReqs.filter(function(r){ return r.manager_status==='approved'; }).length;
   const el = document.getElementById('manager-pending-list');
-  if(!pending.length) { el.innerHTML = '<div class="empty">대기 중인 신청이 없습니다</div>'; return; }
-  el.innerHTML = pending.map(function(r) {
+  const allManagerPending = pending.concat(docManagerPending);
+  if(!allManagerPending.length) { el.innerHTML = '<div class="empty">대기 중인 신청이 없습니다</div>'; return; }
+  el.innerHTML = allManagerPending.map(function(r) {
     const e = getEmpById(r.emp_id); if(!e) return '';
     const idx = employees.findIndex(function(x){ return x.id===e.id; });
-    return '<div class="req-row"><div class="avatar ' + avClass(idx) + '">' + ini(e.name) + '</div><div class="req-info"><div class="req-name">' + e.name + '</div><div class="req-detail">' + r.type + ' · ' + r.start_date + ' ~ ' + r.end_date + ' · ' + r.days + '일' + (r.reason?' · <span style="color:var(--blue);">'+r.reason+'</span>':'') + '</div></div>' + leaveBadge(r.status) + '<div class="btn-row"><button class="btn btn-approve" onclick="managerApprove('+r.id+')">승인</button><button class="btn btn-reject" onclick="openRejectModal('+r.id+',\'manager\')">거절</button></div></div>';
+    const isDocWaiting = r.type==='병가' && r.status==='approved' && r.doc_url && r.doc_status==='pending';
+    let docHtml = isDocWaiting ? '<div style="background:var(--amber-light);border-radius:4px;padding:6px 8px;margin-top:6px;font-size:11px;color:var(--amber);">📎 진단서 확인 대기 · <a href="'+r.doc_url+'" target="_blank" style="color:var(--blue);">체부파일 보기</a> <button class="btn btn-approve" style="font-size:10px;padding:3px 8px;margin-left:6px;" onclick="managerApproveMedical('+r.id+')">✅ 1차 승인 → 관리자 전달</button></div>' : '';
+    const btnHtml = !isDocWaiting ? '<div class="btn-row"><button class="btn btn-approve" onclick="managerApprove('+r.id+')">승인</button><button class="btn btn-reject" onclick="openRejectModal('+r.id+',\'manager\')">거절</button></div>' : '';
+    return '<div class="req-row"><div class="avatar ' + avClass(idx) + '">' + ini(e.name) + '</div><div class="req-info"><div class="req-name">' + e.name + '</div><div class="req-detail">' + r.type + ' · ' + r.start_date + ' ~ ' + r.end_date + ' · ' + r.days + '일' + (r.reason?' · <span style="color:var(--blue);">'+r.reason+'</span>':'') + '</div>' + docHtml + '</div>' + leaveBadge(r.status) + btnHtml + '</div>';
+  }).join('');
   }).join('');
   document.getElementById('manager-emp-progress').innerHTML = teamMembers.map(function(e) {
     const idx=employees.findIndex(function(x){ return x.id===e.id; });
