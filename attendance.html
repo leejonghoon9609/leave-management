@@ -434,12 +434,36 @@ function getTodayAttendance(empId) {
 
 function getStatus(att) {
   if (!att || !att.checkin_time) return 'absent';
-  // ✅ KST 기준으로 시:분 추출
   const d = new Date(att.checkin_time);
   const kstHour = parseInt(d.toLocaleString('ko-KR', { hour: '2-digit', hour12: false, timeZone: 'Asia/Seoul' }));
   const kstMin = parseInt(d.toLocaleString('ko-KR', { minute: '2-digit', timeZone: 'Asia/Seoul' }));
-  if (kstHour > CHECKIN_HOUR || (kstHour === CHECKIN_HOUR && kstMin > 0)) return 'late';
+  // ✅ 9시 01분부터 지각 (9시 00분까지는 정상출근)
+  if (kstHour > CHECKIN_HOUR || (kstHour === CHECKIN_HOUR && kstMin >= 1)) return 'late';
   return 'present';
+}
+
+// ✅ 주말 제외 근무일수 (해당 월 전체)
+function countWorkDays(year, month) {
+  const days = new Date(year, month + 1, 0).getDate();
+  let count = 0;
+  for (let d = 1; d <= days; d++) {
+    const dow = new Date(year, month, d).getDay();
+    if (dow !== 0 && dow !== 6) count++;
+  }
+  return count;
+}
+
+// ✅ 주말 제외 근무일수 (오늘까지만)
+function countWorkDaysUntilToday(year, month) {
+  const today = new Date();
+  const isCurrentMonth = (today.getFullYear() === year && today.getMonth() === month);
+  const lastDay = isCurrentMonth ? today.getDate() : new Date(year, month + 1, 0).getDate();
+  let count = 0;
+  for (let d = 1; d <= lastDay; d++) {
+    const dow = new Date(year, month, d).getDay();
+    if (dow !== 0 && dow !== 6) count++;
+  }
+  return count;
 }
 
 async function doCheckIn() {
@@ -611,12 +635,12 @@ function renderMonthly() {
   el.innerHTML = '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:12px;"><thead><tr style="background:var(--gray-50);"><th style="padding:8px;text-align:left;border-bottom:1px solid var(--gray-200);">이름</th><th style="padding:8px;text-align:center;border-bottom:1px solid var(--gray-200);">출근</th><th style="padding:8px;text-align:center;border-bottom:1px solid var(--gray-200);">지각</th><th style="padding:8px;text-align:center;border-bottom:1px solid var(--gray-200);">결근</th><th style="padding:8px;text-align:center;border-bottom:1px solid var(--gray-200);">출근율</th></tr></thead><tbody>' +
     activeEmps.map(function(e, idx) {
       const myAtts = monthAtts.filter(function(a) { return a.emp_id === e.id; });
-      const workDays = new Date(y, m + 1, 0).getDate();
+      const workDays = countWorkDaysUntilToday(y, m); // ✅ 주말 제외, 오늘까지
       const present = myAtts.filter(function(a) { return getStatus(a) === 'present'; }).length;
       const late = myAtts.filter(function(a) { return getStatus(a) === 'late'; }).length;
-      const absent = workDays - myAtts.length;
-      const rate = Math.round((myAtts.length / workDays) * 100);
-      return '<tr style="border-bottom:1px solid var(--gray-100);"><td style="padding:8px;"><div style="display:flex;align-items:center;gap:8px;"><div class="avatar ' + avClass(idx) + '" style="width:28px;height:28px;font-size:10px;">' + ini(e.name) + '</div>' + e.name + '</div></td><td style="padding:8px;text-align:center;color:var(--primary);font-weight:600;">' + present + '</td><td style="padding:8px;text-align:center;color:var(--amber);font-weight:600;">' + late + '</td><td style="padding:8px;text-align:center;color:var(--red);font-weight:600;">' + Math.max(0, absent) + '</td><td style="padding:8px;text-align:center;"><span style="background:' + (rate >= 90 ? 'var(--primary-light)' : rate >= 70 ? 'var(--amber-light)' : 'var(--red-light)') + ';color:' + (rate >= 90 ? 'var(--primary-dark)' : rate >= 70 ? 'var(--amber)' : 'var(--red-dark)') + ';padding:2px 8px;border-radius:20px;font-weight:600;">' + rate + '%</span></td></tr>';
+      const absent = Math.max(0, workDays - myAtts.length);
+      const rate = workDays > 0 ? Math.round((myAtts.length / workDays) * 100) : 0;
+      return '<tr style="border-bottom:1px solid var(--gray-100);"><td style="padding:8px;"><div style="display:flex;align-items:center;gap:8px;"><div class="avatar ' + avClass(idx) + '" style="width:28px;height:28px;font-size:10px;">' + ini(e.name) + '</div>' + e.name + '</div></td><td style="padding:8px;text-align:center;color:var(--primary);font-weight:600;">' + present + '</td><td style="padding:8px;text-align:center;color:var(--amber);font-weight:600;">' + late + '</td><td style="padding:8px;text-align:center;color:var(--red);font-weight:600;">' + absent + '</td><td style="padding:8px;text-align:center;"><span style="background:' + (rate >= 90 ? 'var(--primary-light)' : rate >= 70 ? 'var(--amber-light)' : 'var(--red-light)') + ';color:' + (rate >= 90 ? 'var(--primary-dark)' : rate >= 70 ? 'var(--amber)' : 'var(--red-dark)') + ';padding:2px 8px;border-radius:20px;font-weight:600;">' + rate + '%</span></td></tr>';
     }).join('') + '</tbody></table></div>';
 }
 
@@ -684,7 +708,7 @@ function renderMyRecords() {
   document.getElementById('my-monthly-title').textContent = y + '년 ' + months[m];
   const prefix = y + '-' + String(m + 1).padStart(2, '0');
   const myAtts = attendances.filter(function(a) { return a.emp_id === currentEmpId && a.att_date && a.att_date.startsWith(prefix); });
-  const workDays = new Date(y, m + 1, 0).getDate();
+  const workDays = countWorkDaysUntilToday(y, m); // ✅ 주말 제외, 오늘까지
   const present = myAtts.filter(function(a) { return getStatus(a) === 'present'; }).length;
   const late = myAtts.filter(function(a) { return getStatus(a) === 'late'; }).length;
   const absent = Math.max(0, workDays - myAtts.length);
