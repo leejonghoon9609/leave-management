@@ -816,23 +816,28 @@ function renderManagerLeaveDashboard() {
   document.getElementById('mm-pending').textContent = pending.length + docManagerPending.length;
   document.getElementById('mm-approved').textContent = teamReqs.filter(function(r){ return r.manager_status==='approved'; }).length;
   const el = document.getElementById('manager-pending-list');
-  if(!allManagerPending.length) { el.innerHTML = '<div class="empty">대기 중인 신청이 없습니다</div>'; }
-  else {
-  if(!allManagerPending.length) { el.innerHTML = '<div class="empty">대기 중인 신청이 없습니다</div>'; return; }
-  el.innerHTML = allManagerPending.map(function(r) {
-    const e = getEmpById(r.emp_id); if(!e) return '';
-    const idx = employees.findIndex(function(x){ return x.id===e.id; });
-    const isDocWaiting = r.type==='병가' && r.status==='approved' && r.doc_url && r.doc_status==='pending';
-    let docHtml = isDocWaiting ? '<div style="background:var(--amber-light);border-radius:4px;padding:6px 8px;margin-top:6px;font-size:11px;color:var(--amber);">📎 진단서 확인 대기 · <a href="'+r.doc_url+'" target="_blank" style="color:var(--blue);">체부파일 보기</a> <button class="btn btn-approve" style="font-size:10px;padding:3px 8px;margin-left:6px;" onclick="managerApproveMedical('+r.id+')">✅ 1차 승인 → 관리자 전달</button></div>' : '';
-    const btnHtml = !isDocWaiting ? '<div class="btn-row"><button class="btn btn-approve" onclick="managerApprove('+r.id+')">승인</button><button class="btn btn-reject" onclick="openRejectModal('+r.id+',\'manager\')">거절</button></div>' : '';
-    return '<div class="req-row"><div class="avatar ' + avClass(idx) + '">' + ini(e.name) + '</div><div class="req-info"><div class="req-name">' + e.name + '</div><div class="req-detail">' + r.type + ' · ' + r.start_date + ' ~ ' + r.end_date + ' · ' + r.days + '일' + (r.reason?' · <span style="color:var(--blue);">'+r.reason+'</span>':'') + '</div>' + docHtml + '</div>' + leaveBadge(r.status) + btnHtml + '</div>';
-  }).join('');
+  if(!allManagerPending.length) {
+    el.innerHTML = '<div class="empty">대기 중인 신청이 없습니다</div>';
+  } else {
+    el.innerHTML = allManagerPending.map(function(r) {
+      const e = getEmpById(r.emp_id); if(!e) return '';
+      const idx = employees.findIndex(function(x){ return x.id===e.id; });
+      const isDocWaiting = r.type==='병가' && r.status==='approved' && r.doc_url && r.doc_status==='pending';
+      let docHtml = isDocWaiting ? '<div style="background:var(--amber-light);border-radius:4px;padding:6px 8px;margin-top:6px;font-size:11px;color:var(--amber);">📎 진단서 확인 대기 · <a href="'+r.doc_url+'" target="_blank" style="color:var(--blue);">첨부파일 보기</a> <button class="btn btn-approve" style="font-size:10px;padding:3px 8px;margin-left:6px;" onclick="managerApproveMedical('+r.id+')">✅ 1차 승인 → 관리자 전달</button></div>' : '';
+      const btnHtml = !isDocWaiting ? '<div class="btn-row"><button class="btn btn-approve" onclick="managerApprove('+r.id+')">승인</button><button class="btn btn-reject" onclick="openRejectModal('+r.id+',\'manager\')">거절</button></div>' : '';
+      return '<div class="req-row"><div class="avatar ' + avClass(idx) + '">' + ini(e.name) + '</div><div class="req-info"><div class="req-name">' + e.name + '</div><div class="req-detail">' + r.type + ' · ' + r.start_date + ' ~ ' + r.end_date + ' · ' + r.days + '일' + (r.reason?' · <span style="color:var(--blue);">'+r.reason+'</span>':'') + '</div>' + docHtml + '</div>' + leaveBadge(r.status) + btnHtml + '</div>';
+    }).join('');
   }
-  document.getElementById('manager-emp-progress').innerHTML = teamMembers.map(function(e) {
-    const idx=employees.findIndex(function(x){ return x.id===e.id; });
-    const total=getTotal(e), used=getUsed(e), rem=getRemaining(e), pct=total>0?Math.round((used/total)*100):0;
-    return '<div class="req-row"><div class="avatar ' + avClass(idx) + '">' + ini(e.name) + '</div><div class="progress-wrap"><div style="display:flex;justify-content:space-between;font-size:12px;"><span style="font-weight:600">' + e.name + '</span><span style="color:var(--gray-400)">잔여 '+rem+'/'+total+'일</span></div><div class="progress-bar"><div class="progress-fill ' + (pct>80?'danger':'') + '" style="width:'+pct+'%"></div></div></div></div>';
-  }).join('');
+  // 팀원 연차 현황은 항상 렌더링
+  const empEl = document.getElementById('manager-emp-progress');
+  if(!teamMembers.length) { empEl.innerHTML = '<div class="empty">팀원이 없습니다</div>'; }
+  else {
+    empEl.innerHTML = teamMembers.map(function(e) {
+      const idx=employees.findIndex(function(x){ return x.id===e.id; });
+      const total=getTotal(e), used=getUsed(e), rem=getRemaining(e), pct=total>0?Math.round((used/total)*100):0;
+      return '<div class="req-row"><div class="avatar ' + avClass(idx) + '">' + ini(e.name) + '</div><div class="progress-wrap"><div style="display:flex;justify-content:space-between;font-size:12px;"><span style="font-weight:600">' + e.name + '</span><span style="color:var(--gray-400)">잔여 '+rem+'/'+total+'일</span></div><div class="progress-bar"><div class="progress-fill ' + (pct>80?'danger':'') + '" style="width:'+pct+'%"></div></div></div></div>';
+    }).join('');
+  }
 }
 
 function renderManagerAllRequests() {
