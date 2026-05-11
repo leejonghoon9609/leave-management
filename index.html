@@ -43,7 +43,7 @@ body { font-family: "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; backgrou
 .nav-item { display: flex; align-items: center; gap: 10px; padding: 10px 20px; font-size: 13px; color: var(--gray-600); cursor: pointer; border-left: 3px solid transparent; }
 .nav-item:hover { background: var(--gray-50); }
 .nav-item.active { background: var(--primary-light); color: var(--primary-dark); border-left-color: var(--primary); font-weight: 600; }
-.nav-section { font-size: 10px; color: var(--gray-400); padding: 12px 20px 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+.nav-section { font-size: 12px; color: var(--gray-900); padding: 14px 20px 6px; font-weight: 700; letter-spacing: 0; }
 .nav-divider { height: 1px; background: var(--gray-100); margin: 8px 0; }
 .logout-btn { margin: 8px 20px 0; padding: 8px; font-size: 12px; color: var(--gray-400); background: none; border: 1px solid var(--gray-200); border-radius: var(--radius-sm); cursor: pointer; font-family: inherit; }
 .excel-btn { margin: 8px 20px 0; padding: 8px; font-size: 12px; color: var(--primary-dark); background: var(--primary-light); border: 1px solid #9FE1CB; border-radius: var(--radius-sm); cursor: pointer; font-family: inherit; }
@@ -224,44 +224,44 @@ body { font-family: "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; backgrou
 
     <!-- 관리자 메뉴 -->
     <div id="admin-nav" style="display:none;">
-      <div class="nav-section">📋 연차관리</div>
-      <div class="nav-item" onclick="showPage('leave-dashboard',this)"><span>📊</span> 대시보드</div>
-      <div class="nav-item" onclick="showPage('requests',this)"><span>📝</span> 신청 관리</div>
-      <div class="nav-item" onclick="showPage('calendar',this)"><span>📅</span> 캘린더</div>
-      <div class="nav-item" onclick="showPage('leave-employees',this)"><span>👥</span> 직원 현황</div>
-      <div class="nav-divider"></div>
       <div class="nav-section">⏱ 근태관리</div>
       <div class="nav-item" onclick="showPage('att-dashboard',this)"><span>📊</span> 대시보드</div>
       <div class="nav-item" onclick="showPage('records',this)"><span>📋</span> 근태 기록</div>
       <div class="nav-item" onclick="showPage('monthly',this)"><span>📅</span> 월별 현황</div>
       <div class="nav-item" onclick="showPage('att-employees',this)"><span>👥</span> 직원 현황</div>
+      <div class="nav-divider"></div>
+      <div class="nav-section">📋 연차관리</div>
+      <div class="nav-item" onclick="showPage('leave-dashboard',this)"><span>📊</span> 대시보드</div>
+      <div class="nav-item" onclick="showPage('requests',this)"><span>📝</span> 신청 관리</div>
+      <div class="nav-item" onclick="showPage('calendar',this)"><span>📅</span> 캘린더</div>
+      <div class="nav-item" onclick="showPage('leave-employees',this)"><span>👥</span> 직원 현황</div>
     </div>
 
     <!-- 팀장 메뉴 -->
     <div id="manager-nav" style="display:none;">
+      <div class="nav-section">⏱ 근태관리</div>
+      <div class="nav-item" onclick="showPage('att-dashboard',this)"><span>📊</span> 팀 출퇴근현황</div>
+      <div class="nav-item" onclick="showPage('records',this)"><span>📋</span> 근태 기록</div>
+      <div class="nav-item" onclick="showPage('checkin',this)"><span>🏃</span> 내 출퇴근</div>
+      <div class="nav-divider"></div>
       <div class="nav-section">📋 연차관리</div>
       <div class="nav-item" onclick="showPage('manager-dashboard',this)"><span>📊</span> 팀 대시보드</div>
       <div class="nav-item" onclick="showPage('manager-requests',this)"><span>📝</span> 팀 신청 관리</div>
       <div class="nav-item" onclick="showPage('my-calendar',this)"><span>📅</span> 팀 캘린더</div>
       <div class="nav-item" onclick="showPage('my-leave',this)"><span>🏖️</span> 내 연차</div>
       <div class="nav-item" onclick="showPage('apply',this)"><span>✏️</span> 신청하기</div>
-      <div class="nav-divider"></div>
-      <div class="nav-section">⏱ 근태관리</div>
-      <div class="nav-item" onclick="showPage('att-dashboard',this)"><span>📊</span> 팀 출퇴근현황</div>
-      <div class="nav-item" onclick="showPage('records',this)"><span>📋</span> 근태 기록</div>
-      <div class="nav-item" onclick="showPage('checkin',this)"><span>🏃</span> 내 출퇴근</div>
     </div>
 
     <!-- 직원 메뉴 -->
     <div id="employee-nav" style="display:none;">
+      <div class="nav-section">⏱ 근태관리</div>
+      <div class="nav-item" onclick="showPage('checkin',this)"><span>🏃</span> 출퇴근</div>
+      <div class="nav-item" onclick="showPage('my-records',this)"><span>📋</span> 내 근태 기록</div>
+      <div class="nav-divider"></div>
       <div class="nav-section">📋 연차관리</div>
       <div class="nav-item" onclick="showPage('my-leave',this)"><span>🏖️</span> 내 연차</div>
       <div class="nav-item" onclick="showPage('apply',this)"><span>✏️</span> 신청하기</div>
       <div class="nav-item" onclick="showPage('my-calendar',this)"><span>📅</span> 캘린더</div>
-      <div class="nav-divider"></div>
-      <div class="nav-section">⏱ 근태관리</div>
-      <div class="nav-item" onclick="showPage('checkin',this)"><span>🏃</span> 출퇴근</div>
-      <div class="nav-item" onclick="showPage('my-records',this)"><span>📋</span> 내 근태 기록</div>
     </div>
 
     <button class="excel-btn" onclick="downloadExcel()">📥 엑셀 다운로드</button>
