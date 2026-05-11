@@ -494,8 +494,7 @@ async function doCheckIn() {
         checkin_lng: lng,
         status: isLate ? 'late' : 'present'
       });
-      document.getElementById('gps-info').style.display = 'block';
-      document.getElementById('gps-info').innerHTML = '📍 출근 위치: <a href="https://maps.google.com/?q=' + lat + ',' + lng + '" target="_blank" style="color:var(--blue);">지도에서 보기</a>';
+      // ✅ 위치 정보는 관리자만 볼 수 있으므로 직원 화면에서는 숨김
       document.getElementById('checkin-status').textContent = '✅ ' + formatTimeKST(nowISO) + ' 출근 완료' + (isLate ? ' (지각)' : '');
       document.getElementById('btn-checkin').disabled = true;
       document.getElementById('btn-checkout').disabled = false;
@@ -576,7 +575,7 @@ function renderDashboard() {
       const s = getStatus(a);
       const checkinTime = formatTimeKST(a.checkin_time);
       const checkoutTime = formatTimeKST(a.checkout_time);
-      const gpsHtml = a.checkin_lat ? ' <a href="https://maps.google.com/?q=' + a.checkin_lat + ',' + a.checkin_lng + '" target="_blank" style="font-size:11px;color:var(--blue);">📍 위치보기</a>' : '';
+      const gpsHtml = (currentRole === 'admin' && a.checkin_lat) ? ' <a href="https://maps.google.com/?q=' + a.checkin_lat + ',' + a.checkin_lng + '" target="_blank" style="font-size:11px;color:var(--blue);">📍 위치보기</a>' : '';
       return '<div class="att-row"><div class="avatar ' + avClass(idx) + '">' + ini(e.name) + '</div><div class="att-info"><div class="att-name">' + e.name + ' <span style="font-weight:400;font-size:11px;color:var(--gray-400);">' + e.dept + '</span></div><div class="att-detail">출근 ' + checkinTime + ' · 퇴근 ' + checkoutTime + gpsHtml + '</div></div>' + statusBadge(s) + '</div>';
     }).join('');
   }
@@ -619,7 +618,7 @@ function renderRecords() {
     const s = getStatus(a);
     const checkinTime = formatTimeKST(a.checkin_time);
     const checkoutTime = formatTimeKST(a.checkout_time);
-    const gpsHtml = a.checkin_lat ? ' <a href="https://maps.google.com/?q=' + a.checkin_lat + ',' + a.checkin_lng + '" target="_blank" style="font-size:11px;color:var(--blue);">📍 위치</a>' : '';
+    const gpsHtml = (currentRole === 'admin' && a.checkin_lat) ? ' <a href="https://maps.google.com/?q=' + a.checkin_lat + ',' + a.checkin_lng + '" target="_blank" style="font-size:11px;color:var(--blue);">📍 위치</a>' : '';
     return '<div class="att-row"><div class="avatar ' + avClass(idx) + '">' + ini(e.name) + '</div><div class="att-info"><div class="att-name">' + e.name + ' <span style="font-weight:400;font-size:11px;color:var(--gray-400);">' + e.dept + '</span></div><div class="att-detail">출근 ' + checkinTime + ' · 퇴근 ' + checkoutTime + gpsHtml + '</div></div>' + statusBadge(s) + '</div>';
   }).join('');
 }
@@ -666,10 +665,8 @@ function renderCheckin() {
       document.getElementById('btn-checkout').disabled = false;
       document.getElementById('checkin-status').textContent = '✅ ' + checkinTime + ' 출근 완료 · 퇴근 전';
     }
-    if (att.checkin_lat) {
-      document.getElementById('gps-info').style.display = 'block';
-      document.getElementById('gps-info').innerHTML = '📍 출근 위치: <a href="https://maps.google.com/?q=' + att.checkin_lat + ',' + att.checkin_lng + '" target="_blank" style="color:var(--blue);">지도에서 보기</a>';
-    }
+    // ✅ 위치 정보는 관리자만 볼 수 있으므로 직원 화면에서는 숨김
+    document.getElementById('gps-info').style.display = 'none';
   } else {
     document.getElementById('btn-checkin').disabled = false;
     document.getElementById('btn-checkout').disabled = true;
