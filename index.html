@@ -593,7 +593,7 @@ function getTodayAttendance(empId) {
 // 팀장/관리자 필터
 function getVisibleEmployees() {
   if(currentRole === 'admin') return employees.filter(function(e){ return e.role !== 'admin'; });
-  if(currentRole === 'teamleader' || currentRole === 'manager') {
+  if(currentRole === 'teamleader' || currentRole === 'manager' || currentRole === 'viewer') {
     const emp = getEmpById(currentEmpId);
     if(!emp) return [];
     const dept = getLeaderDept(emp.name);
