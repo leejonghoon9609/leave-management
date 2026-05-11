@@ -264,7 +264,8 @@ body { font-family: "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; backgrou
       <div class="nav-item" onclick="showPage('my-calendar',this)"><span>📅</span> 캘린더</div>
     </div>
 
-    <button class="excel-btn" onclick="downloadExcel()">📥 엑셀 다운로드</button>
+    <button class="excel-btn" onclick="downloadAttExcel()">📥 근태현황 다운로드</button>
+    <button class="excel-btn" onclick="downloadLeaveExcel()">📥 연차현황 다운로드</button>
     <button class="logout-btn" onclick="logout()">🚪 로그아웃</button>
   </div>
 
@@ -1275,44 +1276,44 @@ async function doCheckOut() {
 }
 
 // ===== 엑셀 다운로드 =====
-function downloadExcel() {
+function downloadLeaveExcel() {
   const today=todayStrKST();
   const BOM='\uFEFF';
-  if(currentPage==='leave-dashboard'||currentPage==='requests'||currentPage==='calendar'||currentPage==='leave-employees'||currentPage==='manager-dashboard'||currentPage==='manager-requests'||currentPage==='my-leave'||currentPage==='apply'||currentPage==='my-calendar') {
-    // 연차 엑셀
-    let targetEmps=[];
-    if(currentRole==='admin') targetEmps=employees.filter(function(e){ return e.role!=='admin'; });
-    else if(currentRole==='manager') { const myEmp=getEmpById(currentEmpId); targetEmps=employees.filter(function(e){ return e.dept===myEmp.dept&&e.role!=='admin'; }); }
-    else targetEmps=employees.filter(function(e){ return e.id===currentEmpId; });
-    let csv=BOM+'이름,직급,부서,근속연수,총연차,사용연차,남은연차,사용내역\n';
-    targetEmps.forEach(function(e) {
-      const years=getYears(e),total=getTotal(e),used=getUsed(e),rem=getRemaining(e);
-      const detail=requests.filter(function(r){ return r.emp_id===e.id&&r.status==='approved'; }).map(function(r) {
-        function fmt(d){ const p=d.split('-'); return parseInt(p[1])+'/'+parseInt(p[2]); }
-        return fmt(r.start_date)+(r.start_date!==r.end_date?'~'+fmt(r.end_date):'')+'('+r.days+'일)';
-      }).join(', ');
-      csv+='"'+e.name+'","'+(e.position||'')+'","'+e.dept+'","'+years+'년","'+total+'일","'+used+'일","'+rem+'일","'+detail+'"\n';
-    });
-    const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
-    const url=URL.createObjectURL(blob);
-    const a=document.createElement('a');
-    a.href=url; a.download='연차현황_'+today+'.csv'; a.click(); URL.revokeObjectURL(url);
-  } else {
-    // 근태 엑셀
-    let targetAtts=[];
-    if(currentRole==='admin') { const adminIds=employees.filter(function(e){ return e.role==='admin'; }).map(function(e){ return e.id; }); targetAtts=attendances.filter(function(a){ return !adminIds.includes(a.emp_id); }); }
-    else if(currentRole==='manager') { const visIds=getVisibleEmployees().map(function(e){ return e.id; }); targetAtts=attendances.filter(function(a){ return visIds.includes(a.emp_id); }); }
-    else targetAtts=attendances.filter(function(a){ return a.emp_id===currentEmpId; });
-    let csv=BOM+'이름,부서,날짜,출근시간,퇴근시간,상태\n';
-    targetAtts.forEach(function(a) {
-      const e=getEmpById(a.emp_id); if(!e) return;
-      csv+=e.name+','+e.dept+','+a.att_date+','+formatTimeKST(a.checkin_time)+','+formatTimeKST(a.checkout_time)+','+(a.status||getAttStatus(a))+'\n';
-    });
-    const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
-    const url=URL.createObjectURL(blob);
-    const a=document.createElement('a');
-    a.href=url; a.download='근태기록_'+today+'.csv'; a.click(); URL.revokeObjectURL(url);
-  }
+  let targetEmps=[];
+  if(currentRole==='admin') targetEmps=employees.filter(function(e){ return e.role!=='admin'; });
+  else if(currentRole==='manager') { const myEmp=getEmpById(currentEmpId); targetEmps=employees.filter(function(e){ return e.dept===myEmp.dept&&e.role!=='admin'; }); }
+  else targetEmps=employees.filter(function(e){ return e.id===currentEmpId; });
+  let csv=BOM+'이름,직급,부서,근속연수,총연차,사용연차,남은연차,사용내역\n';
+  targetEmps.forEach(function(e) {
+    const years=getYears(e),total=getTotal(e),used=getUsed(e),rem=getRemaining(e);
+    const detail=requests.filter(function(r){ return r.emp_id===e.id&&r.status==='approved'; }).map(function(r) {
+      function fmt(d){ const p=d.split('-'); return parseInt(p[1])+'/'+parseInt(p[2]); }
+      return fmt(r.start_date)+(r.start_date!==r.end_date?'~'+fmt(r.end_date):'')+'('+r.days+'일)';
+    }).join(', ');
+    csv+='"'+e.name+'","'+(e.position||'')+'","'+e.dept+'","'+years+'년","'+total+'일","'+used+'일","'+rem+'일","'+detail+'"\n';
+  });
+  const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url; a.download='연차현황_'+today+'.csv'; a.click(); URL.revokeObjectURL(url);
+}
+
+function downloadAttExcel() {
+  const today=todayStrKST();
+  const BOM='\uFEFF';
+  let targetAtts=[];
+  if(currentRole==='admin') { const adminIds=employees.filter(function(e){ return e.role==='admin'; }).map(function(e){ return e.id; }); targetAtts=attendances.filter(function(a){ return !adminIds.includes(a.emp_id); }); }
+  else if(currentRole==='manager') { const visIds=getVisibleEmployees().map(function(e){ return e.id; }); targetAtts=attendances.filter(function(a){ return visIds.includes(a.emp_id); }); }
+  else targetAtts=attendances.filter(function(a){ return a.emp_id===currentEmpId; });
+  let csv=BOM+'이름,부서,날짜,출근시간,퇴근시간,상태\n';
+  targetAtts.forEach(function(a) {
+    const e=getEmpById(a.emp_id); if(!e) return;
+    csv+=e.name+','+e.dept+','+a.att_date+','+formatTimeKST(a.checkin_time)+','+formatTimeKST(a.checkout_time)+','+(a.status||getAttStatus(a))+'\n';
+  });
+  const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url; a.download='근태기록_'+today+'.csv'; a.click(); URL.revokeObjectURL(url);
 }
 
 // ===== 전체 렌더 =====
