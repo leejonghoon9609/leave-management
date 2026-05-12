@@ -895,7 +895,6 @@ function renderMyLeave() {
       const docLabel = r.type==='병가' ? '📎 진단서/사유서 제출' : '📎 훈련 통지서 제출';
       docHtml = '<div style="margin-top:6px;"><label style="font-size:11px;color:var(--amber);font-weight:600;">'+docLabel+'</label><div style="display:flex;gap:6px;margin-top:4px;"><input type="file" id="doc-file-'+r.id+'" accept=".pdf,.jpg,.jpeg,.png" style="font-size:11px;flex:1;"><button class="btn btn-approve" style="font-size:11px;padding:4px 8px;" onclick="submitMedicalDoc('+r.id+')">제출</button></div></div>';
     }
-    }
     return '<div class="req-row" style="flex-wrap:wrap;"><div class="req-info" style="width:100%;"><div class="req-name">'+r.type+'</div><div class="req-detail">'+r.start_date+' ~ '+r.end_date+' · '+r.days+'일'+(r.reason?' · '+r.reason:'')+'</div>'+(r.status==='rejected'&&r.reject_reason?'<div style="font-size:11px;color:var(--red);margin-top:3px;">❌ 거절: '+r.reject_reason+'</div>':'')+docHtml+'</div>'+leaveBadge(r.status)+'</div>';
   }).join('');
 }
