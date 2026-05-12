@@ -796,7 +796,6 @@ function renderAdminLeaveDashboard() {
         docHtml = '<div style="background:var(--amber-light);border-radius:4px;padding:6px 8px;margin-top:6px;font-size:11px;color:var(--amber);">'+docLabel+' · <a href="'+r.doc_url+'" target="_blank" style="color:var(--blue);">첨부파일 보기</a> <button class="btn btn-approve" style="font-size:10px;padding:3px 8px;margin-left:6px;" onclick="confirmMedicalDoc('+r.id+')">✅ 확인 완료</button></div>';
       }
       const btnHtml = r.admin_status==='pending' ? '<div class="btn-row"><button class="btn btn-approve" onclick="adminApprove('+r.id+')">최종승인</button><button class="btn btn-reject" onclick="openRejectModal('+r.id+',\'admin\')">거절</button></div>' : '';
-      const btnHtml = r.admin_status==='pending' ? '<div class="btn-row"><button class="btn btn-approve" onclick="adminApprove('+r.id+')">최종승인</button><button class="btn btn-reject" onclick="openRejectModal('+r.id+',\'admin\')">거절</button></div>' : '';
       return '<div class="req-row"><div class="avatar ' + avClass(idx) + '">' + ini(e.name) + '</div><div class="req-info"><div class="req-name">' + e.name + ' <span style="font-weight:400;font-size:11px;color:var(--gray-400)">' + e.dept + '</span></div><div class="req-detail">' + r.type + ' · ' + r.start_date + ' ~ ' + r.end_date + ' · ' + r.days + '일' + (r.reason?' · <span style="color:var(--blue);">'+r.reason+'</span>':'') + '</div>' + docHtml + '</div>' + (r.status==='manager-approved'?'<span class="badge badge-manager-approved">팀장승인</span>':leaveBadge(r.status)) + btnHtml + '</div>';
     }).join('');
   }
