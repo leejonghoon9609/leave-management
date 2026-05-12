@@ -832,7 +832,7 @@ function renderManagerLeaveDashboard() {
   const teamMembers = employees.filter(function(e){ return e.dept===myEmp.dept && e.id!==currentEmpId && e.role!=='admin'; });
   const teamReqs = requests.filter(function(r){ const e=getEmpById(r.emp_id); return e && e.dept===myEmp.dept && r.emp_id!==currentEmpId; });
   const pending = teamReqs.filter(function(r){ return r.status==='pending' && r.manager_status!=='approved'; });
-  const docManagerPending = teamReqs.filter(function(r){ return (r.type==='병가'||r.type==='예비군/민방위') && r.doc_url && r.doc_status==='submitted'; });
+  const docManagerPending = teamReqs.filter(function(r){ return (r.type==='병가'||r.type==='예비군/민방위') && r.doc_url && r.doc_status==='submitted' && r.status!=='rejected' && r.status!=='approved'; });
   const allManagerPending = pending.concat(docManagerPending);
   document.getElementById('mm-total').textContent = teamMembers.length;
   document.getElementById('mm-pending').textContent = pending.length + docManagerPending.length;
