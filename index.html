@@ -597,6 +597,12 @@ function getTodayAttendance(empId) {
 // 팀장/관리자 필터
 function getVisibleEmployees() {
   if(currentRole === 'admin') return employees.filter(function(e){ return e.role !== 'admin'; });
+  if(currentRole === 'deptadmin') {
+    // 부서 관리자: 자기 부서만
+    const emp = getEmpById(currentEmpId);
+    if(!emp) return [];
+    return employees.filter(function(e){ return e.dept === emp.dept && e.role !== 'admin'; });
+  }
   if(currentRole === 'teamleader' || currentRole === 'manager' || currentRole === 'viewer') {
     const emp = getEmpById(currentEmpId);
     if(!emp) return [];
@@ -666,8 +672,36 @@ function clearSession() {
 }
 
 // ===== 로그인 =====
+// 부서별 관리자 설정
+const DEPT_ADMINS = {
+  'sgh2511': { name: '송규헌', dept: '측량부' }
+};
+
 async function adminLogin() {
   const pw = document.getElementById('admin-pw').value;
+  
+  // 부서 관리자 로그인 체크
+  if(DEPT_ADMINS[pw]) {
+    const deptAdmin = DEPT_ADMINS[pw];
+    await loadData();
+    const empData = employees.find(function(e){ return e.name === deptAdmin.name; });
+    currentRole = 'deptadmin';
+    currentEmpId = empData ? empData.id : null;
+    saveSession('deptadmin', currentEmpId);
+    document.getElementById('login-overlay').style.display = 'none';
+    document.getElementById('main-app').style.display = 'flex';
+    document.getElementById('admin-nav').style.display = 'block';
+    document.getElementById('manager-nav').style.display = 'none';
+    document.getElementById('employee-nav').style.display = 'none';
+    document.getElementById('sidebar-year').textContent = CY + '년 인사관리';
+    document.getElementById('dash-sub').textContent = deptAdmin.dept + ' 연차 현황';
+    document.getElementById('att-dash-date').textContent = new Date().toLocaleDateString('ko-KR', { timeZone:'Asia/Seoul' }) + ' 근태 현황';
+    document.getElementById('user-info-box').innerHTML = '<div class="user-avatar av-1">관리</div><div><div class="user-name">'+deptAdmin.name+'</div><div class="user-role">'+deptAdmin.dept+' 관리자</div></div>';
+    showPage('leave-dashboard', document.querySelector('#admin-nav .nav-item'));
+    startAutoRefresh();
+    return;
+  }
+
   if(pw !== ADMIN_PW) {
     document.getElementById('pw-error').classList.add('show');
     document.getElementById('admin-pw').value = '';
@@ -1430,7 +1464,7 @@ function downloadAttExcel() {
 
 // ===== 전체 렌더 =====
 function renderAll() {
-  if(currentRole==='admin') {
+  if(currentRole==='admin' || currentRole==='deptadmin') {
     if(currentPage==='leave-dashboard') renderAdminLeaveDashboard();
     else if(currentPage==='requests') renderAllRequests();
     else if(currentPage==='leave-employees') renderLeaveEmpList();
