@@ -983,7 +983,8 @@ async function confirmMedicalDoc(requestId) {
   const r=requests.find(function(x){ return x.id===requestId; });
   const typeName=r&&r.type==='예비군/민방위'?'예비군/민방위':'병가';
   if(!confirm(typeName+' 서류를 확인했습니다.\n연차에서 제외하시겠습니까?')) return;
-  await dbUpdate('requests', requestId, { doc_status:'confirmed', status:'approved', days:0 });
+  // 서류 승인 시 days:0으로 변경 (연차 차감 없음)
+  await dbUpdate('requests', requestId, { doc_status:'confirmed', status:'approved', days:0, admin_status:'approved' });
   await loadData(); renderAll();
 }
 async function managerApproveMedical(requestId) {
@@ -1077,27 +1078,27 @@ async function submitLeave() {
   if(!start||!end) { alert('날짜를 선택해 주세요'); return; }
   if(!reason) { alert('사유를 입력해 주세요'); return; }
   const rawDays=type.includes('반차')?0.5:Math.round((new Date(end)-new Date(start))/86400000)+1;
-  // 예비군/민방위는 처음부터 days:0 (연차 차감 없음)
-  const noLeaveTypes=['병가','예비군/민방위'];
-  const days=noLeaveTypes.includes(type)?0:rawDays;
-  if(!noLeaveTypes.includes(type)&&rawDays>rem) { alert('잔여 연차('+rem+'일)가 부족합니다'); return; }
+  const specialTypes=['병가','예비군/민방위'];
+  // 첨부서류 있으면 days:0 (승인 후 제외), 없으면 연차 차감
+  const fileInput=document.getElementById('medical-file');
+  const hasFile = fileInput && fileInput.files.length > 0;
+  const days = (specialTypes.includes(type) && hasFile) ? 0 : rawDays;
+  if(!specialTypes.includes(type) && rawDays > rem) { alert('잔여 연차('+rem+'일)가 부족합니다'); return; }
+  if(specialTypes.includes(type) && !hasFile && rawDays > rem) { alert('잔여 연차('+rem+'일)가 부족합니다\n첨부서류 없이 신청하면 연차가 차감됩니다'); return; }
   const isManager=empData.role==='manager'||isTeamLeader(empData.name);
   const isDirect=isManager||DIRECT_TO_ADMIN_DEPTS.includes(empData.dept);
   const initStatus=isDirect?'manager-approved':'pending';
   const initManagerStatus=isDirect?'approved':'pending';
   const initAdminStatus=isDirect?'pending':'waiting';
   await dbInsert('requests', { emp_id:currentEmpId, type, start_date:start, end_date:end, days, status:initStatus, manager_status:initManagerStatus, admin_status:initAdminStatus, reason, reject_reason:'', doc_url:'', doc_status:'' });
-  if(type==='병가'||type==='예비군/민방위') {
-    const fileInput=document.getElementById('medical-file');
-    if(fileInput&&fileInput.files.length>0) {
-      await loadData();
-      const latestReq=requests.find(function(r){ return r.emp_id===currentEmpId&&r.type===type&&!r.doc_url; });
-      if(latestReq) {
-        const fileUrl=await uploadMedicalFile(fileInput.files[0],latestReq.id);
-        if(fileUrl) await dbUpdate('requests',latestReq.id,{doc_url:fileUrl,doc_status:'submitted'});
-      }
-      fileInput.value='';
+  if(specialTypes.includes(type) && hasFile) {
+    await loadData();
+    const latestReq=requests.find(function(r){ return r.emp_id===currentEmpId&&r.type===type&&!r.doc_url; });
+    if(latestReq) {
+      const fileUrl=await uploadMedicalFile(fileInput.files[0],latestReq.id);
+      if(fileUrl) await dbUpdate('requests',latestReq.id,{doc_url:fileUrl,doc_status:'submitted'});
     }
+    fileInput.value='';
   }
   document.getElementById('leave-type').value='연차';
   document.getElementById('start-date').value=new Date().toISOString().slice(0,10);
