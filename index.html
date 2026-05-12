@@ -806,9 +806,10 @@ function stopAutoRefresh() { if(autoRefreshTimer) clearInterval(autoRefreshTimer
 function renderAdminLeaveDashboard() {
   const activeEmps = currentRole==='deptadmin' ? getVisibleEmployees() : employees.filter(function(e){ return e.role !== 'admin'; });
   if(!employees.length) { return; } // 데이터 로드 전이면 스킵
-  const adminPending = requests.filter(function(r){ return r.admin_status==='pending' && r.status!=='approved'; });
-  const docAdminPending = requests.filter(function(r){ return (r.type==='병가'||r.type==='예비군/민방위') && r.doc_url && (r.doc_status==='submitted'||r.doc_status==='manager-approved') && r.doc_status!=='confirmed' && r.status!=='rejected'; });
-  const approved = requests.filter(function(r){ return r.status==='approved'; });
+  const visEmpIds = getVisibleEmployees().map(function(e){ return e.id; });
+  const adminPending = requests.filter(function(r){ return r.admin_status==='pending' && r.status!=='approved' && (currentRole!=='deptadmin' || visEmpIds.includes(r.emp_id)); });
+  const docAdminPending = requests.filter(function(r){ return (r.type==='병가'||r.type==='예비군/민방위') && r.doc_url && (r.doc_status==='submitted'||r.doc_status==='manager-approved') && r.doc_status!=='confirmed' && r.status!=='rejected' && (currentRole!=='deptadmin' || visEmpIds.includes(r.emp_id)); });
+  const approved = requests.filter(function(r){ return r.status==='approved' && (currentRole!=='deptadmin' || visEmpIds.includes(r.emp_id)); });
   const allAdminPending = adminPending.concat(docAdminPending.filter(function(d){ return !adminPending.find(function(a){ return a.id===d.id; }); }))
     .filter(function(r){ return !(r.status==='approved' && r.admin_status==='approved' && r.doc_status!=='submitted' && r.doc_status!=='manager-approved'); });
   document.getElementById('m-total').textContent = activeEmps.length;
@@ -1124,9 +1125,11 @@ async function submitLeave() {
   if(specialTypes.includes(type) && !hasFile && rawDays > rem) { alert('잔여 연차('+rem+'일)가 부족합니다\n첨부서류 없이 신청하면 연차가 차감됩니다'); return; }
   const isManager=empData.role==='manager'||isTeamLeader(empData.name);
   const isDirect=isManager||DIRECT_TO_ADMIN_DEPTS.includes(empData.dept);
-  const initStatus=isDirect?'manager-approved':'pending';
-  const initManagerStatus=isDirect?'approved':'pending';
-  const initAdminStatus=isDirect?'pending':'waiting';
+  // 측량부 직원은 송규헌(deptadmin)이 최종승인하므로 바로 admin pending으로
+  const isSurveyDept = empData.dept==='측량부';
+  const initStatus=isDirect?'manager-approved':(isSurveyDept?'manager-approved':'pending');
+  const initManagerStatus=isDirect?'approved':(isSurveyDept?'approved':'pending');
+  const initAdminStatus=isDirect?'pending':(isSurveyDept?'pending':'waiting');
   await dbInsert('requests', { emp_id:currentEmpId, type, start_date:start, end_date:end, days, status:initStatus, manager_status:initManagerStatus, admin_status:initAdminStatus, reason, reject_reason:'', doc_url:'', doc_status:'' });
   if(specialTypes.includes(type) && hasFile) {
     await loadData();
