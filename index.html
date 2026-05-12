@@ -637,7 +637,7 @@ async function loadData() {
     const sel = document.getElementById('emp-select');
     const curVal = sel.value;
     sel.innerHTML = '<option value="">-- 직원 선택 --</option>';
-    employees.filter(function(e){ return e.role !== 'admin'; }).forEach(function(e) {
+    employees.filter(function(e){ return e.role !== 'admin' && e.name !== '송규헌'; }).forEach(function(e) {
       const opt = document.createElement('option');
       opt.value = e.id;
       opt.textContent = e.name + ' (' + e.dept + ')';
@@ -804,7 +804,7 @@ function stopAutoRefresh() { if(autoRefreshTimer) clearInterval(autoRefreshTimer
 
 // ===== 연차 렌더 =====
 function renderAdminLeaveDashboard() {
-  const activeEmps = employees.filter(function(e){ return e.role !== 'admin'; });
+  const activeEmps = currentRole==='deptadmin' ? getVisibleEmployees() : employees.filter(function(e){ return e.role !== 'admin'; });
   if(!employees.length) { return; } // 데이터 로드 전이면 스킵
   const adminPending = requests.filter(function(r){ return r.admin_status==='pending' && r.status!=='approved'; });
   const docAdminPending = requests.filter(function(r){ return (r.type==='병가'||r.type==='예비군/민방위') && r.doc_url && (r.doc_status==='submitted'||r.doc_status==='manager-approved') && r.doc_status!=='confirmed' && r.status!=='rejected'; });
@@ -841,8 +841,10 @@ function renderAdminLeaveDashboard() {
 
 function renderAllRequests() {
   const el = document.getElementById('all-requests');
-  if(!requests.length) { el.innerHTML = '<div class="empty">신청 내역이 없습니다</div>'; return; }
-  el.innerHTML = requests.map(function(r) {
+  const visIds = getVisibleEmployees().map(function(e){ return e.id; });
+  const visRequests = currentRole==='deptadmin' ? requests.filter(function(r){ return visIds.includes(r.emp_id); }) : requests;
+  if(!visRequests.length) { el.innerHTML = '<div class="empty">신청 내역이 없습니다</div>'; return; }
+  el.innerHTML = visRequests.map(function(r) {
     const e = getEmpById(r.emp_id); if(!e) return '';
     const idx = employees.findIndex(function(x){ return x.id===e.id; });
     let docHtml = '';
@@ -854,7 +856,8 @@ function renderAllRequests() {
 }
 
 function renderLeaveEmpList() {
-  document.getElementById('emp-list').innerHTML = employees.filter(function(e){ return e.role !== 'admin'; }).map(function(e, idx) {
+  const leaveEmps = currentRole==='deptadmin' ? getVisibleEmployees() : employees.filter(function(e){ return e.role !== 'admin'; });
+  document.getElementById('emp-list').innerHTML = leaveEmps.map(function(e, idx) {
     const years=getYears(e), total=getTotal(e), used=getUsed(e), rem=getRemaining(e), pct=total>0?Math.round((used/total)*100):0;
     return '<div class="req-row"><div class="avatar ' + avClass(idx) + '">' + ini(e.name) + '</div><div class="req-info"><div class="req-name">' + e.name + ' <span style="font-weight:400;font-size:11px;color:var(--gray-400)">' + (e.position||'') + '</span></div><div class="req-detail">' + e.dept + ' · 근속 '+years+'년 · 연차 '+total+'일</div></div><div style="min-width:160px"><div style="display:flex;justify-content:space-between;font-size:11px;color:var(--gray-400);margin-bottom:4px"><span>사용 '+used+'일</span><span>잔여 '+rem+'일</span></div><div class="progress-bar"><div class="progress-fill ' + (pct>80?'danger':'') + '" style="width:'+pct+'%"></div></div></div><div class="btn-row" style="margin-left:8px;"><button class="btn" onclick="openEmpModal('+e.id+')" style="font-size:11px;padding:4px 8px;">✏️</button><button class="btn btn-reject" onclick="deleteEmployee('+e.id+',\''+e.name+'\')" style="font-size:11px;padding:4px 8px;">🗑️</button></div></div>';
   }).join('');
