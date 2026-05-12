@@ -1064,7 +1064,7 @@ async function submitMedicalDoc(requestId) {
   if(fileUrl) {
     const empData=getEmpById(currentEmpId);
     const isDirect=empData.role==='manager'||DIRECT_TO_ADMIN_DEPTS.includes(empData.dept);
-    await dbUpdate('requests', requestId, { doc_url:fileUrl, doc_status:isDirect?'manager-approved':'pending', doc_admin_status:isDirect?'pending':'waiting' });
+    await dbUpdate('requests', requestId, { doc_url:fileUrl, doc_status:'submitted', doc_admin_status:'waiting' });
     alert('✅ 진단서/사유서가 제출되었습니다!');
     await loadData(); renderAll();
   } else alert('파일 업로드 실패. 다시 시도해 주세요.');
