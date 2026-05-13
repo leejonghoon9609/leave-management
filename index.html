@@ -187,10 +187,25 @@ body { font-family: "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; backgrou
     </div>
   </div>
 </div>
+<div class="modal-overlay" id="field-checkin-type-modal">
+  <div class="modal-box">
+    <div class="modal-title">🏃 현장근무 출근 유형 선택</div>
+    <div class="modal-sub">출근 유형을 선택해주세요</div>
+    <div class="modal-btn-row" style="flex-direction:column;gap:10px;">
+      <button class="modal-btn" style="background:var(--blue);color:white;padding:14px;" onclick="selectFieldCheckinType('realtime')">
+        📡 실시간측량<br><span style="font-size:11px;opacity:0.85;">사업명 입력 → 정상출근 처리</span>
+      </button>
+      <button class="modal-btn" style="background:var(--primary);color:white;padding:14px;" onclick="selectFieldCheckinType('field')">
+        🏗️ 현장측량<br><span style="font-size:11px;opacity:0.85;">9시 기준 정상출근/지각 처리</span>
+      </button>
+      <button class="modal-btn modal-btn-cancel" onclick="closeFieldCheckinTypeModal()">취소</button>
+    </div>
+  </div>
+</div>
 <div class="modal-overlay" id="field-checkin-modal">
   <div class="modal-box">
-    <div class="modal-title">🏃 출근(실시간)</div>
-    <div class="modal-sub">현장 여건에 따른 출근입니다. 사업명/작업내용을 입력해주세요</div>
+    <div class="modal-title">📡 실시간측량 출근</div>
+    <div class="modal-sub">사업명/작업내용을 입력하면 정상출근으로 처리됩니다</div>
     <div class="form-group">
       <label class="form-label">사업명 / 작업내용 *</label>
       <textarea class="form-input" id="field-checkin-memo" rows="3" placeholder="예) OO하수도 GIS 측량 현장 출근"></textarea>
@@ -273,7 +288,7 @@ body { font-family: "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; backgrou
       <div class="nav-section">⏱ 근태관리</div>
       <div class="nav-item" onclick="showPage('checkin',this)" style="color:var(--red);font-weight:700;"><span>🏃</span> 출퇴근 등록</div>
       <div class="nav-item" onclick="showPage('att-dashboard',this)"><span>📊</span> 팀 출퇴근현황</div>
-      <div class="nav-item" onclick="showPage('records',this)"><span>📋</span> 근태 기록</div>
+      <div class="nav-item" onclick="showPage('records',this)"><span>📋</span> 내 근태 기록</div>
       <div style="padding:4px 0;"><button class="excel-btn" onclick="downloadAttExcel()" style="margin:4px 20px 0;">📥 근태현황 다운로드(.xlsx)</button></div>
       <div class="nav-divider"></div>
       <div class="nav-section">📋 연차관리</div>
@@ -1421,8 +1436,23 @@ async function doCheckIn() {
 function openFieldCheckinModal() {
   const existing=getTodayAttendance(currentEmpId);
   if(existing) { alert('이미 출근 처리되었습니다'); return; }
-  document.getElementById('field-checkin-memo').value='';
-  document.getElementById('field-checkin-modal').classList.add('show');
+  document.getElementById('field-checkin-type-modal').classList.add('show');
+}
+
+function closeFieldCheckinTypeModal() {
+  document.getElementById('field-checkin-type-modal').classList.remove('show');
+}
+
+function selectFieldCheckinType(type) {
+  closeFieldCheckinTypeModal();
+  if(type === 'realtime') {
+    // 실시간측량 - 사업명 입력 후 정상출근
+    document.getElementById('field-checkin-memo').value='';
+    document.getElementById('field-checkin-modal').classList.add('show');
+  } else {
+    // 현장측량 - 9시 기준 정상/지각 처리 (일반 출근과 동일)
+    doCheckIn();
+  }
 }
 
 function closeFieldCheckinModal() {
