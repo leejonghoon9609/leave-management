@@ -1241,7 +1241,8 @@ function renderAttDashboard() {
       const s=getAttStatus(a);
       const checkinGps=((currentRole==='admin'||currentRole==='deptadmin')&&a.checkin_lat)?' <a href="https://maps.google.com/?q='+a.checkin_lat+','+a.checkin_lng+'" target="_blank" style="font-size:11px;color:var(--blue);">📍출근위치</a>':'';
       const checkoutGps=((currentRole==='admin'||currentRole==='deptadmin')&&a.checkout_lat)?' <a href="https://maps.google.com/?q='+a.checkout_lat+','+a.checkout_lng+'" target="_blank" style="font-size:11px;color:var(--red);">📍퇴근위치</a>':'';
-      return '<div class="att-row"><div class="avatar '+avClass(idx)+'">'+ini(e.name)+'</div><div class="att-info"><div class="att-name">'+e.name+' <span style="font-weight:400;font-size:11px;color:var(--gray-400);">'+e.dept+'</span></div><div class="att-detail">출근 '+formatTimeKST(a.checkin_time)+checkinGps+' · 퇴근 '+formatTimeKST(a.checkout_time)+checkoutGps+'</div></div>'+attBadge(s)+'</div>';
+      const checkoutBadgeD = a.checkout_time ? (a.checkout_status==='early' ? '<span class="badge badge-late" style="margin-left:4px;">조기퇴근</span>' : '<span class="badge badge-present" style="margin-left:4px;">정상퇴근</span>') : '';
+      return '<div class="att-row"><div class="avatar '+avClass(idx)+'">'+ini(e.name)+'</div><div class="att-info"><div class="att-name">'+e.name+' <span style="font-weight:400;font-size:11px;color:var(--gray-400);">'+e.dept+'</span></div><div class="att-detail">출근 '+formatTimeKST(a.checkin_time)+checkinGps+' · 퇴근 '+formatTimeKST(a.checkout_time)+checkoutGps+'</div></div>'+attBadge(s)+checkoutBadgeD+'</div>';
     }).join('');
   }
 
@@ -1281,7 +1282,8 @@ function renderAttRecords() {
     const s=getAttStatus(a);
     const checkinGps2=((currentRole==='admin'||currentRole==='deptadmin')&&a.checkin_lat)?' <a href="https://maps.google.com/?q='+a.checkin_lat+','+a.checkin_lng+'" target="_blank" style="font-size:11px;color:var(--blue);">📍출근위치</a>':'';
     const checkoutGps2=((currentRole==='admin'||currentRole==='deptadmin')&&a.checkout_lat)?' <a href="https://maps.google.com/?q='+a.checkout_lat+','+a.checkout_lng+'" target="_blank" style="font-size:11px;color:var(--red);">📍퇴근위치</a>':'';
-    return '<div class="att-row"><div class="avatar '+avClass(idx)+'">'+ini(e.name)+'</div><div class="att-info"><div class="att-name">'+e.name+' <span style="font-weight:400;font-size:11px;color:var(--gray-400);">'+e.dept+'</span></div><div class="att-detail">출근 '+formatTimeKST(a.checkin_time)+checkinGps2+' · 퇴근 '+formatTimeKST(a.checkout_time)+checkoutGps2+'</div></div>'+attBadge(s)+'</div>';
+    const checkoutBadgeR = a.checkout_time ? (a.checkout_status==='early' ? '<span class="badge badge-late" style="margin-left:4px;">조기퇴근</span>' : '<span class="badge badge-present" style="margin-left:4px;">정상퇴근</span>') : '';
+    return '<div class="att-row"><div class="avatar '+avClass(idx)+'">'+ini(e.name)+'</div><div class="att-info"><div class="att-name">'+e.name+' <span style="font-weight:400;font-size:11px;color:var(--gray-400);">'+e.dept+'</span></div><div class="att-detail">출근 '+formatTimeKST(a.checkin_time)+checkinGps2+' · 퇴근 '+formatTimeKST(a.checkout_time)+checkoutGps2+'</div></div>'+attBadge(s)+checkoutBadgeR+'</div>';
   }).join('');
 }
 
