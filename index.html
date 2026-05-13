@@ -187,6 +187,20 @@ body { font-family: "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; backgrou
     </div>
   </div>
 </div>
+<div class="modal-overlay" id="field-checkout-modal">
+  <div class="modal-box">
+    <div class="modal-title">🏗️ 현장퇴근</div>
+    <div class="modal-sub">현장에서 퇴근하는 경우 사업명/작업내용을 입력해주세요</div>
+    <div class="form-group">
+      <label class="form-label">사업명 / 작업내용 *</label>
+      <textarea class="form-input" id="field-checkout-memo" rows="3" placeholder="예) OO하수도 GIS 측량 작업 완료"></textarea>
+    </div>
+    <div class="modal-btn-row">
+      <button class="modal-btn modal-btn-cancel" onclick="closeFieldCheckoutModal()">취소</button>
+      <button class="modal-btn" style="background:var(--primary);color:white;" onclick="confirmFieldCheckout()">✅ 현장퇴근 등록</button>
+    </div>
+  </div>
+</div>
 <div class="modal-overlay" id="reject-modal">
   <div class="modal-box">
     <div class="modal-title">❌ 거절 사유 입력</div>
@@ -445,9 +459,10 @@ body { font-family: "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; backgrou
       <div class="checkin-card">
         <div class="checkin-time" id="current-time">00:00:00</div>
         <div class="checkin-date" id="current-date"></div>
-        <div style="display:flex;gap:12px;justify-content:center;">
+        <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
           <button class="checkin-btn checkin-btn-in" id="btn-checkin" onclick="doCheckIn()">🏃 출근</button>
           <button class="checkin-btn checkin-btn-out" id="btn-checkout" onclick="doCheckOut()" disabled>🏠 퇴근</button>
+          <button class="checkin-btn" id="btn-field-checkout" onclick="openFieldCheckoutModal()" disabled style="background:var(--amber);color:white;display:none;">🏗️ 현장퇴근</button>
         </div>
         <div class="checkin-status" id="checkin-status">오늘 출근 기록이 없습니다</div>
         <div class="gps-info" id="gps-info"></div>
@@ -1252,19 +1267,30 @@ function renderAttEmpList() {
 
 function renderCheckin() {
   const att=getTodayAttendance(currentEmpId);
+  const emp=getEmpById(currentEmpId);
+  // 측량부, 사업관리(현장) 직원에게만 현장퇴근 버튼 표시
+  const fieldDepts=['측량부','사업관리(현장)'];
+  const showFieldBtn = emp && fieldDepts.includes(emp.dept);
+  const fieldBtn=document.getElementById('btn-field-checkout');
+  if(fieldBtn) fieldBtn.style.display = showFieldBtn ? 'inline-block' : 'none';
+
   if(att) {
     document.getElementById('btn-checkin').disabled=true;
     if(att.checkout_time) {
       document.getElementById('btn-checkout').disabled=true;
-      document.getElementById('checkin-status').textContent='✅ 출근 '+formatTimeKST(att.checkin_time)+' · 🏠 퇴근 '+formatTimeKST(att.checkout_time);
+      if(fieldBtn) fieldBtn.disabled=true;
+      const checkoutLabel = att.field_memo ? '🏗️ 현장퇴근 '+formatTimeKST(att.checkout_time) : '🏠 퇴근 '+formatTimeKST(att.checkout_time);
+      document.getElementById('checkin-status').textContent='✅ 출근 '+formatTimeKST(att.checkin_time)+' · '+checkoutLabel+(att.field_memo?' ('+att.field_memo+')':'');
     } else {
       document.getElementById('btn-checkout').disabled=false;
+      if(fieldBtn) fieldBtn.disabled=false;
       document.getElementById('checkin-status').textContent='✅ '+formatTimeKST(att.checkin_time)+' 출근 완료 · 퇴근 전';
     }
     document.getElementById('gps-info').style.display='none';
   } else {
     document.getElementById('btn-checkin').disabled=false;
     document.getElementById('btn-checkout').disabled=true;
+    if(fieldBtn) fieldBtn.disabled=true;
     document.getElementById('checkin-status').textContent='오늘 출근 기록이 없습니다';
     document.getElementById('gps-info').style.display='none';
   }
@@ -1349,6 +1375,52 @@ async function doCheckIn() {
   document.getElementById('checkin-status').textContent='✅ '+formatTimeKST(nowISO)+' 출근 완료'+(isLate?' (지각)':'');
   document.getElementById('btn-checkin').disabled=true;
   document.getElementById('btn-checkout').disabled=false;
+  await loadData(); renderAll();
+}
+
+function openFieldCheckoutModal() {
+  const existing=getTodayAttendance(currentEmpId);
+  if(!existing) { alert('출근 기록이 없습니다'); return; }
+  if(existing.checkout_time) { alert('이미 퇴근 처리되었습니다'); return; }
+  document.getElementById('field-checkout-memo').value='';
+  document.getElementById('field-checkout-modal').classList.add('show');
+}
+
+function closeFieldCheckoutModal() {
+  document.getElementById('field-checkout-modal').classList.remove('show');
+}
+
+async function confirmFieldCheckout() {
+  const memo = document.getElementById('field-checkout-memo').value.trim();
+  if(!memo) { alert('사업명/작업내용을 입력해주세요'); return; }
+  closeFieldCheckoutModal();
+
+  const existing=getTodayAttendance(currentEmpId);
+  if(!existing) { alert('출근 기록이 없습니다'); return; }
+
+  const btn=document.getElementById('btn-field-checkout');
+  btn.disabled=true; btn.textContent='위치 확인 중...';
+  const nowISO=nowISOKST();
+
+  let gpsTimeout;
+  const gpsPromise = new Promise(function(resolve) {
+    gpsTimeout = setTimeout(function(){ resolve(null); }, 15000);
+    navigator.geolocation.getCurrentPosition(
+      function(pos) { clearTimeout(gpsTimeout); resolve(pos); },
+      function() { clearTimeout(gpsTimeout); resolve(null); },
+      {enableHighAccuracy:true, timeout:15000, maximumAge:0}
+    );
+  });
+
+  const pos = await gpsPromise;
+  if(pos) {
+    await dbUpdate('attendances', existing.id, {checkout_time:nowISO, checkout_lat:pos.coords.latitude, checkout_lng:pos.coords.longitude, field_memo:memo, status:'present'});
+  } else {
+    await dbUpdate('attendances', existing.id, {checkout_time:nowISO, checkout_lat:null, checkout_lng:null, field_memo:memo, status:'present'});
+  }
+  document.getElementById('checkin-status').textContent='🏗️ '+formatTimeKST(nowISO)+' 현장퇴근 완료 ('+memo+')';
+  btn.textContent='🏗️ 현장퇴근';
+  btn.disabled=true;
   await loadData(); renderAll();
 }
 
