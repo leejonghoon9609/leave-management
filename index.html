@@ -1346,7 +1346,8 @@ function renderMyWeek() {
   if(!weekAtts.length) { el.innerHTML='<div class="empty">이번 주 기록이 없습니다</div>'; return; }
   el.innerHTML=weekAtts.map(function(a) {
     const s=getAttStatus(a);
-    return '<div class="att-row"><div class="att-info"><div class="att-name">'+a.att_date+'</div><div class="att-detail">출근 '+formatTimeKST(a.checkin_time)+' · 퇴근 '+formatTimeKST(a.checkout_time)+'</div></div>'+attBadge(s)+'</div>';
+    const checkoutBadge = a.checkout_time ? (a.checkout_status==='early' ? '<span class="badge badge-late" style="margin-left:4px;">조기퇴근</span>' : '<span class="badge badge-present" style="margin-left:4px;">정상퇴근</span>') : '';
+    return '<div class="att-row"><div class="att-info"><div class="att-name">'+a.att_date+(a.field_memo?' <span style="font-size:10px;color:var(--blue);">['+a.field_memo+']</span>':'')+'</div><div class="att-detail">출근 '+formatTimeKST(a.checkin_time)+' · 퇴근 '+formatTimeKST(a.checkout_time)+'</div></div>'+attBadge(s)+checkoutBadge+'</div>';
   }).join('');
 }
 
@@ -1369,7 +1370,8 @@ function renderMyAttRecords() {
   if(!myAtts.length) { el.innerHTML='<div class="empty">기록이 없습니다</div>'; return; }
   el.innerHTML=myAtts.map(function(a) {
     const s=getAttStatus(a);
-    return '<div class="att-row"><div class="att-info"><div class="att-name">'+a.att_date+'</div><div class="att-detail">출근 '+formatTimeKST(a.checkin_time)+' · 퇴근 '+formatTimeKST(a.checkout_time)+'</div></div>'+attBadge(s)+'</div>';
+    const checkoutBadge = a.checkout_time ? (a.checkout_status==='early' ? '<span class="badge badge-late" style="margin-left:4px;">조기퇴근</span>' : '<span class="badge badge-present" style="margin-left:4px;">정상퇴근</span>') : '';
+    return '<div class="att-row"><div class="att-info"><div class="att-name">'+a.att_date+(a.field_memo?' <span style="font-size:10px;color:var(--blue);">['+a.field_memo+']</span>':'')+'</div><div class="att-detail">출근 '+formatTimeKST(a.checkin_time)+' · 퇴근 '+formatTimeKST(a.checkout_time)+'</div></div>'+attBadge(s)+checkoutBadge+'</div>';
   }).join('');
 }
 
@@ -1599,16 +1601,17 @@ function downloadAttExcel() {
   const statusColor={'present':'FF085041','late':'FFBA7517','absent':'FFE24B4A','off':'FF5F5F5F'};
   const headerStyle={font:{bold:true,color:{rgb:'FFFFFFFF'},sz:11},fill:{fgColor:{rgb:'FF1D9E75'}},alignment:{horizontal:'center',vertical:'center'},border:{top:{style:'thin',color:{rgb:'FF999999'}},bottom:{style:'thin',color:{rgb:'FF999999'}},left:{style:'thin',color:{rgb:'FF999999'}},right:{style:'thin',color:{rgb:'FF999999'}}}};
   const cellStyle={alignment:{horizontal:'center',vertical:'center'},border:{top:{style:'thin',color:{rgb:'FFCCCCCC'}},bottom:{style:'thin',color:{rgb:'FFCCCCCC'}},left:{style:'thin',color:{rgb:'FFCCCCCC'}},right:{style:'thin',color:{rgb:'FFCCCCCC'}}}};
-  const headers=['이름','부서','날짜','출근시간','퇴근시간','상태'];
+  const headers=['이름','부서','날짜','출근시간','출근상태','퇴근시간','퇴근상태','현장메모'];
   const wb=XLSX.utils.book_new();
   const wsData=[headers];
   targetAtts.forEach(function(a) {
     const e=getEmpById(a.emp_id); if(!e) return;
-    const s=a.status||getAttStatus(a);
-    wsData.push([e.name, e.dept, a.att_date, formatTimeKST(a.checkin_time), formatTimeKST(a.checkout_time), statusMap[s]||s]);
+    const s=a.field_memo?'present':(a.status||getAttStatus(a));
+    const checkoutSt=a.checkout_time?(a.checkout_status==='early'?'조기퇴근':'정상퇴근'):'-';
+    wsData.push([e.name, e.dept, a.att_date, formatTimeKST(a.checkin_time), statusMap[s]||s, formatTimeKST(a.checkout_time), checkoutSt, a.field_memo||'']);
   });
   const ws=XLSX.utils.aoa_to_sheet(wsData);
-  ws['!cols']=[{wch:10},{wch:16},{wch:12},{wch:10},{wch:10},{wch:10}];
+  ws['!cols']=[{wch:10},{wch:16},{wch:12},{wch:10},{wch:10},{wch:10},{wch:10},{wch:20}];
   ws['!rows']=[{hpt:20}];
   // 헤더 스타일
   headers.forEach(function(_,i){
