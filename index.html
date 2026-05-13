@@ -473,14 +473,21 @@ body { font-family: "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; backgrou
       <div class="checkin-card">
         <div class="checkin-time" id="current-time">00:00:00</div>
         <div class="checkin-date" id="current-date"></div>
-        <div style="display:flex;gap:6px;justify-content:center;align-items:center;flex-wrap:wrap;">
-          <button class="checkin-btn checkin-btn-in" id="btn-checkin" onclick="doCheckIn()" style="padding:10px 18px;font-size:13px;">🏃 출근</button>
-          <span id="slash-field" style="font-size:18px;color:var(--gray-400);display:none;">/</span>
-          <button class="checkin-btn" id="btn-field-checkin" onclick="openFieldCheckinModal()" style="background:var(--blue);color:white;padding:10px 14px;font-size:13px;display:none;">🏃 출근(실시간)</button>
-          <span style="font-size:18px;color:var(--gray-400);margin:0 2px;">|</span>
-          <button class="checkin-btn checkin-btn-out" id="btn-checkout" onclick="doCheckOut()" disabled style="padding:10px 18px;font-size:13px;">🏠 퇴근</button>
-          <span id="slash-field2" style="font-size:18px;color:var(--gray-400);display:none;">/</span>
-          <button class="checkin-btn" id="btn-field-checkout" onclick="openFieldCheckoutModal()" disabled style="background:var(--amber);color:white;padding:10px 14px;font-size:13px;display:none;">🏗️ 현장퇴근</button>
+        <div style="display:flex;flex-direction:column;gap:10px;align-items:center;">
+          <!-- 본사 근무 -->
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span style="font-size:12px;color:var(--gray-400);width:60px;text-align:right;">본사근무</span>
+            <button class="checkin-btn checkin-btn-in" id="btn-checkin" onclick="doCheckIn()" style="padding:10px 22px;font-size:13px;">🏃 출근</button>
+            <button class="checkin-btn checkin-btn-out" id="btn-checkout" onclick="doCheckOut()" disabled style="padding:10px 22px;font-size:13px;">🏠 퇴근</button>
+          </div>
+          <!-- 현장 근무 (측량부/사업관리(현장)만 표시) -->
+          <div id="field-btn-row" style="display:none;align-items:center;gap:8px;">
+            <span style="font-size:12px;color:var(--gray-400);width:60px;text-align:right;">현장근무</span>
+            <button class="checkin-btn" id="btn-field-checkin" onclick="openFieldCheckinModal()" style="background:var(--blue);color:white;padding:10px 22px;font-size:13px;">🏃 출근</button>
+            <button class="checkin-btn" id="btn-field-checkout" onclick="openFieldCheckoutModal()" disabled style="background:var(--amber);color:white;padding:10px 22px;font-size:13px;">🏠 퇴근</button>
+          </div>
+        </div>
+        <div style="display:none;">
         </div>
         <div class="checkin-status" id="checkin-status">오늘 출근 기록이 없습니다</div>
         <div class="gps-info" id="gps-info"></div>
@@ -801,7 +808,9 @@ async function empLogin() {
     document.getElementById('admin-nav').style.display = 'none';
     document.getElementById('manager-nav').style.display = 'none';
     document.getElementById('employee-nav').style.display = 'block';
-    showPage('my-leave', document.querySelector('#employee-nav .nav-item'));
+    // 출퇴근 등록 페이지로 바로 시작
+    const checkinNavItem = Array.from(document.querySelectorAll('#employee-nav .nav-item')).find(function(el){ return el.textContent.includes('출퇴근'); });
+    showPage('checkin', checkinNavItem || document.querySelector('#employee-nav .nav-item'));
   }
   startClock();
   startAutoRefresh();
@@ -1293,12 +1302,8 @@ function renderCheckin() {
   const showFieldBtn = emp && fieldDepts.includes(emp.dept);
   const fieldBtn=document.getElementById('btn-field-checkout');
   const fieldCheckinBtn=document.getElementById('btn-field-checkin');
-  const slash1=document.getElementById('slash-field');
-  const slash2=document.getElementById('slash-field2');
-  if(fieldBtn) fieldBtn.style.display = showFieldBtn ? 'inline-block' : 'none';
-  if(fieldCheckinBtn) fieldCheckinBtn.style.display = showFieldBtn ? 'inline-block' : 'none';
-  if(slash1) slash1.style.display = showFieldBtn ? 'inline' : 'none';
-  if(slash2) slash2.style.display = showFieldBtn ? 'inline' : 'none';
+  const fieldBtnRow=document.getElementById('field-btn-row');
+  if(fieldBtnRow) fieldBtnRow.style.display = showFieldBtn ? 'flex' : 'none';
 
   if(att) {
     document.getElementById('btn-checkin').disabled=true;
