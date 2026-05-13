@@ -602,7 +602,6 @@ function attBadge(s) {
 
 // 근태 상태
 function getAttStatus(att) {
-function getAttStatus(att) {
   if(!att || !att.checkin_time) return 'absent';
   // 현장출근/현장퇴근(field_memo 있으면) → 항상 정상출근
   if(att.field_memo) return 'present';
