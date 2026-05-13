@@ -602,8 +602,8 @@ function leaveBadge(s) {
   return '<span class="badge ' + (m[s]||'badge-pending') + '">' + (l[s]||s) + '</span>';
 }
 function attBadge(s) {
-  const m = { present:'badge-present', late:'badge-late', absent:'badge-absent', off:'badge-off' };
-  const l = { present:'정상출근', late:'지각', absent:'결근', off:'휴무' };
+  const m = { present:'badge-present', late:'badge-late', absent:'badge-absent', off:'badge-off', early:'badge-early', checkout:'badge-present' };
+  const l = { present:'정상출근', late:'지각', absent:'결근', off:'휴무', early:'조기퇴근', checkout:'정상퇴근' };
   return '<span class="badge ' + (m[s]||'badge-off') + '">' + (l[s]||s) + '</span>';
 }
 
@@ -612,6 +612,8 @@ function getAttStatus(att) {
   if(!att || !att.checkin_time) return 'absent';
   // 현장출근/현장퇴근(field_memo 있으면) → 항상 정상출근
   if(att.field_memo) return 'present';
+  // 조기퇴근 표시
+  if(att.checkout_time && att.checkout_status === 'early') return 'early';
   const d = new Date(att.checkin_time);
   const kstHour = parseInt(d.toLocaleString('ko-KR', { hour:'2-digit', hour12:false, timeZone:'Asia/Seoul' }));
   const kstMin = parseInt(d.toLocaleString('ko-KR', { minute:'2-digit', timeZone:'Asia/Seoul' }));
@@ -797,13 +799,15 @@ async function empLogin() {
     document.getElementById('manager-nav').style.display = 'block';
     document.getElementById('employee-nav').style.display = 'none';
     document.getElementById('manager-dash-sub').textContent = empData.dept + ' 팀 현황';
-    showPage('manager-dashboard', document.querySelector('#manager-nav .nav-item'));
+    const mgrCheckinItem = Array.from(document.querySelectorAll('#manager-nav .nav-item')).find(function(el){ return el.textContent.includes('출퇴근'); });
+    showPage('checkin', mgrCheckinItem || document.querySelector('#manager-nav .nav-item'));
   } else if(currentRole === 'viewer') {
     document.getElementById('admin-nav').style.display = 'none';
     document.getElementById('manager-nav').style.display = 'block';
     document.getElementById('employee-nav').style.display = 'none';
     document.getElementById('manager-dash-sub').textContent = empData.dept + ' 팀 현황 (조회)';
-    showPage('manager-dashboard', document.querySelector('#manager-nav .nav-item'));
+    const viewerCheckinItem = Array.from(document.querySelectorAll('#manager-nav .nav-item')).find(function(el){ return el.textContent.includes('출퇴근'); });
+    showPage('checkin', viewerCheckinItem || document.querySelector('#manager-nav .nav-item'));
   } else {
     document.getElementById('admin-nav').style.display = 'none';
     document.getElementById('manager-nav').style.display = 'none';
@@ -1527,13 +1531,17 @@ async function doCheckOut() {
   });
 
   const pos = await gpsPromise;
+  // 퇴근 시간 기준 18시 이후 정상퇴근, 이전 조기퇴근
+  const checkoutNow = new Date();
+  const checkoutHour = parseInt(checkoutNow.toLocaleString('ko-KR', { hour:'2-digit', hour12:false, timeZone:'Asia/Seoul' }));
+  const isEarlyLeave = checkoutHour < 18;
+  const checkoutStatusVal = isEarlyLeave ? 'early' : 'normal';
   if(pos) {
-    await dbUpdate('attendances',existing.id,{checkout_time:nowISO,checkout_lat:pos.coords.latitude,checkout_lng:pos.coords.longitude});
-    statusEl.textContent='🏠 '+formatTimeKST(nowISO)+' 퇴근 완료 (위치 저장됨)';
+    await dbUpdate('attendances',existing.id,{checkout_time:nowISO,checkout_lat:pos.coords.latitude,checkout_lng:pos.coords.longitude,checkout_status:checkoutStatusVal});
   } else {
-    await dbUpdate('attendances',existing.id,{checkout_time:nowISO,checkout_lat:null,checkout_lng:null});
-    statusEl.textContent='🏠 '+formatTimeKST(nowISO)+' 퇴근 완료 (GPS 없음)';
+    await dbUpdate('attendances',existing.id,{checkout_time:nowISO,checkout_lat:null,checkout_lng:null,checkout_status:checkoutStatusVal});
   }
+  statusEl.textContent=(isEarlyLeave?'⚠️ ':'🏠 ')+formatTimeKST(nowISO)+(isEarlyLeave?' 조기퇴근 완료':' 정상퇴근 완료');
   btn.textContent='🏠 퇴근';
   btn.disabled=true;
   await loadData(); renderAll();
