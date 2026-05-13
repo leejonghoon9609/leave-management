@@ -473,11 +473,11 @@ body { font-family: "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; backgrou
       <div class="checkin-card">
         <div class="checkin-time" id="current-time">00:00:00</div>
         <div class="checkin-date" id="current-date"></div>
-        <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;">
-          <button class="checkin-btn checkin-btn-in" id="btn-checkin" onclick="doCheckIn()">🏃 출근</button>
-          <button class="checkin-btn" id="btn-field-checkin" onclick="openFieldCheckinModal()" style="background:var(--blue);color:white;display:none;">🏃 출근(실시간)</button>
-          <button class="checkin-btn checkin-btn-out" id="btn-checkout" onclick="doCheckOut()" disabled>🏠 퇴근</button>
-          <button class="checkin-btn" id="btn-field-checkout" onclick="openFieldCheckoutModal()" disabled style="background:var(--amber);color:white;display:none;">🏗️ 현장퇴근</button>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;max-width:420px;margin:0 auto;">
+          <button class="checkin-btn checkin-btn-in" id="btn-checkin" onclick="doCheckIn()" style="padding:12px 16px;font-size:14px;">🏃 출근</button>
+          <button class="checkin-btn" id="btn-field-checkin" onclick="openFieldCheckinModal()" style="background:var(--blue);color:white;padding:12px 16px;font-size:14px;display:none;">🏃 출근(실시간)</button>
+          <button class="checkin-btn checkin-btn-out" id="btn-checkout" onclick="doCheckOut()" disabled style="padding:12px 16px;font-size:14px;">🏠 퇴근</button>
+          <button class="checkin-btn" id="btn-field-checkout" onclick="openFieldCheckoutModal()" disabled style="background:var(--amber);color:white;padding:12px 16px;font-size:14px;display:none;">🏗️ 현장퇴근</button>
         </div>
         <div class="checkin-status" id="checkin-status">오늘 출근 기록이 없습니다</div>
         <div class="gps-info" id="gps-info"></div>
