@@ -459,10 +459,21 @@ body { font-family: "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; backgrou
           </div>
           <div id="today-list"><div class="loading">불러오는 중...</div></div>
         </div>
-        <!-- 파란박스: 부서별 근태 현황 -->
+        <!-- 파란박스: 부서별 월간 현황 -->
         <div class="card">
-          <div class="card-title">📊 부서별 근태 현황</div>
-          <div id="absent-list"><div class="loading">불러오는 중...</div></div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+            <div class="card-title" style="margin-bottom:0;">📊 부서별 월간 근태 현황</div>
+            <div style="display:flex;gap:6px;">
+              <button class="filter-btn active" id="dept-btn-chart" onclick="switchDeptView('chart',this)">📈 그래프</button>
+              <button class="filter-btn" id="dept-btn-detail" onclick="switchDeptView('detail',this)">📋 세부현황</button>
+            </div>
+          </div>
+          <div id="dept-chart-view">
+            <div id="absent-list"><div class="loading">불러오는 중...</div></div>
+          </div>
+          <div id="dept-detail-view" style="display:none;">
+            <div id="dept-detail-list"><div class="loading">불러오는 중...</div></div>
+          </div>
         </div>
       </div>
     </div>
@@ -1305,23 +1316,96 @@ function renderAttDashboard() {
     el.innerHTML=html||'<div class="empty">출근 기록이 없습니다</div>';
   }
 
-  // 파란박스: 부서별 전체 근태 현황
-  const absentEl=document.getElementById('absent-list');
-  let deptHtml='';
+  // 파란박스: 부서별 월간 현황 그래프
+  renderDeptChart();
+}
+
+let currentDeptView = 'chart';
+
+function switchDeptView(view, el) {
+  currentDeptView = view;
+  document.querySelectorAll('#dept-btn-chart,#dept-btn-detail').forEach(function(b){ b.classList.remove('active'); });
+  if(el) el.classList.add('active');
+  document.getElementById('dept-chart-view').style.display = view==='chart' ? 'block' : 'none';
+  document.getElementById('dept-detail-view').style.display = view==='detail' ? 'block' : 'none';
+  if(view==='chart') renderDeptChart();
+  else renderDeptDetail();
+}
+
+function renderDeptChart() {
+  const now = new Date();
+  const y = now.getFullYear(), m = now.getMonth();
+  const prefix = y+'-'+String(m+1).padStart(2,'0');
+  const deptOrder=['총무부','사업관리','사업관리(현장)','측량부'];
+  const visEmps = getVisibleEmployees();
+  const visAtts = getVisibleAttendances();
+  const monthAtts = visAtts.filter(function(a){ return a.att_date&&a.att_date.startsWith(prefix); });
+  const workDays = (function(){
+    const today=new Date(); let cnt=0;
+    for(let d=1;d<=today.getDate();d++){
+      const dow=new Date(y,m,d).getDay();
+      if(dow!==0&&dow!==6) cnt++;
+    }
+    return cnt;
+  })();
+
+  let html = '';
+  deptOrder.forEach(function(dept){
+    const deptEmps = visEmps.filter(function(e){ return e.dept===dept; });
+    if(!deptEmps.length) return;
+    const deptAtts = monthAtts.filter(function(a){ return deptEmps.find(function(e){ return e.id===a.emp_id; }); });
+    const present = deptAtts.filter(function(a){ return getAttStatus(a)==='present'; }).length;
+    const late = deptAtts.filter(function(a){ return getAttStatus(a)==='late'; }).length;
+    const totalExpected = deptEmps.length * workDays;
+    const rate = totalExpected > 0 ? Math.round(((present+late)/totalExpected)*100) : 0;
+    const color = rate>=90?'var(--primary)':rate>=70?'var(--amber)':'var(--red)';
+    html += '<div style="margin-bottom:14px;">';
+    html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">';
+    html += '<span style="font-size:13px;font-weight:700;">'+dept+'</span>';
+    html += '<span style="font-size:12px;color:var(--gray-600);">정상 '+present+'일 · 지각 '+late+'일 / '+totalExpected+'일 <strong style="color:'+color+';">'+rate+'%</strong></span>';
+    html += '</div>';
+    html += '<div style="height:10px;background:var(--gray-100);border-radius:5px;">';
+    html += '<div style="height:100%;width:'+rate+'%;background:'+color+';border-radius:5px;transition:width 0.5s;"></div>';
+    html += '</div>';
+    // 직원별 미니 현황
+    html += '<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:6px;">';
+    deptEmps.forEach(function(e){
+      const empAtts = monthAtts.filter(function(a){ return a.emp_id===e.id; });
+      const empPresent = empAtts.filter(function(a){ return getAttStatus(a)==='present'; }).length;
+      const empLate = empAtts.filter(function(a){ return getAttStatus(a)==='late'; }).length;
+      const empRate = workDays>0?Math.round(((empPresent+empLate)/workDays)*100):0;
+      const bg = empRate>=90?'var(--primary-light)':empRate>=70?'var(--amber-light)':'var(--red-light)';
+      const tc = empRate>=90?'var(--primary-dark)':empRate>=70?'var(--amber)':'var(--red-dark)';
+      html += '<span style="font-size:11px;background:'+bg+';color:'+tc+';padding:2px 7px;border-radius:10px;cursor:pointer;" onclick="switchDeptView('detail',document.getElementById('dept-btn-detail'))">'+e.name+' '+empRate+'%</span>';
+    });
+    html += '</div></div>';
+  });
+  document.getElementById('absent-list').innerHTML = html || '<div class="empty">데이터가 없습니다</div>';
+}
+
+function renderDeptDetail() {
+  const picker=document.getElementById('att-dash-picker');
+  const selDate=picker?picker.value:todayStrKST();
+  const deptOrder=['총무부','사업관리','사업관리(현장)','측량부'];
+  const visEmps=getVisibleEmployees();
+  const visAtts=getVisibleAttendances();
+  const todayAtts=visAtts.filter(function(a){ return a.att_date===selDate; });
+  let html='';
   deptOrder.forEach(function(dept){
     const deptEmps=visEmps.filter(function(e){ return e.dept===dept; });
     if(!deptEmps.length) return;
-    deptHtml+='<div style="font-size:11px;font-weight:700;color:var(--primary-dark);background:var(--primary-light);padding:4px 8px;border-radius:4px;margin:8px 0 4px;">'+dept+'</div>';
-    deptHtml+=deptEmps.map(function(e){
+    html+='<div style="font-size:11px;font-weight:700;color:var(--primary-dark);background:var(--primary-light);padding:4px 8px;border-radius:4px;margin:8px 0 4px;">'+dept+'</div>';
+    html+=deptEmps.map(function(e){
       const idx=employees.findIndex(function(x){ return x.id===e.id; });
       const att=todayAtts.find(function(a){ return a.emp_id===e.id; });
       const s=att?getAttStatus(att):'absent';
       const cb=att&&att.checkout_time?(att.checkout_status==='early'?'<span class="badge badge-late" style="margin-left:4px;">조기퇴근</span>':'<span class="badge badge-present" style="margin-left:4px;">정상퇴근</span>'):'';
       const timeInfo=att?'출근 '+formatTimeKST(att.checkin_time)+(att.checkout_time?' · 퇴근 '+formatTimeKST(att.checkout_time):''):'미출근';
-      return '<div class="att-row"><div class="avatar '+avClass(idx)+'">'+ini(e.name)+'</div><div class="att-info"><div class="att-name">'+e.name+'</div><div class="att-detail">'+timeInfo+'</div></div>'+attBadge(s)+cb+'</div>';
+      const fm=att&&att.field_memo?'<span style="font-size:10px;color:var(--blue);"> ['+att.field_memo+']</span>':'';
+      return '<div class="att-row"><div class="avatar '+avClass(idx)+'">'+ini(e.name)+'</div><div class="att-info"><div class="att-name">'+e.name+fm+'</div><div class="att-detail">'+timeInfo+'</div></div>'+attBadge(s)+cb+'</div>';
     }).join('');
   });
-  absentEl.innerHTML=deptHtml||'<div class="empty">데이터가 없습니다</div>';
+  document.getElementById('dept-detail-list').innerHTML=html||'<div class="empty">데이터가 없습니다</div>';
 }
 
 
