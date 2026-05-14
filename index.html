@@ -697,12 +697,36 @@ async function loadData() {
     const sel = document.getElementById('emp-select');
     const curVal = sel.value;
     sel.innerHTML = '<option value="">-- 직원 선택 --</option>';
-    employees.filter(function(e){ return e.role !== 'admin' && e.name !== '송규헌'; }).forEach(function(e) {
-      const opt = document.createElement('option');
-      opt.value = e.id;
-      opt.textContent = e.name + ' (' + e.dept + ')';
-      sel.appendChild(opt);
+    // 부서 순서 정의
+    const deptOrder = ['총무부', '사업관리', '사업관리(현장)', '측량부'];
+    const filtered = employees.filter(function(e){ return e.role !== 'admin' && e.name !== '송규헌'; });
+    // 부서별 그룹 추가
+    deptOrder.forEach(function(dept) {
+      const deptEmps = filtered.filter(function(e){ return e.dept === dept; });
+      if(!deptEmps.length) return;
+      const optGroup = document.createElement('optgroup');
+      optGroup.label = '── ' + dept + ' ──';
+      sel.appendChild(optGroup);
+      deptEmps.forEach(function(e) {
+        const opt = document.createElement('option');
+        opt.value = e.id;
+        opt.textContent = e.name + (e.position ? ' ' + e.position : '');
+        sel.appendChild(opt);
+      });
     });
+    // 위 부서 목록에 없는 기타 직원
+    const otherEmps = filtered.filter(function(e){ return !deptOrder.includes(e.dept); });
+    if(otherEmps.length) {
+      const optGroup = document.createElement('optgroup');
+      optGroup.label = '── 기타 ──';
+      sel.appendChild(optGroup);
+      otherEmps.forEach(function(e) {
+        const opt = document.createElement('option');
+        opt.value = e.id;
+        opt.textContent = e.name + ' (' + e.dept + ')';
+        sel.appendChild(opt);
+      });
+    }
     if(curVal) sel.value = curVal;
 
     const lu = document.getElementById('last-updated');
