@@ -447,8 +447,23 @@ body { font-family: "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; backgrou
         <div class="metric-card blue"><div class="metric-label">퇴근완료</div><div class="metric-value" id="m-att-checkout">-</div><div class="metric-unit">명</div></div>
       </div>
       <div class="grid-2">
-        <div class="card"><div class="card-title">📍 오늘 출근 현황</div><div id="today-list"><div class="loading">불러오는 중...</div></div></div>
-        <div class="card"><div class="card-title">⚠️ 미출근/지각</div><div id="absent-list"><div class="loading">불러오는 중...</div></div></div>
+        <!-- 빨간박스: 캘린더 + 출근현황 -->
+        <div class="card">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+            <div class="card-title" style="margin-bottom:0;">📍 출근 현황</div>
+            <div style="display:flex;align-items:center;gap:8px;">
+              <button class="cal-btn" onclick="changeAttDashDate(-1)">←</button>
+              <input type="date" id="att-dash-picker" style="font-size:12px;border:1px solid var(--gray-200);border-radius:20px;padding:4px 10px;font-family:inherit;cursor:pointer;" onchange="renderAttDashboard()">
+              <button class="cal-btn" onclick="changeAttDashDate(1)">→</button>
+            </div>
+          </div>
+          <div id="today-list"><div class="loading">불러오는 중...</div></div>
+        </div>
+        <!-- 파란박스: 부서별 근태 현황 -->
+        <div class="card">
+          <div class="card-title">📊 부서별 근태 현황</div>
+          <div id="absent-list"><div class="loading">불러오는 중...</div></div>
+        </div>
       </div>
     </div>
 
@@ -1238,53 +1253,77 @@ async function submitLeave() {
 }
 
 // ===== 근태 렌더 =====
+function changeAttDashDate(dir) {
+  const picker=document.getElementById('att-dash-picker');
+  const d=new Date(picker.value||todayStrKST());
+  d.setDate(d.getDate()+dir);
+  picker.value=d.toISOString().slice(0,10);
+  renderAttDashboard();
+}
+
 function renderAttDashboard() {
-  const today=todayStrKST();
+  const picker=document.getElementById('att-dash-picker');
+  if(picker&&!picker.value) picker.value=todayStrKST();
+  const selDate=picker?picker.value:todayStrKST();
   const visEmps=getVisibleEmployees();
   const visAtts=getVisibleAttendances();
-  const todayAtts=visAtts.filter(function(a){ return a.att_date===today; });
-  let present=0, late=0, checkout=0;
-  todayAtts.forEach(function(a) {
+  const todayAtts=visAtts.filter(function(a){ return a.att_date===selDate; });
+  let present=0,late=0,checkout=0;
+  todayAtts.forEach(function(a){
     const s=getAttStatus(a);
     if(s==='present') present++;
     if(s==='late') late++;
     if(a.checkout_time) checkout++;
   });
-  const absent=Math.max(0, visEmps.length - todayAtts.length);
   document.getElementById('m-att-present').textContent=present;
   document.getElementById('m-att-late').textContent=late;
-  document.getElementById('m-att-absent').textContent=absent;
+  document.getElementById('m-att-absent').textContent=Math.max(0,visEmps.length-todayAtts.length);
   document.getElementById('m-att-checkout').textContent=checkout;
 
+  const deptOrder=['총무부','사업관리','사업관리(현장)','측량부'];
+
+  // 빨간박스: 날짜별 출근현황 - 부서별 그룹
   const el=document.getElementById('today-list');
-  if(!todayAtts.length) { el.innerHTML='<div class="empty">오늘 출근 기록이 없습니다</div>'; }
+  if(!todayAtts.length) { el.innerHTML='<div class="empty">출근 기록이 없습니다</div>'; }
   else {
-    el.innerHTML=todayAtts.map(function(a) {
-      const e=getEmpById(a.emp_id); if(!e) return '';
-      const idx=employees.findIndex(function(x){ return x.id===e.id; });
-      const s=getAttStatus(a);
-      const checkinGps=((currentRole==='admin'||currentRole==='deptadmin')&&a.checkin_lat)?' <a href="https://maps.google.com/?q='+a.checkin_lat+','+a.checkin_lng+'" target="_blank" style="font-size:11px;color:var(--blue);">📍출근위치</a>':'';
-      const checkoutGps=((currentRole==='admin'||currentRole==='deptadmin')&&a.checkout_lat)?' <a href="https://maps.google.com/?q='+a.checkout_lat+','+a.checkout_lng+'" target="_blank" style="font-size:11px;color:var(--red);">📍퇴근위치</a>':'';
-      const checkoutBadgeD = a.checkout_time ? (a.checkout_status==='early' ? '<span class="badge badge-late" style="margin-left:4px;">조기퇴근</span>' : '<span class="badge badge-present" style="margin-left:4px;">정상퇴근</span>') : '';
-      return '<div class="att-row"><div class="avatar '+avClass(idx)+'">'+ini(e.name)+'</div><div class="att-info"><div class="att-name">'+e.name+' <span style="font-weight:400;font-size:11px;color:var(--gray-400);">'+e.dept+'</span></div><div class="att-detail">출근 '+formatTimeKST(a.checkin_time)+checkinGps+' · 퇴근 '+formatTimeKST(a.checkout_time)+checkoutGps+'</div></div>'+attBadge(s)+checkoutBadgeD+'</div>';
-    }).join('');
+    let html='';
+    deptOrder.forEach(function(dept){
+      const deptAtts=todayAtts.filter(function(a){ const e=getEmpById(a.emp_id); return e&&e.dept===dept; });
+      if(!deptAtts.length) return;
+      html+='<div style="font-size:11px;font-weight:700;color:var(--primary-dark);background:var(--primary-light);padding:4px 8px;border-radius:4px;margin:8px 0 4px;">'+dept+'</div>';
+      html+=deptAtts.map(function(a){
+        const e=getEmpById(a.emp_id); if(!e) return '';
+        const idx=employees.findIndex(function(x){ return x.id===e.id; });
+        const s=getAttStatus(a);
+        const gps=((currentRole==='admin'||currentRole==='deptadmin')&&a.checkin_lat)?' <a href="https://maps.google.com/?q='+a.checkin_lat+','+a.checkin_lng+'" target="_blank" style="font-size:11px;color:var(--blue);">📍출근</a>':'';
+        const gps2=((currentRole==='admin'||currentRole==='deptadmin')&&a.checkout_lat)?' <a href="https://maps.google.com/?q='+a.checkout_lat+','+a.checkout_lng+'" target="_blank" style="font-size:11px;color:var(--red);">📍퇴근</a>':'';
+        const cb=a.checkout_time?(a.checkout_status==='early'?'<span class="badge badge-late" style="margin-left:4px;">조기퇴근</span>':'<span class="badge badge-present" style="margin-left:4px;">정상퇴근</span>'):'';
+        const fm=a.field_memo?'<span style="font-size:10px;color:var(--blue);margin-left:4px;">['+a.field_memo+']</span>':'';
+        return '<div class="att-row"><div class="avatar '+avClass(idx)+'">'+ini(e.name)+'</div><div class="att-info"><div class="att-name">'+e.name+fm+'</div><div class="att-detail">출근 '+formatTimeKST(a.checkin_time)+gps+' · 퇴근 '+formatTimeKST(a.checkout_time)+gps2+'</div></div>'+attBadge(s)+cb+'</div>';
+      }).join('');
+    });
+    el.innerHTML=html||'<div class="empty">출근 기록이 없습니다</div>';
   }
 
+  // 파란박스: 부서별 전체 근태 현황
   const absentEl=document.getElementById('absent-list');
-  const absentEmps=visEmps.filter(function(e){ return !todayAtts.find(function(a){ return a.emp_id===e.id; }); });
-  const lateAtts=todayAtts.filter(function(a){ return getAttStatus(a)==='late'; });
-  if(!absentEmps.length&&!lateAtts.length) { absentEl.innerHTML='<div class="empty">미출근/지각 직원이 없습니다 🎉</div>'; }
-  else {
-    absentEl.innerHTML=absentEmps.map(function(e) {
+  let deptHtml='';
+  deptOrder.forEach(function(dept){
+    const deptEmps=visEmps.filter(function(e){ return e.dept===dept; });
+    if(!deptEmps.length) return;
+    deptHtml+='<div style="font-size:11px;font-weight:700;color:var(--primary-dark);background:var(--primary-light);padding:4px 8px;border-radius:4px;margin:8px 0 4px;">'+dept+'</div>';
+    deptHtml+=deptEmps.map(function(e){
       const idx=employees.findIndex(function(x){ return x.id===e.id; });
-      return '<div class="att-row"><div class="avatar '+avClass(idx)+'">'+ini(e.name)+'</div><div class="att-info"><div class="att-name">'+e.name+'</div><div class="att-detail">'+e.dept+'</div></div>'+attBadge('absent')+'</div>';
-    }).join('')+lateAtts.map(function(a) {
-      const e=getEmpById(a.emp_id); if(!e) return '';
-      const idx=employees.findIndex(function(x){ return x.id===e.id; });
-      return '<div class="att-row"><div class="avatar '+avClass(idx)+'">'+ini(e.name)+'</div><div class="att-info"><div class="att-name">'+e.name+'</div><div class="att-detail">'+formatTimeKST(a.checkin_time)+' 출근</div></div>'+attBadge('late')+'</div>';
+      const att=todayAtts.find(function(a){ return a.emp_id===e.id; });
+      const s=att?getAttStatus(att):'absent';
+      const cb=att&&att.checkout_time?(att.checkout_status==='early'?'<span class="badge badge-late" style="margin-left:4px;">조기퇴근</span>':'<span class="badge badge-present" style="margin-left:4px;">정상퇴근</span>'):'';
+      const timeInfo=att?'출근 '+formatTimeKST(att.checkin_time)+(att.checkout_time?' · 퇴근 '+formatTimeKST(att.checkout_time):''):'미출근';
+      return '<div class="att-row"><div class="avatar '+avClass(idx)+'">'+ini(e.name)+'</div><div class="att-info"><div class="att-name">'+e.name+'</div><div class="att-detail">'+timeInfo+'</div></div>'+attBadge(s)+cb+'</div>';
     }).join('');
-  }
+  });
+  absentEl.innerHTML=deptHtml||'<div class="empty">데이터가 없습니다</div>';
 }
+
 
 function setAttFilter(f, el) {
   currentAttFilter=f;
