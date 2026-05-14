@@ -651,8 +651,9 @@ function attBadge(s) {
 // 근태 상태
 function getAttStatus(att) {
   if(!att || !att.checkin_time) return 'absent';
-  // 현장출근/현장퇴근(field_memo 있으면) → 항상 정상출근
-  if(att.field_memo) return 'present';
+  // 실시간측량 출근(checkin_field_memo 있으면) → 정상출근
+  if(att.checkin_field_memo) return 'present';
+  // 현장퇴근 메모(field_memo)만 있는 경우 → 출근 시간 기준 그대로
   // 조기퇴근 표시
   if(att.checkout_time && att.checkout_status === 'early') return 'early';
   const d = new Date(att.checkin_time);
@@ -661,7 +662,6 @@ function getAttStatus(att) {
   if(kstHour > CHECKIN_HOUR || (kstHour === CHECKIN_HOUR && kstMin >= 1)) return 'late';
   return 'present';
 }
-
 // 주말 제외 근무일
 function countWorkDaysUntilToday(year, month) {
   const today = new Date();
@@ -1309,7 +1309,7 @@ function renderAttDashboard() {
         const gps=((currentRole==='admin'||currentRole==='deptadmin')&&a.checkin_lat)?' <a href="https://maps.google.com/?q='+a.checkin_lat+','+a.checkin_lng+'" target="_blank" style="font-size:11px;color:var(--blue);">📍출근</a>':'';
         const gps2=((currentRole==='admin'||currentRole==='deptadmin')&&a.checkout_lat)?' <a href="https://maps.google.com/?q='+a.checkout_lat+','+a.checkout_lng+'" target="_blank" style="font-size:11px;color:var(--red);">📍퇴근</a>':'';
         const cb=a.checkout_time?(a.checkout_status==='early'?'<span class="badge badge-late" style="margin-left:4px;">조기퇴근</span>':'<span class="badge badge-present" style="margin-left:4px;">정상퇴근</span>'):'';
-        const fm=a.field_memo?'<span style="font-size:10px;color:var(--blue);margin-left:4px;">['+a.field_memo+']</span>':'';
+        const fm=a.checkin_field_memo?'<span style="font-size:10px;color:var(--blue);margin-left:4px;">[출근:'+a.checkin_field_memo+']</span>':(a.field_memo?'<span style="font-size:10px;color:var(--amber);margin-left:4px;">[퇴근:'+a.field_memo+']</span>':'');
         return '<div class="att-row"><div class="avatar '+avClass(idx)+'">'+ini(e.name)+'</div><div class="att-info"><div class="att-name">'+e.name+fm+'</div><div class="att-detail">출근 '+formatTimeKST(a.checkin_time)+gps+' · 퇴근 '+formatTimeKST(a.checkout_time)+gps2+'</div></div>'+attBadge(s)+cb+'</div>';
       }).join('');
     });
@@ -1511,7 +1511,7 @@ function renderMyWeek() {
   el.innerHTML=weekAtts.map(function(a) {
     const s=getAttStatus(a);
     const checkoutBadge = a.checkout_time ? (a.checkout_status==='early' ? '<span class="badge badge-late" style="margin-left:4px;">조기퇴근</span>' : '<span class="badge badge-present" style="margin-left:4px;">정상퇴근</span>') : '';
-    return '<div class="att-row"><div class="att-info"><div class="att-name">'+a.att_date+(a.field_memo?' <span style="font-size:10px;color:var(--blue);">['+a.field_memo+']</span>':'')+'</div><div class="att-detail">출근 '+formatTimeKST(a.checkin_time)+' · 퇴근 '+formatTimeKST(a.checkout_time)+'</div></div>'+attBadge(s)+checkoutBadge+'</div>';
+    return '<div class="att-row"><div class="att-info"><div class="att-name">'+a.att_date+(a.checkin_field_memo?' <span style="font-size:10px;color:var(--blue);">[출근:'+a.checkin_field_memo+']</span>':(a.field_memo?' <span style="font-size:10px;color:var(--amber);">[퇴근:'+a.field_memo+']</span>':''))+'</div><div class="att-detail">출근 '+formatTimeKST(a.checkin_time)+' · 퇴근 '+formatTimeKST(a.checkout_time)+'</div></div>'+attBadge(s)+checkoutBadge+'</div>';
   }).join('');
 }
 
@@ -1535,7 +1535,7 @@ function renderMyAttRecords() {
   el.innerHTML=myAtts.map(function(a) {
     const s=getAttStatus(a);
     const checkoutBadge = a.checkout_time ? (a.checkout_status==='early' ? '<span class="badge badge-late" style="margin-left:4px;">조기퇴근</span>' : '<span class="badge badge-present" style="margin-left:4px;">정상퇴근</span>') : '';
-    return '<div class="att-row"><div class="att-info"><div class="att-name">'+a.att_date+(a.field_memo?' <span style="font-size:10px;color:var(--blue);">['+a.field_memo+']</span>':'')+'</div><div class="att-detail">출근 '+formatTimeKST(a.checkin_time)+' · 퇴근 '+formatTimeKST(a.checkout_time)+'</div></div>'+attBadge(s)+checkoutBadge+'</div>';
+    return '<div class="att-row"><div class="att-info"><div class="att-name">'+a.att_date+(a.checkin_field_memo?' <span style="font-size:10px;color:var(--blue);">[출근:'+a.checkin_field_memo+']</span>':(a.field_memo?' <span style="font-size:10px;color:var(--amber);">[퇴근:'+a.field_memo+']</span>':''))+'</div><div class="att-detail">출근 '+formatTimeKST(a.checkin_time)+' · 퇴근 '+formatTimeKST(a.checkout_time)+'</div></div>'+attBadge(s)+checkoutBadge+'</div>';
   }).join('');
 }
 
@@ -1634,9 +1634,9 @@ async function confirmFieldCheckin() {
   const pos = await gpsPromise;
   // 현장출근은 항상 정상출근(present)
   if(pos) {
-    await dbInsert('attendances',{emp_id:currentEmpId, att_date:today, checkin_time:nowISO, checkin_lat:pos.coords.latitude, checkin_lng:pos.coords.longitude, status:'present', field_memo:memo});
+    await dbInsert('attendances',{emp_id:currentEmpId, att_date:today, checkin_time:nowISO, checkin_lat:pos.coords.latitude, checkin_lng:pos.coords.longitude, status:'present', checkin_field_memo:memo});
   } else {
-    await dbInsert('attendances',{emp_id:currentEmpId, att_date:today, checkin_time:nowISO, checkin_lat:null, checkin_lng:null, status:'present', field_memo:memo});
+    await dbInsert('attendances',{emp_id:currentEmpId, att_date:today, checkin_time:nowISO, checkin_lat:null, checkin_lng:null, status:'present', checkin_field_memo:memo});
   }
   document.getElementById('checkin-status').textContent='🏃 '+formatTimeKST(nowISO)+' 현장출근 완료 ('+memo+')';
   btn.textContent='🏃 출근(실시간)';
