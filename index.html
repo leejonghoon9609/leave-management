@@ -1376,7 +1376,7 @@ function renderDeptChart() {
       const empRate = workDays>0?Math.round(((empPresent+empLate)/workDays)*100):0;
       const bg = empRate>=90?'var(--primary-light)':empRate>=70?'var(--amber-light)':'var(--red-light)';
       const tc = empRate>=90?'var(--primary-dark)':empRate>=70?'var(--amber)':'var(--red-dark)';
-      html += '<span style="font-size:11px;background:'+bg+';color:'+tc+';padding:2px 7px;border-radius:10px;cursor:pointer;" onclick="switchDeptView('detail',document.getElementById('dept-btn-detail'))">'+e.name+' '+empRate+'%</span>';
+      html += '<span style="font-size:11px;background:'+bg+';color:'+tc+';padding:2px 7px;border-radius:10px;cursor:pointer;" onclick="switchDeptView(&quot;detail&quot;,document.getElementById(&quot;dept-btn-detail&quot;))">'+e.name+' '+empRate+'%</span>';
     });
     html += '</div></div>';
   });
