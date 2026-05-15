@@ -1888,16 +1888,29 @@ function renderMyToday() {
 // 특근 기록 HTML 생성 (공통)
 function overtimeHtml(otRecs) {
   if(!otRecs || !otRecs.length) return '';
-  return otRecs.map(function(ot) {
-    const isCheckin = !!ot.overtime_checkin;
-    const timeStr = isCheckin ? formatTimeKST(ot.overtime_checkin) : formatTimeKST(ot.overtime_checkout);
-    const label = isCheckin ? '🌙 특근출근' : '🌙 특근퇴근';
-    const memoNote = ot.overtime_memo ? ' <span style="font-size:10px;color:#C0392B;">('+ot.overtime_memo+')</span>' : '';
-    return '<div class="att-row" style="border-top:1px dashed #fcc;margin-top:4px;padding-top:8px;">'
-      + '<div class="att-info"><div class="att-name" style="color:#C0392B;">' + label + memoNote + '</div>'
-      + '<div class="att-detail">' + timeStr + '</div></div>'
-      + '<span class="badge" style="background:#FDEDEC;color:#C0392B;">특근</span></div>';
-  }).join('');
+
+  // 출근/퇴근 레코드 분리
+  const checkinRec = otRecs.find(function(ot){ return !!ot.overtime_checkin; });
+  const checkoutRec = otRecs.find(function(ot){ return !!ot.overtime_checkout; });
+
+  // 사업명 (출근 사업명 우선, 없으면 퇴근 사업명)
+  const memo = (checkinRec && checkinRec.overtime_memo) || (checkoutRec && checkoutRec.overtime_memo) || '';
+  const memoNote = memo ? ' <span style="font-size:10px;color:#C0392B;">('+memo+')</span>' : '';
+
+  // 시간 표시
+  const checkinTime = checkinRec ? formatTimeKST(checkinRec.overtime_checkin) : '-';
+  const checkoutTime = checkoutRec ? formatTimeKST(checkoutRec.overtime_checkout) : '-';
+
+  // 출근/퇴근 배지
+  let badges = '';
+  if(checkinRec) badges += '<span class="badge" style="background:#FDEDEC;color:#C0392B;margin-left:4px;">특근출근</span>';
+  if(checkoutRec) badges += '<span class="badge" style="background:#FDEDEC;color:#C0392B;margin-left:4px;">특근퇴근</span>';
+
+  return '<div class="att-row" style="border-top:1px dashed #fcc;margin-top:4px;padding-top:8px;">'
+    + '<div class="att-info">'
+    + '<div class="att-name" style="color:#C0392B;">🌙 특근' + memoNote + '</div>'
+    + '<div class="att-detail">출근 ' + checkinTime + ' · 퇴근 ' + checkoutTime + '</div>'
+    + '</div>' + badges + '</div>';
 }
 
 function renderTeamMemberToday() {
