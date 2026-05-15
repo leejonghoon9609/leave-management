@@ -644,6 +644,7 @@ body { font-family: "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; backgrou
         </div>
       </div>
     </div>
+    </div>
 
     <!-- 내 근태 기록 -->
     <div class="page" id="page-my-records">
@@ -670,7 +671,7 @@ body { font-family: "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; backgrou
         <div id="my-att-table"></div>
       </div>
     </div>
-  </div>
+
 </div>
 
 <script>
@@ -2682,7 +2683,6 @@ async function restoreSession() {
 const todayStr=new Date().toISOString().slice(0,10);
 document.getElementById('start-date').value=todayStr;
 document.getElementById('end-date').value=todayStr;
-loadData();
 restoreSession();
 </script>
 </body>
