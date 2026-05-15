@@ -531,33 +531,33 @@ body { font-family: "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; backgrou
         <div class="checkin-time" id="current-time">00:00:00</div>
         <div class="checkin-date" id="current-date"></div>
         <div style="display:flex;flex-direction:column;gap:10px;align-items:center;">
-          <!-- 본사 근무 -->
-          <div style="display:flex;align-items:center;gap:8px;">
-            <span style="font-size:12px;color:var(--gray-900);font-weight:600;width:60px;text-align:right;">본사근무</span>
-            <button class="checkin-btn checkin-btn-in" id="btn-checkin" onclick="doCheckIn()" style="padding:10px 22px;font-size:13px;">🏃 출근</button>
-            <button class="checkin-btn checkin-btn-out" id="btn-checkout" onclick="doCheckOut()" disabled style="padding:10px 22px;font-size:13px;">🏠 퇴근</button>
-          </div>
-          <!-- 현장 근무 (측량부/사업관리(현장)만 표시) -->
-          <div id="field-btn-row" style="display:none;flex-direction:column;gap:8px;align-items:center;">
-            <!-- 현장근무 + 특근 버튼 한 줄 -->
+          <!-- 본사근무 + 현장근무 한 줄 -->
+          <div style="display:flex;align-items:center;gap:16px;">
+            <!-- 본사근무 -->
             <div style="display:flex;align-items:center;gap:8px;">
-              <span style="font-size:12px;color:var(--gray-900);font-weight:600;width:60px;text-align:right;">현장근무</span>
+              <span style="font-size:12px;color:var(--gray-900);font-weight:600;">본사근무</span>
+              <button class="checkin-btn checkin-btn-in" id="btn-checkin" onclick="doCheckIn()" style="padding:10px 22px;font-size:13px;">🏃 출근</button>
+              <button class="checkin-btn checkin-btn-out" id="btn-checkout" onclick="doCheckOut()" disabled style="padding:10px 22px;font-size:13px;">🏠 퇴근</button>
+            </div>
+            <!-- 현장근무 (측량부/사업관리(현장)만 표시) -->
+            <div id="field-btn-row" style="display:none;align-items:center;gap:8px;">
+              <span style="font-size:12px;color:var(--gray-900);font-weight:600;">현장근무</span>
               <button class="checkin-btn" id="btn-field-checkin" onclick="openFieldCheckinModal()" style="background:var(--blue);color:white;padding:10px 22px;font-size:13px;">🏃 출근</button>
               <button class="checkin-btn" id="btn-field-checkout" onclick="openFieldCheckoutModal()" disabled style="background:var(--amber);color:white;padding:10px 22px;font-size:13px;">🏠 퇴근</button>
-              <button class="checkin-btn" id="btn-overtime-toggle" onclick="toggleOvertimeRow()" style="background:#C0392B;color:white;padding:10px 18px;font-size:13px;">🔴 특근</button>
+              <button class="checkin-btn" id="btn-overtime-toggle" onclick="toggleOvertimeRow()" style="background:#C0392B;color:white;padding:10px 18px;font-size:13px;">● 특근</button>
             </div>
-            <!-- 특근 탭 (특근 버튼 클릭 시 표시) -->
-            <div id="overtime-btn-row" style="display:none;align-items:center;gap:0;">
-              <span style="font-size:12px;color:var(--gray-900);font-weight:600;width:60px;text-align:right;margin-right:8px;">특근</span>
-              <button id="btn-overtime-checkin" onclick="openOvertimeModal('checkin')"
-                style="padding:8px 22px;font-size:13px;font-weight:600;border:2px solid #C0392B;border-right:1px solid #C0392B;background:white;color:#C0392B;border-radius:20px 0 0 20px;cursor:pointer;font-family:inherit;">
-                🌙 출근
-              </button>
-              <button id="btn-overtime-checkout" onclick="openOvertimeModal('checkout')" disabled
-                style="padding:8px 22px;font-size:13px;font-weight:600;border:2px solid #C0392B;border-left:1px solid #C0392B;background:white;color:#C0392B;border-radius:0 20px 20px 0;cursor:pointer;font-family:inherit;opacity:0.5;">
-                🌙 퇴근
-              </button>
-            </div>
+          </div>
+          <!-- 특근 탭 (특근 버튼 클릭 시 표시) -->
+          <div id="overtime-btn-row" style="display:none;align-items:center;gap:0;">
+            <span style="font-size:12px;color:var(--gray-900);font-weight:600;margin-right:8px;">특근</span>
+            <button id="btn-overtime-checkin" onclick="openOvertimeModal('checkin')"
+              style="padding:8px 22px;font-size:13px;font-weight:600;border:2px solid #C0392B;border-right:1px solid #C0392B;background:white;color:#C0392B;border-radius:20px 0 0 20px;cursor:pointer;font-family:inherit;">
+              🌙 출근
+            </button>
+            <button id="btn-overtime-checkout" onclick="openOvertimeModal('checkout')" disabled
+              style="padding:8px 22px;font-size:13px;font-weight:600;border:2px solid #C0392B;border-left:1px solid #C0392B;background:white;color:#C0392B;border-radius:0 20px 20px 0;cursor:pointer;font-family:inherit;opacity:0.5;">
+              🌙 퇴근
+            </button>
           </div>
         </div>
         <div style="display:none;">
@@ -1902,7 +1902,7 @@ function toggleOvertimeRow() {
   row.style.display = isOpen ? 'none' : 'flex';
   if(toggleBtn) {
     toggleBtn.style.background = isOpen ? '#C0392B' : '#922B21';
-    toggleBtn.textContent = isOpen ? '🔴 특근' : '🔴 특근 ▲';
+    toggleBtn.textContent = isOpen ? '● 특근' : '● 특근 ▲';
   }
 }
 
