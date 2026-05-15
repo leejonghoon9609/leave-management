@@ -574,7 +574,7 @@ body { font-family: "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; backgrou
         <div class="checkin-status" id="checkin-status">오늘 출근 기록이 없습니다</div>
         <div class="gps-info" id="gps-info"></div>
       </div>
-      <div class="card"><div class="card-title">📋 이번 주 내 기록</div><div id="my-week-records"><div class="loading">불러오는 중...</div></div></div>
+      <div class="card" id="my-week-card"><div class="card-title">📋 이번 주 내 기록</div><div id="my-week-records"><div class="loading">불러오는 중...</div></div></div>
       <!-- 팀장 전용: 팀 출퇴근일람 -->
       <div id="team-today-section" style="display:none;">
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:0;">
@@ -1594,9 +1594,9 @@ function renderCheckin() {
     if(overtimeCheckoutBtn) { overtimeCheckoutBtn.disabled=true; overtimeCheckoutBtn.style.opacity='0.5'; }
   }
   renderMyWeek();
-  // 팀장이면 팀 출퇴근일람 표시
+  // 팀장이면 팀 출퇴근일람 표시, 이번주 내기록 숨김
   const teamSection = document.getElementById('team-today-section');
-  const myWeekCard = document.querySelector('#page-checkin > .card');
+  const myWeekCard = document.getElementById('my-week-card');
   if(emp && isTeamLeader(emp.name)) {
     if(teamSection) teamSection.style.display = 'block';
     if(myWeekCard) myWeekCard.style.display = 'none';
@@ -1911,15 +1911,9 @@ function openOvertimeSelectModal() {
   const checkinBtn = document.getElementById('ot-sel-checkin');
   const checkoutBtn = document.getElementById('ot-sel-checkout');
 
-  if(otRec) {
-    // 특근 출근 완료 → 출근 비활성, 퇴근 활성
-    if(checkinBtn) { checkinBtn.disabled=true; checkinBtn.style.opacity='0.4'; }
-    if(checkoutBtn) { checkoutBtn.disabled = !!otRec.overtime_checkout; checkoutBtn.style.opacity = otRec.overtime_checkout ? '0.4' : '1'; }
-  } else {
-    // 특근 출근 전 → 출근 활성, 퇴근 비활성
-    if(checkinBtn) { checkinBtn.disabled=false; checkinBtn.style.opacity='1'; }
-    if(checkoutBtn) { checkoutBtn.disabled=true; checkoutBtn.style.opacity='0.4'; }
-  }
+  // 출근/퇴근 둘 다 항상 선택 가능
+  if(checkinBtn) { checkinBtn.disabled=false; checkinBtn.style.opacity='1'; }
+  if(checkoutBtn) { checkoutBtn.disabled=false; checkoutBtn.style.opacity='1'; }
 
   // 1단계 보여주기
   document.getElementById('overtime-step1').style.display = 'flex';
@@ -1976,8 +1970,10 @@ async function confirmOvertimeAction() {
     });
     document.getElementById('checkin-status').textContent = '🌙 ' + formatTimeKST(nowISO) + ' 특근 출근 완료 (' + memo + ')';
   } else {
-    if(!existing) { alert('특근 출근 기록이 없습니다'); return; }
-    await dbUpdate('overtime_records', existing.id, {
+    // 퇴근도 별도 레코드로 저장 (출근과 동일 방식)
+    await dbInsert('overtime_records', {
+      emp_id: currentEmpId,
+      att_date: today,
       overtime_checkout: nowISO,
       overtime_memo: memo
     });
