@@ -139,14 +139,14 @@ body { font-family: "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; backgrou
 .modal-btn-confirm { background: var(--red); color: var(--white); }
 .toast { position: fixed; top: 20px; right: 20px; background: var(--primary); color: white; padding: 12px 20px; border-radius: var(--radius); font-size: 13px; font-weight: 600; z-index: 9999; display: none; box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
 .toast.show { display: block; }
-.checkin-card { background: var(--white); border-radius: var(--radius); border: 1px solid var(--gray-200); padding: 28px; text-align: center; margin-bottom: 16px; }
+.checkin-card { background: var(--white); border-radius: var(--radius); border: 1px solid var(--gray-200); padding: 28px; text-align: center; margin-bottom: 28px; }
 .checkin-time { font-size: 48px; font-weight: 700; color: var(--gray-900); margin-bottom: 4px; font-variant-numeric: tabular-nums; }
 .checkin-date { font-size: 14px; color: var(--gray-400); margin-bottom: 24px; }
 .checkin-btn { padding: 16px 40px; font-size: 16px; font-weight: 700; border: none; border-radius: 50px; cursor: pointer; font-family: inherit; transition: all 0.2s; }
 .checkin-btn-in { background: var(--primary); color: var(--white); }
 .checkin-btn-out { background: var(--red); color: var(--white); }
 .checkin-btn:disabled { background: var(--gray-200); color: var(--gray-400); cursor: not-allowed; }
-.checkin-status { margin-top: 16px; font-size: 13px; color: var(--gray-600); }
+.checkin-status { margin-top: 16px; margin-bottom: 8px; font-size: 13px; color: var(--gray-600); }
 .filter-bar { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
 .filter-btn { padding: 6px 14px; font-size: 12px; border-radius: 20px; border: 1px solid var(--gray-200); background: var(--white); cursor: pointer; font-family: inherit; }
 .filter-btn.active { background: var(--primary); color: var(--white); border-color: var(--primary); font-weight: 600; }
@@ -576,7 +576,7 @@ body { font-family: "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; backgrou
       </div>
       <div class="card" id="my-week-card"><div class="card-title">📋 이번 주 내 기록</div><div id="my-week-records"><div class="loading">불러오는 중...</div></div></div>
       <!-- 팀장 전용: 팀 출퇴근일람 -->
-      <div id="team-today-section" style="display:none;">
+      <div id="team-today-section" style="display:none;margin-top:32px;">
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:0;">
           <div class="card" style="margin-bottom:0;">
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
@@ -1861,16 +1861,40 @@ function renderMyToday() {
 
   const emp = getEmpById(currentEmpId);
   const myEl = document.getElementById('my-today-record');
+
+  // 일반 출퇴근 기록
   const myAtt = attendances.find(function(a){ return a.emp_id === currentEmpId && a.att_date === dateStr; });
+
+  // 특근 기록 (overtime_records 테이블 — attendances에서 overtime_checkin 또는 overtime_checkout 있는 것)
+  const otRecs = attendances.filter(function(a){ return a.emp_id === currentEmpId && a.att_date === dateStr && (a.overtime_checkin || a.overtime_checkout); });
+
+  let html = '';
+
   if(myAtt) {
     const s = getAttStatus(myAtt);
     const checkoutBadge = getCheckoutBadge(myAtt);
     const memo = myAtt.checkin_field_memo ? ' <span style="font-size:10px;color:var(--blue);">[출근:'+myAtt.checkin_field_memo+']</span>' : (myAtt.field_memo ? ' <span style="font-size:10px;color:var(--amber);">[퇴근:'+myAtt.field_memo+']</span>' : '');
     const earlyNote = myAtt.early_reason ? ' <span style="font-size:10px;color:var(--primary);">['+myAtt.early_reason+']</span>' : '';
-    myEl.innerHTML = '<div class="att-row"><div class="att-info"><div class="att-name">' + (emp ? emp.name : '') + memo + earlyNote + '</div><div class="att-detail">출근 ' + formatTimeKST(myAtt.checkin_time) + ' · 퇴근 ' + formatTimeKST(myAtt.checkout_time) + '</div></div>' + attBadge(s) + checkoutBadge + '</div>';
+    html += '<div class="att-row"><div class="att-info"><div class="att-name">' + (emp ? emp.name : '') + memo + earlyNote + '</div><div class="att-detail">출근 ' + formatTimeKST(myAtt.checkin_time) + ' · 퇴근 ' + formatTimeKST(myAtt.checkout_time) + '</div></div>' + attBadge(s) + checkoutBadge + '</div>';
   } else {
-    myEl.innerHTML = '<div class="empty">출근 기록이 없습니다</div>';
+    html += '<div class="empty">출근 기록이 없습니다</div>';
   }
+
+  // 특근 기록 표시
+  if(otRecs.length) {
+    otRecs.forEach(function(ot) {
+      const isCheckin = !!ot.overtime_checkin;
+      const timeStr = isCheckin ? formatTimeKST(ot.overtime_checkin) : formatTimeKST(ot.overtime_checkout);
+      const label = isCheckin ? '🌙 특근출근' : '🌙 특근퇴근';
+      const memoNote = ot.overtime_memo ? ' <span style="font-size:10px;color:#C0392B;">('+ot.overtime_memo+')</span>' : '';
+      html += '<div class="att-row" style="border-top:1px dashed #fcc;margin-top:4px;padding-top:8px;">'
+        + '<div class="att-info"><div class="att-name" style="color:#C0392B;">' + label + memoNote + '</div>'
+        + '<div class="att-detail">' + timeStr + '</div></div>'
+        + '<span class="badge" style="background:#FDEDEC;color:#C0392B;">특근</span></div>';
+    });
+  }
+
+  myEl.innerHTML = html;
 }
 
 function renderTeamMemberToday() {
