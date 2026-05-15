@@ -1993,21 +1993,26 @@ async function confirmOvertimeAction() {
 
   const nowISO = nowISOKST();
   const today = todayStrKST();
-  const existing = attendances.find(function(a){ return a.emp_id===currentEmpId && a.att_date===today && a.overtime_checkin; });
 
   if(overtimeActionType === 'checkin') {
-    await dbInsert('overtime_records', {
+    // 특근 출근 → attendances 테이블에 새 레코드 (overtime_checkin 컬럼)
+    await dbInsert('attendances', {
       emp_id: currentEmpId,
       att_date: today,
+      checkin_time: nowISO,
+      status: 'present',
       overtime_checkin: nowISO,
       overtime_memo: memo
     });
     document.getElementById('checkin-status').textContent = '🌙 ' + formatTimeKST(nowISO) + ' 특근 출근 완료 (' + memo + ')';
   } else {
-    // 퇴근도 별도 레코드로 저장 (출근과 동일 방식)
-    await dbInsert('overtime_records', {
+    // 특근 퇴근 → attendances 테이블에 새 레코드 (overtime_checkout 컬럼)
+    await dbInsert('attendances', {
       emp_id: currentEmpId,
       att_date: today,
+      checkin_time: nowISO,
+      checkout_time: nowISO,
+      status: 'present',
       overtime_checkout: nowISO,
       overtime_memo: memo
     });
