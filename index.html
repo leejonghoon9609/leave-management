@@ -541,9 +541,9 @@ body { font-family: "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; backgrou
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
               <div class="card-title" style="margin-bottom:0;">📅 내 출퇴근일람</div>
               <div style="display:flex;align-items:center;gap:6px;">
-                <button onclick="changeTodayDate(-1)" style="padding:2px 8px;font-size:12px;border:1px solid var(--gray-200);border-radius:4px;background:white;cursor:pointer;">←</button>
+                <button onclick="changeMyDate(-1)" style="padding:2px 8px;font-size:12px;border:1px solid var(--gray-200);border-radius:4px;background:white;cursor:pointer;">←</button>
                 <span id="team-today-date" style="font-size:12px;font-weight:600;color:var(--gray-600);"></span>
-                <button onclick="changeTodayDate(1)" style="padding:2px 8px;font-size:12px;border:1px solid var(--gray-200);border-radius:4px;background:white;cursor:pointer;">→</button>
+                <button onclick="changeMyDate(1)" style="padding:2px 8px;font-size:12px;border:1px solid var(--gray-200);border-radius:4px;background:white;cursor:pointer;">→</button>
               </div>
             </div>
             <div id="my-today-record"><div class="loading">불러오는 중...</div></div>
@@ -552,9 +552,9 @@ body { font-family: "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; backgrou
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
               <div class="card-title" style="margin-bottom:0;">👥 팀 출퇴근일람</div>
               <div style="display:flex;align-items:center;gap:6px;">
-                <button onclick="changeTodayDate(-1)" style="padding:2px 8px;font-size:12px;border:1px solid var(--gray-200);border-radius:4px;background:white;cursor:pointer;">←</button>
+                <button onclick="changeTeamDate(-1)" style="padding:2px 8px;font-size:12px;border:1px solid var(--gray-200);border-radius:4px;background:white;cursor:pointer;">←</button>
                 <span id="team-today-date2" style="font-size:12px;font-weight:600;color:var(--gray-600);"></span>
-                <button onclick="changeTodayDate(1)" style="padding:2px 8px;font-size:12px;border:1px solid var(--gray-200);border-radius:4px;background:white;cursor:pointer;">→</button>
+                <button onclick="changeTeamDate(1)" style="padding:2px 8px;font-size:12px;border:1px solid var(--gray-200);border-radius:4px;background:white;cursor:pointer;">→</button>
               </div>
             </div>
             <div id="team-today-records"><div class="loading">불러오는 중...</div></div>
@@ -603,7 +603,8 @@ function getLeaderDept(name) { return TEAM_LEADERS[name] || TEAM_VIEWERS[name] |
 
 let employees = [], requests = [], attendances = [];
 let currentRole = null, currentEmpId = null, currentDept = null, currentPage = 'leave-dashboard';
-let teamTodayDate = new Date(); // 팀 출퇴근일람 날짜
+let teamTodayDate = new Date();  // 팀 출퇴근일람 날짜
+let myTodayDate = new Date();    // 내 출퇴근일람 날짜
 let currentLeaveMonth = new Date(CY, new Date().getMonth());
 let currentAttMonth = new Date();
 let myCurrentAttMonth = new Date();
@@ -1775,26 +1776,30 @@ async function doCheckOut() {
   await loadData(); renderAll();
 }
 
-function changeTodayDate(dir) {
+function changeMyDate(dir) {
+  myTodayDate = new Date(myTodayDate);
+  myTodayDate.setDate(myTodayDate.getDate() + dir);
+  renderMyToday();
+}
+
+function changeTeamDate(dir) {
   teamTodayDate = new Date(teamTodayDate);
   teamTodayDate.setDate(teamTodayDate.getDate() + dir);
-  renderTeamToday();
+  renderTeamMemberToday();
 }
 
 function renderTeamToday() {
-  const dateStr = teamTodayDate.toISOString().slice(0, 10);
-  const displayDate = teamTodayDate.toLocaleDateString('ko-KR', {month:'numeric', day:'numeric', weekday:'short'});
+  renderMyToday();
+  renderTeamMemberToday();
+}
 
-  // 날짜 표시 (양쪽 동일)
+function renderMyToday() {
+  const dateStr = myTodayDate.toISOString().slice(0, 10);
+  const displayDate = myTodayDate.toLocaleDateString('ko-KR', {month:'numeric', day:'numeric', weekday:'short'});
   const d1 = document.getElementById('team-today-date');
-  const d2 = document.getElementById('team-today-date2');
   if(d1) d1.textContent = displayDate;
-  if(d2) d2.textContent = displayDate;
 
   const emp = getEmpById(currentEmpId);
-  const myDept = emp ? getLeaderDept(emp.name) : null;
-
-  // 내 출퇴근 기록
   const myEl = document.getElementById('my-today-record');
   const myAtt = attendances.find(function(a){ return a.emp_id === currentEmpId && a.att_date === dateStr; });
   if(myAtt) {
@@ -1806,8 +1811,16 @@ function renderTeamToday() {
   } else {
     myEl.innerHTML = '<div class="empty">출근 기록이 없습니다</div>';
   }
+}
 
-  // 팀원 출퇴근 기록 (본인 제외, 같은 부서)
+function renderTeamMemberToday() {
+  const dateStr = teamTodayDate.toISOString().slice(0, 10);
+  const displayDate = teamTodayDate.toLocaleDateString('ko-KR', {month:'numeric', day:'numeric', weekday:'short'});
+  const d2 = document.getElementById('team-today-date2');
+  if(d2) d2.textContent = displayDate;
+
+  const emp = getEmpById(currentEmpId);
+  const myDept = emp ? getLeaderDept(emp.name) : null;
   const teamEl = document.getElementById('team-today-records');
   if(!myDept) { teamEl.innerHTML = '<div class="empty">부서 정보 없음</div>'; return; }
   const teamEmps = employees.filter(function(e){ return e.dept === myDept && e.id !== currentEmpId && e.role !== 'admin'; });
