@@ -1693,7 +1693,7 @@ function renderMyAttRecords() {
   const titleEl = document.getElementById('my-monthly-title');
   const calEl = document.getElementById('my-att-calendar');
   const tableEl = document.getElementById('my-att-table');
-  if(!titleEl || !calEl || !tableEl) return; // 페이지 미표시 시 중단
+  if(!titleEl || !calEl || !tableEl) return;
 
   const y = myCurrentAttMonth.getFullYear();
   const m = myCurrentAttMonth.getMonth();
@@ -2596,7 +2596,7 @@ function renderAll() {
   if(currentRole==='employee') {
     if(currentPage==='my-leave'||currentPage==='apply') renderMyLeave();
     else if(currentPage==='checkin') renderCheckin();
-    else if(currentPage==='my-records') renderMyAttRecords();
+    else if(currentPage==='my-records') setTimeout(function(){ renderMyAttRecords(); }, 0);
     else renderMyLeave();
   }
 }
