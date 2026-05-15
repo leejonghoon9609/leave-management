@@ -230,6 +230,22 @@ body { font-family: "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; backgrou
     </div>
   </div>
 </div>
+
+<!-- 조기퇴근 사유 모달 (황현희/조윤미) -->
+<div class="modal-overlay" id="early-checkout-modal">
+  <div class="modal-box">
+    <div class="modal-title">🚶 조기퇴근</div>
+    <div class="modal-sub">사유를 입력하면 <strong style="color:var(--primary);">정상퇴근</strong>으로 처리됩니다</div>
+    <div class="form-group">
+      <label class="form-label">사유 *</label>
+      <textarea class="form-input" id="early-checkout-reason" rows="3" placeholder="예) 우체국·은행 업무"></textarea>
+    </div>
+    <div class="modal-btn-row">
+      <button class="modal-btn modal-btn-cancel" onclick="closeEarlyCheckoutModal()">취소</button>
+      <button class="modal-btn" style="background:var(--primary);color:white;" onclick="confirmEarlyCheckout()">✅ 정상퇴근 처리</button>
+    </div>
+  </div>
+</div>
 <div class="modal-overlay" id="reject-modal">
   <div class="modal-box">
     <div class="modal-title">❌ 거절 사유 입력</div>
@@ -520,6 +536,7 @@ body { font-family: "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; backgrou
             <span style="font-size:12px;color:var(--gray-900);font-weight:600;width:60px;text-align:right;">본사근무</span>
             <button class="checkin-btn checkin-btn-in" id="btn-checkin" onclick="doCheckIn()" style="padding:10px 22px;font-size:13px;">🏃 출근</button>
             <button class="checkin-btn checkin-btn-out" id="btn-checkout" onclick="doCheckOut()" disabled style="padding:10px 22px;font-size:13px;">🏠 퇴근</button>
+            <button class="checkin-btn" id="btn-early-checkout" onclick="openEarlyCheckoutModal()" disabled style="display:none;background:#9B59B6;color:white;padding:10px 18px;font-size:13px;">🚶 조기퇴근</button>
           </div>
           <!-- 현장 근무 (측량부/사업관리(현장)만 표시) -->
           <div id="field-btn-row" style="display:none;align-items:center;gap:8px;">
@@ -557,17 +574,17 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 const ADMIN_PW = 'ljh9609';
 const CY = new Date().getFullYear();
 const CHECKIN_HOUR = 9;
-// 육아 단축근무 적용 직원별 출퇴근 기준 시간
+// 육아 단축근무 직원별 출퇴근 기준
 const SPECIAL_WORK_HOURS = {
-  '황현희': { checkin: 10, checkout: 16 },
-  '조윤미': { checkin: 10, checkout: 16 }
+  '황현희': { checkin: 10, checkoutHour: 16, checkoutMin: 0 },
+  '조윤미': { checkin: 10, checkoutHour: 16, checkoutMin: 0 }
 };
-function getCheckinHour(empName) {
-  return SPECIAL_WORK_HOURS[empName] ? SPECIAL_WORK_HOURS[empName].checkin : CHECKIN_HOUR;
-}
-function getCheckoutHour(empName) {
-  return SPECIAL_WORK_HOURS[empName] ? SPECIAL_WORK_HOURS[empName].checkout : 18;
-}
+function getCheckinHour(n) { return SPECIAL_WORK_HOURS[n] ? SPECIAL_WORK_HOURS[n].checkin : CHECKIN_HOUR; }
+function getCheckoutHour(n) { return SPECIAL_WORK_HOURS[n] ? SPECIAL_WORK_HOURS[n].checkoutHour : 18; }
+function getCheckoutMin(n) { return SPECIAL_WORK_HOURS[n] ? SPECIAL_WORK_HOURS[n].checkoutMin : 0; }
+// 조기퇴근 버튼 허용 직원
+const EARLY_CHECKOUT_ALLOWED = ['황현희', '조윤미'];
+function canEarlyCheckout(n) { return EARLY_CHECKOUT_ALLOWED.includes(n); }
 const DIRECT_TO_ADMIN_DEPTS = ['총무부'];
 
 // 팀장 설정: 이름 → 담당 부서
@@ -668,7 +685,6 @@ function getAttStatus(att) {
   const d = new Date(att.checkin_time);
   const kstHour = parseInt(d.toLocaleString('ko-KR', { hour:'2-digit', hour12:false, timeZone:'Asia/Seoul' }));
   const kstMin = parseInt(d.toLocaleString('ko-KR', { minute:'2-digit', timeZone:'Asia/Seoul' }));
-  // 직원별 출근 기준 시간 적용
   const emp = getEmpById(att.emp_id);
   const checkinHour = emp ? getCheckinHour(emp.name) : CHECKIN_HOUR;
   if(kstHour > checkinHour || (kstHour === checkinHour && kstMin >= 1)) return 'late';
@@ -678,9 +694,8 @@ function getAttStatus(att) {
 // 퇴근 배지 - 출근 상태와 완전 분리
 function getCheckoutBadge(a) {
   if(!a || !a.checkout_time) return '';
-  // 현장퇴근(field_memo 있으면) → 항상 정상퇴근
   if(a.field_memo) return '<span class="badge badge-present" style="margin-left:4px;">정상퇴근</span>';
-  // 18시 기준
+  if(a.early_reason) return '<span class="badge badge-present" style="margin-left:4px;">정상퇴근</span>';
   if(a.checkout_status === 'early') return '<span class="badge badge-late" style="margin-left:4px;">조기퇴근</span>';
   return '<span class="badge badge-present" style="margin-left:4px;">정상퇴근</span>';
 }
@@ -1488,7 +1503,6 @@ function renderAttEmpList() {
 function renderCheckin() {
   const att=getTodayAttendance(currentEmpId);
   const emp=getEmpById(currentEmpId);
-  // 측량부, 사업관리(현장) 직원에게만 현장퇴근 버튼 표시
   const fieldDepts=['측량부','사업관리(현장)'];
   const showFieldBtn = emp && fieldDepts.includes(emp.dept);
   const fieldBtn=document.getElementById('btn-field-checkout');
@@ -1496,16 +1510,23 @@ function renderCheckin() {
   const fieldBtnRow=document.getElementById('field-btn-row');
   if(fieldBtnRow) fieldBtnRow.style.display = showFieldBtn ? 'flex' : 'none';
 
+  // 조기퇴근 버튼 - 황현희/조윤미에게만 표시
+  const earlyBtn=document.getElementById('btn-early-checkout');
+  const showEarlyBtn = emp && canEarlyCheckout(emp.name);
+  if(earlyBtn) earlyBtn.style.display = showEarlyBtn ? 'inline-flex' : 'none';
+
   if(att) {
     document.getElementById('btn-checkin').disabled=true;
     if(att.checkout_time) {
       document.getElementById('btn-checkout').disabled=true;
+      if(earlyBtn) earlyBtn.disabled=true;
       if(fieldBtn) fieldBtn.disabled=true;
       if(fieldCheckinBtn) fieldCheckinBtn.disabled=true;
       const checkoutLabel = att.field_memo ? '🏗️ 현장퇴근 '+formatTimeKST(att.checkout_time) : '🏠 퇴근 '+formatTimeKST(att.checkout_time);
-      document.getElementById('checkin-status').textContent='✅ 출근 '+formatTimeKST(att.checkin_time)+' · '+checkoutLabel+(att.field_memo?' ('+att.field_memo+')':'');
+      document.getElementById('checkin-status').textContent='✅ 출근 '+formatTimeKST(att.checkin_time)+' · '+checkoutLabel+(att.field_memo?' ('+att.field_memo+')':'')+(att.early_reason?' ['+att.early_reason+']':'');
     } else {
       document.getElementById('btn-checkout').disabled=false;
+      if(earlyBtn) earlyBtn.disabled=false;
       if(fieldBtn) fieldBtn.disabled=false;
       if(fieldCheckinBtn) fieldCheckinBtn.disabled=true;
       document.getElementById('checkin-status').textContent='✅ '+formatTimeKST(att.checkin_time)+' 출근 완료 · 퇴근 전';
@@ -1514,6 +1535,7 @@ function renderCheckin() {
   } else {
     document.getElementById('btn-checkin').disabled=false;
     document.getElementById('btn-checkout').disabled=true;
+    if(earlyBtn) earlyBtn.disabled=true;
     if(fieldBtn) fieldBtn.disabled=true;
     if(fieldCheckinBtn) fieldCheckinBtn.disabled=false;
     document.getElementById('checkin-status').textContent='오늘 출근 기록이 없습니다';
@@ -1737,12 +1759,16 @@ async function doCheckOut() {
   });
 
   const pos = await gpsPromise;
-  // 퇴근 시간 기준 - 직원별 적용 (황현희/조윤미: 16시, 나머지: 18시)
+  // 퇴근 시간 기준 - 직원별 적용
   const checkoutNow = new Date();
   const checkoutHour = parseInt(checkoutNow.toLocaleString('ko-KR', { hour:'2-digit', hour12:false, timeZone:'Asia/Seoul' }));
+  const checkoutMin = parseInt(checkoutNow.toLocaleString('ko-KR', { minute:'2-digit', timeZone:'Asia/Seoul' }));
   const myEmpForCheckout = getEmpById(currentEmpId);
   const myCheckoutHour = myEmpForCheckout ? getCheckoutHour(myEmpForCheckout.name) : 18;
-  const isEarlyLeave = checkoutHour < myCheckoutHour;
+  const myCheckoutMin = myEmpForCheckout ? getCheckoutMin(myEmpForCheckout.name) : 0;
+  const totalMinutes = checkoutHour * 60 + checkoutMin;
+  const stdMinutes = myCheckoutHour * 60 + myCheckoutMin;
+  const isEarlyLeave = totalMinutes < stdMinutes;
   const checkoutStatusVal = isEarlyLeave ? 'early' : 'normal';
   if(pos) {
     await dbUpdate('attendances',existing.id,{checkout_time:nowISO,checkout_lat:pos.coords.latitude,checkout_lng:pos.coords.longitude,checkout_status:checkoutStatusVal});
@@ -1752,6 +1778,48 @@ async function doCheckOut() {
   statusEl.textContent=(isEarlyLeave?'⚠️ ':'🏠 ')+formatTimeKST(nowISO)+(isEarlyLeave?' 조기퇴근 완료':' 정상퇴근 완료');
   btn.textContent='🏠 퇴근';
   btn.disabled=true;
+  await loadData(); renderAll();
+}
+
+// ===== 조기퇴근 (황현희/조윤미) =====
+function openEarlyCheckoutModal() {
+  const existing=getTodayAttendance(currentEmpId);
+  if(!existing) { alert('출근 기록이 없습니다'); return; }
+  if(existing.checkout_time) { alert('이미 퇴근 처리되었습니다'); return; }
+  document.getElementById('early-checkout-reason').value='';
+  document.getElementById('early-checkout-modal').classList.add('show');
+}
+function closeEarlyCheckoutModal() {
+  document.getElementById('early-checkout-modal').classList.remove('show');
+}
+async function confirmEarlyCheckout() {
+  const reason = document.getElementById('early-checkout-reason').value.trim();
+  if(!reason) { alert('사유를 입력해주세요'); return; }
+  closeEarlyCheckoutModal();
+  const existing=getTodayAttendance(currentEmpId);
+  if(!existing) { alert('출근 기록이 없습니다'); return; }
+  const earlyBtn=document.getElementById('btn-early-checkout');
+  if(earlyBtn) { earlyBtn.disabled=true; earlyBtn.textContent='처리 중...'; }
+  const nowISO=nowISOKST();
+  let gpsTimeout;
+  const gpsPromise = new Promise(function(resolve) {
+    gpsTimeout = setTimeout(function(){ resolve(null); }, 5000);
+    navigator.geolocation.getCurrentPosition(
+      function(pos) { clearTimeout(gpsTimeout); resolve(pos); },
+      function() { clearTimeout(gpsTimeout); resolve(null); },
+      {enableHighAccuracy:true, timeout:5000, maximumAge:0}
+    );
+  });
+  const pos = await gpsPromise;
+  // early_reason 저장 + checkout_status = 'normal' → 정상퇴근 처리
+  if(pos) {
+    await dbUpdate('attendances', existing.id, {checkout_time:nowISO, checkout_lat:pos.coords.latitude, checkout_lng:pos.coords.longitude, checkout_status:'normal', early_reason:reason});
+  } else {
+    await dbUpdate('attendances', existing.id, {checkout_time:nowISO, checkout_lat:null, checkout_lng:null, checkout_status:'normal', early_reason:reason});
+  }
+  document.getElementById('checkin-status').textContent='🏠 '+formatTimeKST(nowISO)+' 조기퇴근 완료 ('+reason+') → 정상퇴근 처리';
+  if(earlyBtn) { earlyBtn.textContent='🚶 조기퇴근'; earlyBtn.disabled=true; }
+  document.getElementById('btn-checkout').disabled=true;
   await loadData(); renderAll();
 }
 
