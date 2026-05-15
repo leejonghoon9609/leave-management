@@ -1864,8 +1864,7 @@ function renderMyToday() {
 
   // 일반 출퇴근 기록
   const myAtt = attendances.find(function(a){ return a.emp_id === currentEmpId && a.att_date === dateStr; });
-
-  // 특근 기록 (overtime_records 테이블 — attendances에서 overtime_checkin 또는 overtime_checkout 있는 것)
+  // 특근 기록
   const otRecs = attendances.filter(function(a){ return a.emp_id === currentEmpId && a.att_date === dateStr && (a.overtime_checkin || a.overtime_checkout); });
 
   let html = '';
@@ -1880,21 +1879,25 @@ function renderMyToday() {
     html += '<div class="empty">출근 기록이 없습니다</div>';
   }
 
-  // 특근 기록 표시
-  if(otRecs.length) {
-    otRecs.forEach(function(ot) {
-      const isCheckin = !!ot.overtime_checkin;
-      const timeStr = isCheckin ? formatTimeKST(ot.overtime_checkin) : formatTimeKST(ot.overtime_checkout);
-      const label = isCheckin ? '🌙 특근출근' : '🌙 특근퇴근';
-      const memoNote = ot.overtime_memo ? ' <span style="font-size:10px;color:#C0392B;">('+ot.overtime_memo+')</span>' : '';
-      html += '<div class="att-row" style="border-top:1px dashed #fcc;margin-top:4px;padding-top:8px;">'
-        + '<div class="att-info"><div class="att-name" style="color:#C0392B;">' + label + memoNote + '</div>'
-        + '<div class="att-detail">' + timeStr + '</div></div>'
-        + '<span class="badge" style="background:#FDEDEC;color:#C0392B;">특근</span></div>';
-    });
-  }
+  // 특근 기록
+  html += overtimeHtml(otRecs);
 
   myEl.innerHTML = html;
+}
+
+// 특근 기록 HTML 생성 (공통)
+function overtimeHtml(otRecs) {
+  if(!otRecs || !otRecs.length) return '';
+  return otRecs.map(function(ot) {
+    const isCheckin = !!ot.overtime_checkin;
+    const timeStr = isCheckin ? formatTimeKST(ot.overtime_checkin) : formatTimeKST(ot.overtime_checkout);
+    const label = isCheckin ? '🌙 특근출근' : '🌙 특근퇴근';
+    const memoNote = ot.overtime_memo ? ' <span style="font-size:10px;color:#C0392B;">('+ot.overtime_memo+')</span>' : '';
+    return '<div class="att-row" style="border-top:1px dashed #fcc;margin-top:4px;padding-top:8px;">'
+      + '<div class="att-info"><div class="att-name" style="color:#C0392B;">' + label + memoNote + '</div>'
+      + '<div class="att-detail">' + timeStr + '</div></div>'
+      + '<span class="badge" style="background:#FDEDEC;color:#C0392B;">특근</span></div>';
+  }).join('');
 }
 
 function renderTeamMemberToday() {
@@ -1912,15 +1915,22 @@ function renderTeamMemberToday() {
 
   teamEl.innerHTML = teamEmps.map(function(e, idx) {
     const att = attendances.find(function(a){ return a.emp_id === e.id && a.att_date === dateStr; });
+    // 팀원 특근 기록
+    const otRecs = attendances.filter(function(a){ return a.emp_id === e.id && a.att_date === dateStr && (a.overtime_checkin || a.overtime_checkout); });
+
+    let rowHtml = '';
     if(att) {
       const s = getAttStatus(att);
       const checkoutBadge = getCheckoutBadge(att);
       const memo = att.checkin_field_memo ? ' <span style="font-size:10px;color:var(--blue);">[출근:'+att.checkin_field_memo+']</span>' : (att.field_memo ? ' <span style="font-size:10px;color:var(--amber);">[퇴근:'+att.field_memo+']</span>' : '');
       const earlyNote = att.early_reason ? ' <span style="font-size:10px;color:var(--primary);">['+att.early_reason+']</span>' : '';
-      return '<div class="att-row"><div class="avatar ' + avClass(idx) + '">' + ini(e.name) + '</div><div class="att-info"><div class="att-name">' + e.name + memo + earlyNote + '</div><div class="att-detail">출근 ' + formatTimeKST(att.checkin_time) + ' · 퇴근 ' + formatTimeKST(att.checkout_time) + '</div></div>' + attBadge(s) + checkoutBadge + '</div>';
+      rowHtml = '<div class="att-row"><div class="avatar ' + avClass(idx) + '">' + ini(e.name) + '</div><div class="att-info"><div class="att-name">' + e.name + memo + earlyNote + '</div><div class="att-detail">출근 ' + formatTimeKST(att.checkin_time) + ' · 퇴근 ' + formatTimeKST(att.checkout_time) + '</div></div>' + attBadge(s) + checkoutBadge + '</div>';
     } else {
-      return '<div class="att-row"><div class="avatar ' + avClass(idx) + '">' + ini(e.name) + '</div><div class="att-info"><div class="att-name">' + e.name + '</div><div class="att-detail">' + e.dept + '</div></div><span class="badge badge-absent">결근</span></div>';
+      rowHtml = '<div class="att-row"><div class="avatar ' + avClass(idx) + '">' + ini(e.name) + '</div><div class="att-info"><div class="att-name">' + e.name + '</div><div class="att-detail">' + e.dept + '</div></div><span class="badge badge-absent">결근</span></div>';
     }
+    // 특근 기록 추가
+    rowHtml += overtimeHtml(otRecs);
+    return rowHtml;
   }).join('');
 }
 
