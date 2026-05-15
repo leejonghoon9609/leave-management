@@ -1690,10 +1690,15 @@ function switchMyRecTab(tab) {
 }
 
 function renderMyAttRecords() {
+  const titleEl = document.getElementById('my-monthly-title');
+  const calEl = document.getElementById('my-att-calendar');
+  const tableEl = document.getElementById('my-att-table');
+  if(!titleEl || !calEl || !tableEl) return; // 페이지 미표시 시 중단
+
   const y = myCurrentAttMonth.getFullYear();
   const m = myCurrentAttMonth.getMonth();
   const months = ['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'];
-  document.getElementById('my-monthly-title').textContent = y + '년 ' + months[m];
+  titleEl.textContent = y + '년 ' + months[m];
   renderMyAttCalendar(y, m);
   renderMyAttTable();
 }
@@ -2617,7 +2622,7 @@ async function showPage(page, el) {
   }
   if(page==='apply') renderMyLeave();
   if(page==='checkin') { startClock(); renderCheckin(); }
-  if(page==='my-records') { myRecTab='week'; renderMyAttRecords(); }
+  if(page==='my-records') { myRecTab='week'; setTimeout(function(){ renderMyAttRecords(); }, 0); }
   if(page==='monthly') renderMonthly();
   if(page==='team-att') renderTeamAtt();
 }
