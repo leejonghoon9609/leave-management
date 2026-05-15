@@ -2582,6 +2582,7 @@ function renderAll() {
     else if(currentPage==='att-dashboard') renderAttDashboard();
     else if(currentPage==='records') renderAttRecords();
     else if(currentPage==='checkin') renderCheckin();
+    else if(currentPage==='my-records') renderMyAttRecords();
     else renderManagerLeaveDashboard();
   }
   if(currentRole==='viewer') {
@@ -2591,12 +2592,13 @@ function renderAll() {
     else if(currentPage==='att-dashboard') renderAttDashboard();
     else if(currentPage==='records') renderAttRecords();
     else if(currentPage==='checkin') renderCheckin();
+    else if(currentPage==='my-records') renderMyAttRecords();
     else renderManagerLeaveDashboard();
   }
   if(currentRole==='employee') {
     if(currentPage==='my-leave'||currentPage==='apply') renderMyLeave();
     else if(currentPage==='checkin') renderCheckin();
-    else if(currentPage==='my-records') setTimeout(function(){ renderMyAttRecords(); }, 0);
+    else if(currentPage==='my-records') renderMyAttRecords();
     else renderMyLeave();
   }
 }
