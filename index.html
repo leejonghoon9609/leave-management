@@ -534,7 +534,33 @@ body { font-family: "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; backgrou
         <div class="gps-info" id="gps-info"></div>
       </div>
       <div class="card"><div class="card-title">📋 이번 주 내 기록</div><div id="my-week-records"><div class="loading">불러오는 중...</div></div></div>
-    </div>
+      <!-- 팀장 전용: 팀 출퇴근일람 -->
+      <div id="team-today-section" style="display:none;">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:0;">
+          <div class="card" style="margin-bottom:0;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+              <div class="card-title" style="margin-bottom:0;">📅 내 출퇴근일람</div>
+              <div style="display:flex;align-items:center;gap:6px;">
+                <button onclick="changeTodayDate(-1)" style="padding:2px 8px;font-size:12px;border:1px solid var(--gray-200);border-radius:4px;background:white;cursor:pointer;">←</button>
+                <span id="team-today-date" style="font-size:12px;font-weight:600;color:var(--gray-600);"></span>
+                <button onclick="changeTodayDate(1)" style="padding:2px 8px;font-size:12px;border:1px solid var(--gray-200);border-radius:4px;background:white;cursor:pointer;">→</button>
+              </div>
+            </div>
+            <div id="my-today-record"><div class="loading">불러오는 중...</div></div>
+          </div>
+          <div class="card" style="margin-bottom:0;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+              <div class="card-title" style="margin-bottom:0;">👥 팀 출퇴근일람</div>
+              <div style="display:flex;align-items:center;gap:6px;">
+                <button onclick="changeTodayDate(-1)" style="padding:2px 8px;font-size:12px;border:1px solid var(--gray-200);border-radius:4px;background:white;cursor:pointer;">←</button>
+                <span id="team-today-date2" style="font-size:12px;font-weight:600;color:var(--gray-600);"></span>
+                <button onclick="changeTodayDate(1)" style="padding:2px 8px;font-size:12px;border:1px solid var(--gray-200);border-radius:4px;background:white;cursor:pointer;">→</button>
+              </div>
+            </div>
+            <div id="team-today-records"><div class="loading">불러오는 중...</div></div>
+          </div>
+        </div>
+      </div>
 
     <!-- 내 근태 기록 -->
     <div class="page" id="page-my-records">
@@ -562,7 +588,6 @@ const DIRECT_TO_ADMIN_DEPTS = ['총무부'];
 // 팀장 설정: 이름 → 담당 부서
 const TEAM_LEADERS = {
   '조윤미': '총무부',
-  '황현희': '총무부',
   '송규헌': '측량부',
   '박영범': '사업관리(현장)',
   '남윤지': '사업관리'
@@ -578,6 +603,7 @@ function getLeaderDept(name) { return TEAM_LEADERS[name] || TEAM_VIEWERS[name] |
 
 let employees = [], requests = [], attendances = [];
 let currentRole = null, currentEmpId = null, currentDept = null, currentPage = 'leave-dashboard';
+let teamTodayDate = new Date(); // 팀 출퇴근일람 날짜
 let currentLeaveMonth = new Date(CY, new Date().getMonth());
 let currentAttMonth = new Date();
 let myCurrentAttMonth = new Date();
@@ -1507,6 +1533,17 @@ function renderCheckin() {
     document.getElementById('gps-info').style.display='none';
   }
   renderMyWeek();
+  // 팀장이면 팀 출퇴근일람 표시
+  const teamSection = document.getElementById('team-today-section');
+  const myWeekCard = document.querySelector('#page-checkin > .card');
+  if(emp && isTeamLeader(emp.name)) {
+    if(teamSection) teamSection.style.display = 'block';
+    if(myWeekCard) myWeekCard.style.display = 'none';
+    renderTeamToday();
+  } else {
+    if(teamSection) teamSection.style.display = 'none';
+    if(myWeekCard) myWeekCard.style.display = 'block';
+  }
 }
 
 function renderMyWeek() {
@@ -1736,6 +1773,58 @@ async function doCheckOut() {
   btn.textContent='🏠 퇴근';
   btn.disabled=true;
   await loadData(); renderAll();
+}
+
+function changeTodayDate(dir) {
+  teamTodayDate = new Date(teamTodayDate);
+  teamTodayDate.setDate(teamTodayDate.getDate() + dir);
+  renderTeamToday();
+}
+
+function renderTeamToday() {
+  const dateStr = teamTodayDate.toISOString().slice(0, 10);
+  const displayDate = teamTodayDate.toLocaleDateString('ko-KR', {month:'numeric', day:'numeric', weekday:'short'});
+
+  // 날짜 표시 (양쪽 동일)
+  const d1 = document.getElementById('team-today-date');
+  const d2 = document.getElementById('team-today-date2');
+  if(d1) d1.textContent = displayDate;
+  if(d2) d2.textContent = displayDate;
+
+  const emp = getEmpById(currentEmpId);
+  const myDept = emp ? getLeaderDept(emp.name) : null;
+
+  // 내 출퇴근 기록
+  const myEl = document.getElementById('my-today-record');
+  const myAtt = attendances.find(function(a){ return a.emp_id === currentEmpId && a.att_date === dateStr; });
+  if(myAtt) {
+    const s = getAttStatus(myAtt);
+    const checkoutBadge = getCheckoutBadge(myAtt);
+    const memo = myAtt.checkin_field_memo ? ' <span style="font-size:10px;color:var(--blue);">[출근:'+myAtt.checkin_field_memo+']</span>' : (myAtt.field_memo ? ' <span style="font-size:10px;color:var(--amber);">[퇴근:'+myAtt.field_memo+']</span>' : '');
+    const earlyNote = myAtt.early_reason ? ' <span style="font-size:10px;color:var(--primary);">['+myAtt.early_reason+']</span>' : '';
+    myEl.innerHTML = '<div class="att-row"><div class="att-info"><div class="att-name">' + (emp ? emp.name : '') + memo + earlyNote + '</div><div class="att-detail">출근 ' + formatTimeKST(myAtt.checkin_time) + ' · 퇴근 ' + formatTimeKST(myAtt.checkout_time) + '</div></div>' + attBadge(s) + checkoutBadge + '</div>';
+  } else {
+    myEl.innerHTML = '<div class="empty">출근 기록이 없습니다</div>';
+  }
+
+  // 팀원 출퇴근 기록 (본인 제외, 같은 부서)
+  const teamEl = document.getElementById('team-today-records');
+  if(!myDept) { teamEl.innerHTML = '<div class="empty">부서 정보 없음</div>'; return; }
+  const teamEmps = employees.filter(function(e){ return e.dept === myDept && e.id !== currentEmpId && e.role !== 'admin'; });
+  if(!teamEmps.length) { teamEl.innerHTML = '<div class="empty">팀원이 없습니다</div>'; return; }
+
+  teamEl.innerHTML = teamEmps.map(function(e, idx) {
+    const att = attendances.find(function(a){ return a.emp_id === e.id && a.att_date === dateStr; });
+    if(att) {
+      const s = getAttStatus(att);
+      const checkoutBadge = getCheckoutBadge(att);
+      const memo = att.checkin_field_memo ? ' <span style="font-size:10px;color:var(--blue);">[출근:'+att.checkin_field_memo+']</span>' : (att.field_memo ? ' <span style="font-size:10px;color:var(--amber);">[퇴근:'+att.field_memo+']</span>' : '');
+      const earlyNote = att.early_reason ? ' <span style="font-size:10px;color:var(--primary);">['+att.early_reason+']</span>' : '';
+      return '<div class="att-row"><div class="avatar ' + avClass(idx) + '">' + ini(e.name) + '</div><div class="att-info"><div class="att-name">' + e.name + memo + earlyNote + '</div><div class="att-detail">출근 ' + formatTimeKST(att.checkin_time) + ' · 퇴근 ' + formatTimeKST(att.checkout_time) + '</div></div>' + attBadge(s) + checkoutBadge + '</div>';
+    } else {
+      return '<div class="att-row"><div class="avatar ' + avClass(idx) + '">' + ini(e.name) + '</div><div class="att-info"><div class="att-name">' + e.name + '</div><div class="att-detail">' + e.dept + '</div></div><span class="badge badge-absent">결근</span></div>';
+    }
+  }).join('');
 }
 
 // ===== 엑셀 다운로드 =====
