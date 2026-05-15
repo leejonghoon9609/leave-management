@@ -231,18 +231,36 @@ body { font-family: "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; backgrou
   </div>
 </div>
 
-<!-- 특근 모달 -->
+<!-- 특근 모달 - 1단계: 출근/퇴근 선택 -->
 <div class="modal-overlay" id="overtime-modal">
   <div class="modal-box">
-    <div class="modal-title" id="overtime-modal-title">⏰ 특근 출근</div>
-    <div class="modal-sub">사업명 / 작업내용을 입력해주세요</div>
-    <div class="form-group">
-      <label class="form-label">사업명 / 작업내용 *</label>
-      <textarea class="form-input" id="overtime-memo" rows="3" placeholder="예) OO측량 특근 작업"></textarea>
+    <div class="modal-title">⏰ 특근</div>
+    <div class="modal-sub">출근 또는 퇴근을 선택해주세요</div>
+    <!-- 1단계: 출근/퇴근 선택 버튼 -->
+    <div id="overtime-step1" style="display:flex;gap:12px;margin:20px 0 8px;">
+      <button id="ot-sel-checkin" onclick="selectOvertimeType('checkin')"
+        style="flex:1;padding:16px;font-size:14px;font-weight:700;border:2px solid #FF0000;border-radius:10px;background:white;color:#FF0000;cursor:pointer;font-family:inherit;transition:all 0.15s;">
+        🌙 출근
+      </button>
+      <button id="ot-sel-checkout" onclick="selectOvertimeType('checkout')"
+        style="flex:1;padding:16px;font-size:14px;font-weight:700;border:2px solid #FF0000;border-radius:10px;background:white;color:#FF0000;cursor:pointer;font-family:inherit;transition:all 0.15s;">
+        🌙 퇴근
+      </button>
     </div>
-    <div class="modal-btn-row">
-      <button class="modal-btn modal-btn-cancel" onclick="closeOvertimeModal()">취소</button>
-      <button class="modal-btn" style="background:#1A5276;color:white;" onclick="confirmOvertimeAction()">✅ 등록</button>
+    <!-- 2단계: 사업명 입력 -->
+    <div id="overtime-step2" style="display:none;">
+      <div class="form-group" style="margin-top:12px;">
+        <label class="form-label">사업명 / 작업내용 *</label>
+        <textarea class="form-input" id="overtime-memo" rows="3" placeholder="예) OO측량 특근 작업"></textarea>
+      </div>
+      <div class="modal-btn-row">
+        <button class="modal-btn modal-btn-cancel" onclick="backOvertimeStep()">← 뒤로</button>
+        <button class="modal-btn" style="background:#FF0000;color:white;" onclick="confirmOvertimeAction()">✅ 등록</button>
+      </div>
+    </div>
+    <!-- 1단계 취소 버튼 -->
+    <div id="overtime-step1-cancel" style="text-align:center;margin-top:8px;">
+      <button class="modal-btn modal-btn-cancel" onclick="closeOvertimeModal()" style="width:100%;">취소</button>
     </div>
   </div>
 </div>
@@ -543,23 +561,13 @@ body { font-family: "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; backgrou
             <button class="checkin-btn" id="btn-field-checkin" onclick="openFieldCheckinModal()" style="background:var(--blue);color:white;padding:10px 22px;font-size:13px;">🏃 출근</button>
             <button class="checkin-btn" id="btn-field-checkout" onclick="openFieldCheckoutModal()" disabled style="background:var(--amber);color:white;padding:10px 22px;font-size:13px;">🏠 퇴근</button>
             <span style="font-size:16px;color:var(--gray-400);font-weight:300;margin:0 2px;">/</span>
-            <button id="btn-overtime-toggle" onclick="toggleOvertimeRow()"
+            <button id="btn-overtime-toggle" onclick="openOvertimeSelectModal()"
               style="width:44px;height:44px;border-radius:50%;border:none;background:#FF0000;color:white;font-size:11px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 2px 6px rgba(255,0,0,0.4);">
               특근
             </button>
           </div>
-          <!-- 특근 탭 (특근 버튼 클릭 시 표시) -->
-          <div id="overtime-btn-row" style="display:none;align-items:center;gap:0;">
-            <span style="font-size:12px;color:var(--gray-900);font-weight:600;width:60px;text-align:right;margin-right:8px;">특근</span>
-            <button id="btn-overtime-checkin" onclick="openOvertimeModal('checkin')"
-              style="padding:8px 22px;font-size:13px;font-weight:600;border:2px solid #FF0000;border-right:1px solid #FF0000;background:white;color:#FF0000;border-radius:20px 0 0 20px;cursor:pointer;font-family:inherit;">
-              🌙 출근
-            </button>
-            <button id="btn-overtime-checkout" onclick="openOvertimeModal('checkout')" disabled
-              style="padding:8px 22px;font-size:13px;font-weight:600;border:2px solid #FF0000;border-left:1px solid #FF0000;background:white;color:#FF0000;border-radius:0 20px 20px 0;cursor:pointer;font-family:inherit;opacity:0.5;">
-              🌙 퇴근
-            </button>
-          </div>
+          <!-- 특근 탭 (사용 안 함 - 모달로 대체) -->
+          <div id="overtime-btn-row" style="display:none;">
         </div>
         <div style="display:none;">
         </div>
@@ -1893,30 +1901,61 @@ function renderTeamMemberToday() {
 }
 
 // ===== 특근 =====
-let overtimeActionType = 'checkin'; // 'checkin' or 'checkout'
+let overtimeActionType = 'checkin';
 
-function toggleOvertimeRow() {
-  const row = document.getElementById('overtime-btn-row');
-  const toggleBtn = document.getElementById('btn-overtime-toggle');
-  if(!row) return;
-  const isOpen = row.style.display !== 'none';
-  row.style.display = isOpen ? 'none' : 'flex';
-  if(toggleBtn) {
-    toggleBtn.style.background = isOpen ? '#FF0000' : '#CC0000';
-    toggleBtn.style.boxShadow = isOpen ? '0 2px 6px rgba(255,0,0,0.4)' : '0 2px 8px rgba(255,0,0,0.6)';
+function openOvertimeSelectModal() {
+  // 이미 출근했으면 퇴근만, 아무것도 없으면 출근만 활성
+  const today = todayStrKST();
+  const otRec = attendances.find(function(a){ return a.emp_id===currentEmpId && a.att_date===today && a.overtime_checkin; });
+
+  const checkinBtn = document.getElementById('ot-sel-checkin');
+  const checkoutBtn = document.getElementById('ot-sel-checkout');
+
+  if(otRec) {
+    // 특근 출근 완료 → 출근 비활성, 퇴근 활성
+    if(checkinBtn) { checkinBtn.disabled=true; checkinBtn.style.opacity='0.4'; }
+    if(checkoutBtn) { checkoutBtn.disabled = !!otRec.overtime_checkout; checkoutBtn.style.opacity = otRec.overtime_checkout ? '0.4' : '1'; }
+  } else {
+    // 특근 출근 전 → 출근 활성, 퇴근 비활성
+    if(checkinBtn) { checkinBtn.disabled=false; checkinBtn.style.opacity='1'; }
+    if(checkoutBtn) { checkoutBtn.disabled=true; checkoutBtn.style.opacity='0.4'; }
   }
+
+  // 1단계 보여주기
+  document.getElementById('overtime-step1').style.display = 'flex';
+  document.getElementById('overtime-step2').style.display = 'none';
+  document.getElementById('overtime-step1-cancel').style.display = 'block';
+  document.getElementById('overtime-modal').classList.add('show');
 }
 
-function openOvertimeModal(type) {
+function selectOvertimeType(type) {
   overtimeActionType = type;
-  const title = document.getElementById('overtime-modal-title');
-  if(title) title.textContent = type === 'checkin' ? '⏰ 특근 출근' : '⏰ 특근 퇴근';
+  // 1단계 → 2단계
+  document.getElementById('overtime-step1').style.display = 'none';
+  document.getElementById('overtime-step1-cancel').style.display = 'none';
+  document.getElementById('overtime-step2').style.display = 'block';
   document.getElementById('overtime-memo').value = '';
-  document.getElementById('overtime-modal').classList.add('show');
+  document.getElementById('overtime-memo').placeholder = type === 'checkin' ? '예) OO측량 특근 출근' : '예) OO측량 특근 퇴근';
+}
+
+function backOvertimeStep() {
+  // 2단계 → 1단계
+  document.getElementById('overtime-step1').style.display = 'flex';
+  document.getElementById('overtime-step1-cancel').style.display = 'block';
+  document.getElementById('overtime-step2').style.display = 'none';
 }
 
 function closeOvertimeModal() {
   document.getElementById('overtime-modal').classList.remove('show');
+}
+
+function toggleOvertimeRow() {
+  // 사용 안 함 (모달로 대체)
+}
+
+function openOvertimeModal(type) {
+  // 하위 호환용
+  selectOvertimeType(type);
 }
 
 async function confirmOvertimeAction() {
@@ -1926,8 +1965,6 @@ async function confirmOvertimeAction() {
 
   const nowISO = nowISOKST();
   const today = todayStrKST();
-
-  // 특근 기록은 별도 테이블(overtime_records)에 저장
   const existing = attendances.find(function(a){ return a.emp_id===currentEmpId && a.att_date===today && a.overtime_checkin; });
 
   if(overtimeActionType === 'checkin') {
@@ -1938,10 +1975,6 @@ async function confirmOvertimeAction() {
       overtime_memo: memo
     });
     document.getElementById('checkin-status').textContent = '🌙 ' + formatTimeKST(nowISO) + ' 특근 출근 완료 (' + memo + ')';
-    const outBtn = document.getElementById('btn-overtime-checkout');
-    const inBtn = document.getElementById('btn-overtime-checkin');
-    if(inBtn) inBtn.disabled = true;
-    if(outBtn) outBtn.disabled = false;
   } else {
     if(!existing) { alert('특근 출근 기록이 없습니다'); return; }
     await dbUpdate('overtime_records', existing.id, {
@@ -1949,8 +1982,6 @@ async function confirmOvertimeAction() {
       overtime_memo: memo
     });
     document.getElementById('checkin-status').textContent = '🌙 ' + formatTimeKST(nowISO) + ' 특근 퇴근 완료 (' + memo + ')';
-    const outBtn = document.getElementById('btn-overtime-checkout');
-    if(outBtn) outBtn.disabled = true;
   }
   await loadData(); renderAll();
 }
