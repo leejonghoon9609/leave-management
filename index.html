@@ -112,6 +112,15 @@ body { font-family: "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; backgrou
 .cal-day.leave-3 { background: #EEEDFE; color: #3C3489; font-weight: 600; }
 .cal-day.leave-multi { background: #EEEDFE; color: #3C3489; font-weight: 600; }
 .cal-day.other { color: var(--gray-200); }
+/* 근태 캘린더 */
+.att-cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+.att-cal-head { text-align: center; font-size: 11px; color: var(--gray-400); padding: 4px 0; font-weight: 500; }
+.att-cal-day { min-height: 64px; border-radius: 6px; border: 0.5px solid var(--gray-100); padding: 4px; font-size: 11px; position: relative; background: var(--white); }
+.att-cal-day.other-month { background: var(--gray-50); }
+.att-cal-day.weekend { background: #fafafa; }
+.att-cal-day .day-num { font-size: 11px; font-weight: 600; color: var(--gray-600); margin-bottom: 3px; }
+.att-cal-day.is-today .day-num { background: var(--primary); color: white; border-radius: 50%; width: 18px; height: 18px; display: flex; align-items: center; justify-content: center; font-size: 10px; }
+.att-tag { font-size: 9px; padding: 1px 4px; border-radius: 3px; margin-bottom: 2px; display: block; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .cal-legend { display: flex; gap: 12px; margin-top: 14px; flex-wrap: wrap; }
 .legend-item { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--gray-600); }
 .legend-dot { width: 10px; height: 10px; border-radius: 3px; }
@@ -643,8 +652,22 @@ body { font-family: "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; backgrou
         <span id="my-monthly-title" style="font-size:14px;font-weight:600;"></span>
         <button class="filter-btn" onclick="changeMyAttMonth(1)">다음 →</button>
       </div>
-      <div class="metrics" style="grid-template-columns:repeat(4,1fr);" id="my-monthly-metrics"></div>
-      <div class="card"><div class="card-title">📋 월간 근태 기록</div><div id="my-records-list"><div class="loading">불러오는 중...</div></div></div>
+      <!-- 캘린더 -->
+      <div class="card" style="margin-bottom:16px;">
+        <div class="card-title">📅 캘린더</div>
+        <div id="my-att-calendar"></div>
+      </div>
+      <!-- 일자별 테이블 -->
+      <div class="card">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+          <div class="card-title" style="margin-bottom:0;">📋 내 근태 기록</div>
+          <div style="display:flex;gap:6px;">
+            <button class="filter-btn active" id="my-rec-tab-week" onclick="switchMyRecTab('week')">주간</button>
+            <button class="filter-btn" id="my-rec-tab-month" onclick="switchMyRecTab('month')">월간</button>
+          </div>
+        </div>
+        <div id="my-att-table"></div>
+      </div>
     </div>
   </div>
 </div>
@@ -1655,28 +1678,171 @@ function renderMyWeek() {
   }).join('');
 }
 
+let myRecTab = 'week';
+
+function switchMyRecTab(tab) {
+  myRecTab = tab;
+  document.getElementById('my-rec-tab-week').className = 'filter-btn' + (tab==='week'?' active':'');
+  document.getElementById('my-rec-tab-month').className = 'filter-btn' + (tab==='month'?' active':'');
+  renderMyAttTable();
+}
+
 function renderMyAttRecords() {
-  const y=myCurrentAttMonth.getFullYear(), m=myCurrentAttMonth.getMonth();
-  const months=['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'];
-  document.getElementById('my-monthly-title').textContent=y+'년 '+months[m];
-  const prefix=y+'-'+String(m+1).padStart(2,'0');
-  const myAtts=attendances.filter(function(a){ return a.emp_id===currentEmpId&&a.att_date&&a.att_date.startsWith(prefix); });
-  const workDays=countWorkDaysUntilToday(y,m);
-  const present=myAtts.filter(function(a){ return getAttStatus(a)==='present'; }).length;
-  const late=myAtts.filter(function(a){ return getAttStatus(a)==='late'; }).length;
-  const absent=Math.max(0,workDays-myAtts.length);
-  document.getElementById('my-monthly-metrics').innerHTML=
-    '<div class="metric-card green"><div class="metric-label">정상출근</div><div class="metric-value">'+present+'</div><div class="metric-unit">일</div></div>'+
-    '<div class="metric-card amber"><div class="metric-label">지각</div><div class="metric-value">'+late+'</div><div class="metric-unit">일</div></div>'+
-    '<div class="metric-card red"><div class="metric-label">결근</div><div class="metric-value">'+absent+'</div><div class="metric-unit">일</div></div>'+
-    '<div class="metric-card blue"><div class="metric-label">출근율</div><div class="metric-value">'+(workDays>0?Math.round((myAtts.length/workDays)*100):0)+'</div><div class="metric-unit">%</div></div>';
-  const el=document.getElementById('my-records-list');
-  if(!myAtts.length) { el.innerHTML='<div class="empty">기록이 없습니다</div>'; return; }
-  el.innerHTML=myAtts.map(function(a) {
-    const s=getAttStatus(a);
-    const checkoutBadge = getCheckoutBadge(a);
-    return '<div class="att-row"><div class="att-info"><div class="att-name">'+a.att_date+(a.checkin_field_memo?' <span style="font-size:10px;color:var(--blue);">[출근:'+a.checkin_field_memo+']</span>':(a.field_memo?' <span style="font-size:10px;color:var(--amber);">[퇴근:'+a.field_memo+']</span>':''))+'</div><div class="att-detail">출근 '+formatTimeKST(a.checkin_time)+' · 퇴근 '+formatTimeKST(a.checkout_time)+'</div></div>'+attBadge(s)+checkoutBadge+'</div>';
-  }).join('');
+  const y = myCurrentAttMonth.getFullYear();
+  const m = myCurrentAttMonth.getMonth();
+  const months = ['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'];
+  document.getElementById('my-monthly-title').textContent = y + '년 ' + months[m];
+  renderMyAttCalendar(y, m);
+  renderMyAttTable();
+}
+
+function renderMyAttCalendar(y, m) {
+  const prefix = y + '-' + String(m+1).padStart(2,'0');
+  const myAtts = attendances.filter(function(a){ return a.emp_id===currentEmpId && a.att_date && a.att_date.startsWith(prefix) && !a.overtime_checkin; });
+  const todayStr = todayStrKST();
+  const firstDay = new Date(y, m, 1);
+  const lastDay = new Date(y, m+1, 0);
+  const startDow = firstDay.getDay(); // 0=일
+  const days = ['일','월','화','수','목','금','토'];
+
+  let html = '<div class="att-cal-grid">';
+  days.forEach(function(d){ html += '<div class="att-cal-head">' + d + '</div>'; });
+
+  // 빈칸
+  for(let i=0;i<startDow;i++) html += '<div class="att-cal-day other-month"></div>';
+
+  for(let d=1; d<=lastDay.getDate(); d++) {
+    const dateStr = prefix + '-' + String(d).padStart(2,'0');
+    const dow = new Date(y, m, d).getDay();
+    const isWeekend = dow===0||dow===6;
+    const isToday = dateStr===todayStr;
+    const att = myAtts.find(function(a){ return a.att_date===dateStr; });
+    let cls = 'att-cal-day' + (isWeekend?' weekend':'') + (isToday?' is-today':'');
+    let inner = '<div class="day-num">' + d + '</div>';
+
+    if(att) {
+      const s = getAttStatus(att);
+      // 출근 태그
+      if(s==='present') inner += '<span class="att-tag" style="background:#E1F5EE;color:#0F6E56;">정상출근</span>';
+      else if(s==='late') inner += '<span class="att-tag" style="background:#FAEEDA;color:#854F0B;">지각</span>';
+      // 퇴근 태그
+      if(att.checkout_time) {
+        if(att.early_reason) inner += '<span class="att-tag" style="background:#E1F5EE;color:#0F6E56;">정상퇴근</span>';
+        else if(att.checkout_status==='early') inner += '<span class="att-tag" style="background:#FAECE7;color:#993C1D;">조기퇴근</span>';
+        else if(att.field_memo) inner += '<span class="att-tag" style="background:#E1F5EE;color:#0F6E56;">정상퇴근</span>';
+        else inner += '<span class="att-tag" style="background:#E1F5EE;color:#0F6E56;">정상퇴근</span>';
+      }
+    }
+    html += '<div class="' + cls + '">' + inner + '</div>';
+  }
+  // 뒷 빈칸
+  const endDow = lastDay.getDay();
+  for(let i=endDow+1;i<7;i++) html += '<div class="att-cal-day other-month"></div>';
+  html += '</div>';
+
+  // 범례
+  html += '<div style="display:flex;gap:10px;margin-top:10px;flex-wrap:wrap;">'
+    + '<span style="display:flex;align-items:center;gap:4px;font-size:11px;"><span style="background:#E1F5EE;color:#0F6E56;padding:1px 6px;border-radius:3px;font-size:9px;">정상출근</span></span>'
+    + '<span style="display:flex;align-items:center;gap:4px;font-size:11px;"><span style="background:#FAEEDA;color:#854F0B;padding:1px 6px;border-radius:3px;font-size:9px;">지각</span></span>'
+    + '<span style="display:flex;align-items:center;gap:4px;font-size:11px;"><span style="background:#E1F5EE;color:#0F6E56;padding:1px 6px;border-radius:3px;font-size:9px;">정상퇴근</span></span>'
+    + '<span style="display:flex;align-items:center;gap:4px;font-size:11px;"><span style="background:#FAECE7;color:#993C1D;padding:1px 6px;border-radius:3px;font-size:9px;">조기퇴근</span></span>'
+    + '</div>';
+
+  document.getElementById('my-att-calendar').innerHTML = html;
+}
+
+function renderMyAttTable() {
+  const y = myCurrentAttMonth.getFullYear();
+  const m = myCurrentAttMonth.getMonth();
+  const todayStr = todayStrKST();
+  const isWeek = myRecTab === 'week';
+
+  // 주간: 이번주 월~오늘 / 월간: 이번달 전체
+  let startStr, endStr;
+  if(isWeek) {
+    const today = new Date(nowKST());
+    const dow = today.getDay();
+    const monday = new Date(today);
+    monday.setDate(today.getDate() - (dow===0?6:dow-1));
+    startStr = monday.toISOString().slice(0,10);
+    endStr = todayStr;
+  } else {
+    startStr = y + '-' + String(m+1).padStart(2,'0') + '-01';
+    endStr = todayStr;
+  }
+
+  const myAtts = attendances.filter(function(a){
+    return a.emp_id===currentEmpId && a.att_date>=startStr && a.att_date<=endStr && !a.overtime_checkin;
+  });
+  const myOt = attendances.filter(function(a){
+    return a.emp_id===currentEmpId && a.att_date>=startStr && a.att_date<=endStr && a.overtime_checkin;
+  });
+
+  // 근무일 수 계산
+  let totalDays = 0;
+  const c = new Date(startStr);
+  const e = new Date(endStr);
+  while(c<=e) { if(c.getDay()!==0&&c.getDay()!==6) totalDays++; c.setDate(c.getDate()+1); }
+
+  // 날짜별 그룹
+  const dateMap = {};
+  myAtts.forEach(function(a){ dateMap[a.att_date] = a; });
+
+  // 날짜 목록
+  const dates = [];
+  const dc = new Date(startStr);
+  while(dc<=new Date(endStr)) {
+    const ds = dc.toISOString().slice(0,10);
+    const dow = dc.getDay();
+    if(dow!==0&&dow!==6) dates.push(ds);
+    dc.setDate(dc.getDate()+1);
+  }
+
+  let totalPresent=0, totalLate=0, totalAbsent=0, totalOt=0;
+
+  let html = '<table style="width:100%;font-size:12px;border-collapse:collapse;">';
+  html += '<thead><tr style="border-bottom:0.5px solid var(--gray-200);">'
+    + '<th style="text-align:left;padding:7px 4px;color:var(--gray-600);font-weight:500;">날짜</th>'
+    + '<th style="text-align:center;padding:7px 4px;color:#2ECC71;font-weight:500;">정상</th>'
+    + '<th style="text-align:center;padding:7px 4px;color:#E67E22;font-weight:500;">지각</th>'
+    + '<th style="text-align:center;padding:7px 4px;color:#E74C3C;font-weight:500;">결근</th>'
+    + '<th style="text-align:center;padding:7px 4px;color:#8E44AD;font-weight:500;">특근</th>'
+    + '</tr></thead><tbody>';
+
+  dates.forEach(function(ds) {
+    const att = dateMap[ds];
+    const ot = myOt.find(function(a){ return a.att_date===ds; });
+    const present = att && getAttStatus(att)==='present' ? 1 : 0;
+    const late = att && getAttStatus(att)==='late' ? 1 : 0;
+    const absent = att ? 0 : 1;
+    const overtime = ot ? 1 : 0;
+    totalPresent+=present; totalLate+=late; totalAbsent+=absent; totalOt+=overtime;
+
+    const label = ds.slice(5).replace('-', '월 ') + '일';
+    html += '<tr style="border-bottom:0.5px solid var(--gray-100);">'
+      + '<td style="padding:7px 4px;color:var(--gray-700);">' + label + '</td>'
+      + '<td style="text-align:center;padding:7px 4px;color:' + (present?'#2ECC71':'var(--gray-300)') + ';">' + present + '</td>'
+      + '<td style="text-align:center;padding:7px 4px;color:' + (late?'#E67E22':'var(--gray-300)') + ';">' + late + '</td>'
+      + '<td style="text-align:center;padding:7px 4px;color:' + (absent?'#E74C3C':'var(--gray-300)') + ';">' + absent + '</td>'
+      + '<td style="text-align:center;padding:7px 4px;color:' + (overtime?'#8E44AD':'var(--gray-300)') + ';">' + overtime + '</td>'
+      + '</tr>';
+  });
+
+  const lateRate = totalDays>0 ? Math.round(totalLate/totalDays*100) : 0;
+  html += '<tr style="border-top:0.5px solid var(--gray-200);background:var(--gray-50);">'
+    + '<td style="padding:7px 4px;font-weight:500;color:var(--gray-600);">합계</td>'
+    + '<td style="text-align:center;color:#2ECC71;font-weight:500;padding:7px 4px;">' + totalPresent + '</td>'
+    + '<td style="text-align:center;color:#E67E22;font-weight:500;padding:7px 4px;">' + totalLate + '</td>'
+    + '<td style="text-align:center;color:#E74C3C;font-weight:500;padding:7px 4px;">' + totalAbsent + '</td>'
+    + '<td style="text-align:center;color:#8E44AD;font-weight:500;padding:7px 4px;">' + totalOt + '</td>'
+    + '</tr>'
+    + '<tr style="background:var(--gray-50);">'
+    + '<td colspan="4" style="padding:5px 4px;font-size:11px;color:var(--gray-500);">지각률</td>'
+    + '<td style="text-align:right;padding:5px 4px;font-weight:600;color:#E67E22;font-size:13px;">' + lateRate + '%</td>'
+    + '</tr>';
+
+  html += '</tbody></table>';
+  document.getElementById('my-att-table').innerHTML = html;
 }
 
 function changeAttMonth(dir) {
