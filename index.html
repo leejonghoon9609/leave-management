@@ -1682,8 +1682,10 @@ let myRecTab = 'week';
 
 function switchMyRecTab(tab) {
   myRecTab = tab;
-  document.getElementById('my-rec-tab-week').className = 'filter-btn' + (tab==='week'?' active':'');
-  document.getElementById('my-rec-tab-month').className = 'filter-btn' + (tab==='month'?' active':'');
+  const wBtn = document.getElementById('my-rec-tab-week');
+  const mBtn = document.getElementById('my-rec-tab-month');
+  if(wBtn) wBtn.className = 'filter-btn' + (tab==='week'?' active':'');
+  if(mBtn) mBtn.className = 'filter-btn' + (tab==='month'?' active':'');
   renderMyAttTable();
 }
 
@@ -1748,7 +1750,9 @@ function renderMyAttCalendar(y, m) {
     + '<span style="display:flex;align-items:center;gap:4px;font-size:11px;"><span style="background:#FAECE7;color:#993C1D;padding:1px 6px;border-radius:3px;font-size:9px;">조기퇴근</span></span>'
     + '</div>';
 
-  document.getElementById('my-att-calendar').innerHTML = html;
+  const calEl = document.getElementById('my-att-calendar');
+  if(!calEl) return;
+  calEl.innerHTML = html;
 }
 
 function renderMyAttTable() {
@@ -1842,7 +1846,9 @@ function renderMyAttTable() {
     + '</tr>';
 
   html += '</tbody></table>';
-  document.getElementById('my-att-table').innerHTML = html;
+  const tableEl = document.getElementById('my-att-table');
+  if(!tableEl) return;
+  tableEl.innerHTML = html;
 }
 
 function changeAttMonth(dir) {
@@ -2611,7 +2617,7 @@ async function showPage(page, el) {
   }
   if(page==='apply') renderMyLeave();
   if(page==='checkin') { startClock(); renderCheckin(); }
-  if(page==='my-records') renderMyAttRecords();
+  if(page==='my-records') { myRecTab='week'; renderMyAttRecords(); }
   if(page==='monthly') renderMonthly();
   if(page==='team-att') renderTeamAtt();
 }
