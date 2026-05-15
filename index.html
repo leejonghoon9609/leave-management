@@ -230,6 +230,22 @@ body { font-family: "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; backgrou
     </div>
   </div>
 </div>
+
+<!-- 특근 모달 -->
+<div class="modal-overlay" id="overtime-modal">
+  <div class="modal-box">
+    <div class="modal-title" id="overtime-modal-title">⏰ 특근 출근</div>
+    <div class="modal-sub">사업명 / 작업내용을 입력해주세요</div>
+    <div class="form-group">
+      <label class="form-label">사업명 / 작업내용 *</label>
+      <textarea class="form-input" id="overtime-memo" rows="3" placeholder="예) OO측량 특근 작업"></textarea>
+    </div>
+    <div class="modal-btn-row">
+      <button class="modal-btn modal-btn-cancel" onclick="closeOvertimeModal()">취소</button>
+      <button class="modal-btn" style="background:#1A5276;color:white;" onclick="confirmOvertimeAction()">✅ 등록</button>
+    </div>
+  </div>
+</div>
 <div class="modal-overlay" id="reject-modal">
   <div class="modal-box">
     <div class="modal-title">❌ 거절 사유 입력</div>
@@ -526,6 +542,13 @@ body { font-family: "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; backgrou
             <span style="font-size:12px;color:var(--gray-900);font-weight:600;width:60px;text-align:right;">현장근무</span>
             <button class="checkin-btn" id="btn-field-checkin" onclick="openFieldCheckinModal()" style="background:var(--blue);color:white;padding:10px 22px;font-size:13px;">🏃 출근</button>
             <button class="checkin-btn" id="btn-field-checkout" onclick="openFieldCheckoutModal()" disabled style="background:var(--amber);color:white;padding:10px 22px;font-size:13px;">🏠 퇴근</button>
+            <button class="checkin-btn" id="btn-overtime-toggle" onclick="toggleOvertimeRow()" style="background:#6C3483;color:white;padding:10px 18px;font-size:13px;">⏰ 특근</button>
+          </div>
+          <!-- 특근 (클릭 시 표시) -->
+          <div id="overtime-btn-row" style="display:none;align-items:center;gap:8px;">
+            <span style="font-size:12px;color:var(--gray-900);font-weight:600;width:60px;text-align:right;">특근</span>
+            <button class="checkin-btn" id="btn-overtime-checkin" onclick="openOvertimeModal('checkin')" style="background:#1A5276;color:white;padding:10px 22px;font-size:13px;">🌙 출근</button>
+            <button class="checkin-btn" id="btn-overtime-checkout" onclick="openOvertimeModal('checkout')" disabled style="background:#784212;color:white;padding:10px 22px;font-size:13px;">🌙 퇴근</button>
           </div>
         </div>
         <div style="display:none;">
@@ -1510,6 +1533,14 @@ function renderCheckin() {
   const fieldBtnRow=document.getElementById('field-btn-row');
   if(fieldBtnRow) fieldBtnRow.style.display = showFieldBtn ? 'flex' : 'none';
 
+  // 특근 버튼 상태 (현장근무 행이 표시될 때만)
+  const overtimeCheckinBtn = document.getElementById('btn-overtime-checkin');
+  const overtimeCheckoutBtn = document.getElementById('btn-overtime-checkout');
+
+  // 오늘 특근 기록 확인
+  const todayStr = todayStrKST();
+  const otAtt = attendances.find(function(a){ return a.emp_id===currentEmpId && a.att_date===todayStr && a.overtime_memo; });
+
   if(att) {
     document.getElementById('btn-checkin').disabled=true;
     if(att.checkout_time) {
@@ -1532,6 +1563,16 @@ function renderCheckin() {
     if(fieldCheckinBtn) fieldCheckinBtn.disabled=false;
     document.getElementById('checkin-status').textContent='오늘 출근 기록이 없습니다';
     document.getElementById('gps-info').style.display='none';
+  }
+
+  // 특근 출퇴근 버튼 상태
+  const otRec = attendances.find(function(a){ return a.emp_id===currentEmpId && a.att_date===todayStr && a.overtime_checkin; });
+  if(otRec) {
+    if(overtimeCheckinBtn) overtimeCheckinBtn.disabled=true;
+    if(overtimeCheckoutBtn) overtimeCheckoutBtn.disabled = !!otRec.overtime_checkout;
+  } else {
+    if(overtimeCheckinBtn) overtimeCheckinBtn.disabled=false;
+    if(overtimeCheckoutBtn) overtimeCheckoutBtn.disabled=true;
   }
   renderMyWeek();
   // 팀장이면 팀 출퇴근일람 표시
@@ -1838,6 +1879,63 @@ function renderTeamMemberToday() {
       return '<div class="att-row"><div class="avatar ' + avClass(idx) + '">' + ini(e.name) + '</div><div class="att-info"><div class="att-name">' + e.name + '</div><div class="att-detail">' + e.dept + '</div></div><span class="badge badge-absent">결근</span></div>';
     }
   }).join('');
+}
+
+// ===== 특근 =====
+let overtimeActionType = 'checkin'; // 'checkin' or 'checkout'
+
+function toggleOvertimeRow() {
+  const row = document.getElementById('overtime-btn-row');
+  if(!row) return;
+  row.style.display = row.style.display === 'none' ? 'flex' : 'none';
+}
+
+function openOvertimeModal(type) {
+  overtimeActionType = type;
+  const title = document.getElementById('overtime-modal-title');
+  if(title) title.textContent = type === 'checkin' ? '⏰ 특근 출근' : '⏰ 특근 퇴근';
+  document.getElementById('overtime-memo').value = '';
+  document.getElementById('overtime-modal').classList.add('show');
+}
+
+function closeOvertimeModal() {
+  document.getElementById('overtime-modal').classList.remove('show');
+}
+
+async function confirmOvertimeAction() {
+  const memo = document.getElementById('overtime-memo').value.trim();
+  if(!memo) { alert('사업명/작업내용을 입력해주세요'); return; }
+  closeOvertimeModal();
+
+  const nowISO = nowISOKST();
+  const today = todayStrKST();
+
+  // 특근 기록은 별도 테이블(overtime_records)에 저장
+  const existing = attendances.find(function(a){ return a.emp_id===currentEmpId && a.att_date===today && a.overtime_checkin; });
+
+  if(overtimeActionType === 'checkin') {
+    await dbInsert('overtime_records', {
+      emp_id: currentEmpId,
+      att_date: today,
+      overtime_checkin: nowISO,
+      overtime_memo: memo
+    });
+    document.getElementById('checkin-status').textContent = '🌙 ' + formatTimeKST(nowISO) + ' 특근 출근 완료 (' + memo + ')';
+    const outBtn = document.getElementById('btn-overtime-checkout');
+    const inBtn = document.getElementById('btn-overtime-checkin');
+    if(inBtn) inBtn.disabled = true;
+    if(outBtn) outBtn.disabled = false;
+  } else {
+    if(!existing) { alert('특근 출근 기록이 없습니다'); return; }
+    await dbUpdate('overtime_records', existing.id, {
+      overtime_checkout: nowISO,
+      overtime_memo: memo
+    });
+    document.getElementById('checkin-status').textContent = '🌙 ' + formatTimeKST(nowISO) + ' 특근 퇴근 완료 (' + memo + ')';
+    const outBtn = document.getElementById('btn-overtime-checkout');
+    if(outBtn) outBtn.disabled = true;
+  }
+  await loadData(); renderAll();
 }
 
 // ===== 엑셀 다운로드 =====
