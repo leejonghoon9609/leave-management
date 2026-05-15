@@ -2645,7 +2645,7 @@ async function restoreSession() {
     document.getElementById('user-info-box').innerHTML='<div class="user-avatar av-0">관리</div><div><div class="user-name">관리자 (이종훈)</div><div class="user-role">전체 권한</div></div>';
     showPage('leave-dashboard', document.querySelector('#admin-nav .nav-item'));
     startAutoRefresh();
-  } else if(empId&&(role==='manager'||role==='employee')) {
+  } else if(empId&&(role==='manager'||role==='viewer'||role==='employee')) {
     currentEmpId=parseInt(empId);
     const empData=getEmpById(currentEmpId);
     if(empData) {
@@ -2660,10 +2660,17 @@ async function restoreSession() {
       if(currentRole==='manager') {
         document.getElementById('manager-nav').style.display='block';
         document.getElementById('manager-dash-sub').textContent=empData.dept+' 팀 현황';
-        showPage('manager-dashboard', document.querySelector('#manager-nav .nav-item'));
+        const mgrCheckinItem=Array.from(document.querySelectorAll('#manager-nav .nav-item')).find(function(el){ return el.textContent.includes('출퇴근'); });
+        showPage('checkin', mgrCheckinItem||document.querySelector('#manager-nav .nav-item'));
+      } else if(currentRole==='viewer') {
+        document.getElementById('manager-nav').style.display='block';
+        document.getElementById('manager-dash-sub').textContent=empData.dept+' 팀 현황 (조회)';
+        const viewerCheckinItem=Array.from(document.querySelectorAll('#manager-nav .nav-item')).find(function(el){ return el.textContent.includes('출퇴근'); });
+        showPage('checkin', viewerCheckinItem||document.querySelector('#manager-nav .nav-item'));
       } else {
         document.getElementById('employee-nav').style.display='block';
-        showPage('my-leave', document.querySelector('#employee-nav .nav-item'));
+        const empCheckinItem=Array.from(document.querySelectorAll('#employee-nav .nav-item')).find(function(el){ return el.textContent.includes('출퇴근'); });
+        showPage('checkin', empCheckinItem||document.querySelector('#employee-nav .nav-item'));
       }
       startClock(); startAutoRefresh();
     }
