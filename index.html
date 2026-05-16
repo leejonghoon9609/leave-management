@@ -2099,7 +2099,7 @@ function renderMyToday() {
     const checkoutBadge = getCheckoutBadge(myAtt);
     const memo = myAtt.checkin_field_memo ? ' <span style="font-size:10px;color:var(--blue);">[출근:'+myAtt.checkin_field_memo+']</span>' : (myAtt.field_memo ? ' <span style="font-size:10px;color:var(--amber);">[퇴근:'+myAtt.field_memo+']</span>' : '');
     const earlyNote = myAtt.early_reason ? ' <span style="font-size:10px;color:var(--primary);">['+myAtt.early_reason+']</span>' : '';
-    html += '<div class="att-row"><div class="att-info"><div class="att-name">' + (emp ? emp.name : '') + memo + earlyNote + '</div><div class="att-detail">출근 ' + formatTimeKST(myAtt.checkin_time) + ' · 퇴근 ' + formatTimeKST(myAtt.checkout_time) + '</div></div>' + attBadge(s) + checkoutBadge + '</div>';
+    html += '<div class="att-row" style="align-items:flex-start;"><div class="att-info"><div class="att-name">' + (emp ? emp.name : '') + memo + earlyNote + '</div><div class="att-detail">출근 ' + formatTimeKST(myAtt.checkin_time) + '</div><div class="att-detail">퇴근 ' + formatTimeKST(myAtt.checkout_time) + '</div></div>' + attBadge(s) + checkoutBadge + '</div>';
   } else {
     html += '<div class="empty">출근 기록이 없습니다</div>';
   }
@@ -2149,13 +2149,18 @@ function renderTeamMemberToday() {
   const myDept = emp ? getLeaderDept(emp.name) : null;
   const teamEl = document.getElementById('team-today-records');
   if(!myDept) { teamEl.innerHTML = '<div class="empty">부서 정보 없음</div>'; return; }
-  const teamEmps = employees.filter(function(e){ return e.dept === myDept && e.id !== currentEmpId && e.role !== 'admin'; });
+
+  // 팀장 본인 포함 (본인 먼저, 나머지 팀원)
+  const teamEmps = employees.filter(function(e){ return e.dept === myDept && e.role !== 'admin'; });
+  // 본인을 맨 앞으로
+  teamEmps.sort(function(a, b){ return a.id === currentEmpId ? -1 : b.id === currentEmpId ? 1 : 0; });
+
   if(!teamEmps.length) { teamEl.innerHTML = '<div class="empty">팀원이 없습니다</div>'; return; }
 
   teamEl.innerHTML = teamEmps.map(function(e, idx) {
-    const att = attendances.find(function(a){ return a.emp_id === e.id && a.att_date === dateStr; });
-    // 팀원 특근 기록
+    const att = attendances.find(function(a){ return a.emp_id === e.id && a.att_date === dateStr && !a.overtime_checkin; });
     const otRecs = attendances.filter(function(a){ return a.emp_id === e.id && a.att_date === dateStr && (a.overtime_checkin || a.overtime_checkout); });
+    const isSelf = e.id === currentEmpId;
 
     let rowHtml = '';
     if(att) {
@@ -2163,11 +2168,21 @@ function renderTeamMemberToday() {
       const checkoutBadge = getCheckoutBadge(att);
       const memo = att.checkin_field_memo ? ' <span style="font-size:10px;color:var(--blue);">[출근:'+att.checkin_field_memo+']</span>' : (att.field_memo ? ' <span style="font-size:10px;color:var(--amber);">[퇴근:'+att.field_memo+']</span>' : '');
       const earlyNote = att.early_reason ? ' <span style="font-size:10px;color:var(--primary);">['+att.early_reason+']</span>' : '';
-      rowHtml = '<div class="att-row"><div class="avatar ' + avClass(idx) + '">' + ini(e.name) + '</div><div class="att-info"><div class="att-name">' + e.name + memo + earlyNote + '</div><div class="att-detail">출근 ' + formatTimeKST(att.checkin_time) + ' · 퇴근 ' + formatTimeKST(att.checkout_time) + '</div></div>' + attBadge(s) + checkoutBadge + '</div>';
+      rowHtml = '<div class="att-row" style="align-items:flex-start;">'
+        + '<div class="avatar ' + avClass(idx) + '">' + ini(e.name) + '</div>'
+        + '<div class="att-info">'
+        + '<div class="att-name">' + e.name + (isSelf ? ' <span style="font-size:10px;color:var(--primary);">(나)</span>' : '') + memo + earlyNote + '</div>'
+        + '<div class="att-detail">출근 ' + formatTimeKST(att.checkin_time) + '</div>'
+        + '<div class="att-detail">퇴근 ' + formatTimeKST(att.checkout_time) + '</div>'
+        + '</div>' + attBadge(s) + checkoutBadge + '</div>';
     } else {
-      rowHtml = '<div class="att-row"><div class="avatar ' + avClass(idx) + '">' + ini(e.name) + '</div><div class="att-info"><div class="att-name">' + e.name + '</div><div class="att-detail">' + e.dept + '</div></div><span class="badge badge-absent">결근</span></div>';
+      rowHtml = '<div class="att-row" style="align-items:flex-start;">'
+        + '<div class="avatar ' + avClass(idx) + '">' + ini(e.name) + '</div>'
+        + '<div class="att-info">'
+        + '<div class="att-name">' + e.name + (isSelf ? ' <span style="font-size:10px;color:var(--primary);">(나)</span>' : '') + '</div>'
+        + '<div class="att-detail">' + e.dept + '</div>'
+        + '</div><span class="badge badge-absent">결근</span></div>';
     }
-    // 특근 기록 추가
     rowHtml += overtimeHtml(otRecs);
     return rowHtml;
   }).join('');
