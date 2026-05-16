@@ -2092,6 +2092,7 @@ function renderMyToday() {
   // 특근 기록
   const otRecs = attendances.filter(function(a){ return a.emp_id === currentEmpId && a.att_date === dateStr && (a.overtime_checkin || a.overtime_checkout); });
 
+  myEl.style.textAlign = 'left';
   let html = '';
 
   if(myAtt) {
@@ -2099,8 +2100,8 @@ function renderMyToday() {
     const checkoutBadge = getCheckoutBadge(myAtt);
     const memo = myAtt.checkin_field_memo ? ' <span style="font-size:10px;color:var(--blue);">[출근:'+myAtt.checkin_field_memo+']</span>' : (myAtt.field_memo ? ' <span style="font-size:10px;color:var(--amber);">[퇴근:'+myAtt.field_memo+']</span>' : '');
     const earlyNote = myAtt.early_reason ? ' <span style="font-size:10px;color:var(--primary);">['+myAtt.early_reason+']</span>' : '';
-    html += '<div style="display:flex;align-items:flex-start;gap:10px;padding:2px 0;">'
-      + '<div style="flex:1;min-width:0;">'
+    html += '<div style="text-align:left;display:flex;align-items:flex-start;gap:10px;padding:2px 0;">'
+      + '<div style="flex:1;min-width:0;text-align:left;">'
       + '<div style="font-size:13px;font-weight:600;margin-bottom:4px;">' + (emp ? emp.name : '') + memo + earlyNote + '</div>'
       + '<div style="display:flex;gap:4px;font-size:12px;color:var(--gray-400);"><span style="width:30px;">출근</span><span>' + formatTimeKST(myAtt.checkin_time) + '</span></div>'
       + '<div style="display:flex;gap:4px;font-size:12px;color:var(--gray-400);margin-top:2px;"><span style="width:30px;">퇴근</span><span>' + formatTimeKST(myAtt.checkout_time) + '</span></div>'
@@ -2163,6 +2164,8 @@ function renderTeamMemberToday() {
   teamEmps.sort(function(a, b){ return a.id === currentEmpId ? -1 : b.id === currentEmpId ? 1 : 0; });
   if(!teamEmps.length) { teamEl.innerHTML = '<div class="empty">팀원이 없습니다</div>'; return; }
 
+  teamEl.style.textAlign = 'left';
+
   teamEl.innerHTML = teamEmps.map(function(e, idx) {
     const att = attendances.find(function(a){ return a.emp_id === e.id && a.att_date === dateStr && !a.overtime_checkin; });
     const otRecs = attendances.filter(function(a){ return a.emp_id === e.id && a.att_date === dateStr && (a.overtime_checkin || a.overtime_checkout); });
@@ -2175,9 +2178,9 @@ function renderTeamMemberToday() {
       const checkoutBadge = getCheckoutBadge(att);
       const memo = att.checkin_field_memo ? ' <span style="font-size:10px;color:var(--blue);">[출근:'+att.checkin_field_memo+']</span>' : (att.field_memo ? ' <span style="font-size:10px;color:var(--amber);">[퇴근:'+att.field_memo+']</span>' : '');
       const earlyNote = att.early_reason ? ' <span style="font-size:10px;color:var(--primary);">['+att.early_reason+']</span>' : '';
-      rowHtml = '<div style="display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:'+border+'">'
+      rowHtml = '<div style="text-align:left;display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:'+border+'">'
         + '<div class="avatar ' + avClass(idx) + '" style="flex-shrink:0;margin-top:2px;">' + ini(e.name) + '</div>'
-        + '<div style="flex:1;min-width:0;">'
+        + '<div style="flex:1;min-width:0;text-align:left;">'
         + '<div style="font-size:13px;font-weight:600;margin-bottom:4px;">' + e.name + memo + earlyNote + '</div>'
         + '<div style="display:flex;gap:4px;font-size:12px;color:var(--gray-400);"><span style="width:30px;">출근</span><span>' + formatTimeKST(att.checkin_time) + '</span></div>'
         + '<div style="display:flex;gap:4px;font-size:12px;color:var(--gray-400);margin-top:2px;"><span style="width:30px;">퇴근</span><span>' + formatTimeKST(att.checkout_time) + '</span></div>'
@@ -2187,9 +2190,9 @@ function renderTeamMemberToday() {
         + '</div>'
         + '</div>';
     } else {
-      rowHtml = '<div style="display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:'+border+'">'
+      rowHtml = '<div style="text-align:left;display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:'+border+'">'
         + '<div class="avatar ' + avClass(idx) + '" style="flex-shrink:0;margin-top:2px;">' + ini(e.name) + '</div>'
-        + '<div style="flex:1;min-width:0;">'
+        + '<div style="flex:1;min-width:0;text-align:left;">'
         + '<div style="font-size:13px;font-weight:600;">' + e.name + '</div>'
         + '</div>'
         + '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px;padding-top:2px;flex-shrink:0;">'
