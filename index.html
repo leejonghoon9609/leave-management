@@ -428,8 +428,27 @@ body { font-family: "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; backgrou
 
     <!-- 팀 신청 관리 -->
     <div class="page" id="page-manager-requests">
-      <div class="page-header"><div><div class="page-title">팀 신청 관리</div></div></div>
-      <div class="card"><div class="card-title">📋 팀 신청 내역</div><div id="manager-all-requests"><div class="loading">불러오는 중...</div></div></div>
+      <div class="page-header"><div><div class="page-title">팀 신청 관리</div><div class="page-sub" id="mgr-req-dept-name"></div></div></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
+        <div class="card" style="margin-bottom:0;">
+          <div class="card-title" style="margin-bottom:10px;">📅 주간 현황 <span id="mgr-req-week-range" style="font-size:11px;font-weight:400;color:var(--gray-500);margin-left:4px;"></span></div>
+          <div id="mgr-req-week-summary"></div>
+        </div>
+        <div class="card" style="margin-bottom:0;">
+          <div class="card-title" style="margin-bottom:10px;">🗓 월간 현황 <span id="mgr-req-month-range" style="font-size:11px;font-weight:400;color:var(--gray-500);margin-left:4px;"></span></div>
+          <div id="mgr-req-month-summary"></div>
+        </div>
+      </div>
+      <div class="card">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+          <div class="card-title" style="margin-bottom:0;">👥 직원별 세부통계</div>
+          <div style="display:flex;gap:6px;">
+            <button class="filter-btn active" id="mgr-req-tab-week" onclick="switchMgrReqTab('week')">주간</button>
+            <button class="filter-btn" id="mgr-req-tab-month" onclick="switchMgrReqTab('month')">월간</button>
+          </div>
+        </div>
+        <div id="mgr-req-emp-table"></div>
+      </div>
     </div>
 
     <!-- 내 연차 -->
@@ -1157,28 +1176,138 @@ function renderManagerLeaveDashboard() {
   }
 }
 
+let mgrReqTab = 'week';
+function switchMgrReqTab(tab) {
+  mgrReqTab = tab;
+  document.getElementById('mgr-req-tab-week').className = 'filter-btn' + (tab==='week'?' active':'');
+  document.getElementById('mgr-req-tab-month').className = 'filter-btn' + (tab==='month'?' active':'');
+  renderMgrReqEmpTable();
+}
+
 function renderManagerAllRequests() {
   const myEmp = getEmpById(currentEmpId); if(!myEmp) return;
-  const teamReqs = requests.filter(function(r){ const e=getEmpById(r.emp_id); return e && e.dept===myEmp.dept && r.emp_id!==currentEmpId; });
-  const el = document.getElementById('manager-all-requests');
-  if(!teamReqs.length) { el.innerHTML = '<div class="empty">신청 내역이 없습니다</div>'; return; }
-  el.innerHTML = teamReqs.map(function(r) {
-    const e=getEmpById(r.emp_id); if(!e) return '';
-    const idx=employees.findIndex(function(x){ return x.id===e.id; });
-    let docHtml = '';
-    if((r.type==='병가'||r.type==='예비군/민방위') && r.doc_url && r.doc_status==='submitted') {
-      const docLabel = r.type==='병가' ? '📎 진단서 확인 대기' : '📎 통지서 확인 대기';
-      const docBtn = currentRole!=='viewer' ? '<button class="btn btn-approve" style="font-size:10px;padding:3px 8px;margin-left:6px;" onclick="managerApproveMedical('+r.id+')">✅ 확인 → 관리자 전달</button>' : '';
-      docHtml = '<div style="background:var(--amber-light);border-radius:4px;padding:6px 8px;margin-top:6px;font-size:11px;color:var(--amber);">'+docLabel+' · <a href="'+r.doc_url+'" target="_blank" style="color:var(--blue);">첨부파일 보기</a> '+docBtn+'</div>';
-    } else if((r.type==='병가'||r.type==='예비군/민방위') && r.doc_url && r.doc_status==='manager-approved') {
-      const docLabel = r.type==='병가' ? '📎 진단서 관리자 전달됨' : '📎 통지서 관리자 전달됨';
-      docHtml = '<div style="font-size:11px;color:var(--primary-dark);margin-top:3px;">✅ '+docLabel+' <a href="'+r.doc_url+'" target="_blank" style="color:var(--blue);margin-left:4px;">📄 첨부파일</a></div>';
-    } else if((r.type==='병가'||r.type==='예비군/민방위') && r.doc_url && r.doc_status==='confirmed') {
-      docHtml = '<div style="font-size:11px;color:var(--primary-dark);margin-top:3px;">✅ 연차 제외 확정 <a href="'+r.doc_url+'" target="_blank" style="color:var(--blue);margin-left:4px;">📄 첨부파일</a></div>';
-    }
-    const showBtn2 = r.status==='pending' && currentRole!=='viewer';
-    return '<div class="req-row"><div class="avatar ' + avClass(idx) + '">' + ini(e.name) + '</div><div class="req-info"><div class="req-name">' + e.name + '</div><div class="req-detail">' + r.type + ' · ' + r.start_date + ' ~ ' + r.end_date + ' · ' + r.days + '일' + (r.reason?' · '+r.reason:'') + '</div>' + (r.status==='rejected'&&r.reject_reason?'<div style="font-size:11px;color:var(--red);margin-top:3px;">❌ 거절: '+r.reject_reason+'</div>':'') + docHtml + '</div>' + leaveBadge(r.status) + (showBtn2?'<div class="btn-row"><button class="btn btn-approve" onclick="managerApprove('+r.id+')">승인</button><button class="btn btn-reject" onclick="openRejectModal('+r.id+',\'manager\')">거절</button></div>':'') + '</div>';
-  }).join('');
+  const myDept = getLeaderDept(myEmp.name); if(!myDept) return;
+
+  const deptEl = document.getElementById('mgr-req-dept-name');
+  if(deptEl) deptEl.textContent = myDept;
+
+  const today = new Date(nowKST());
+  const todayStr = todayStrKST();
+  const dayOfWeek = today.getDay();
+  const monday = new Date(today);
+  monday.setDate(today.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
+  const mondayStr = monday.toISOString().slice(0, 10);
+  const monthStart = todayStr.slice(0, 7) + '-01';
+
+  const wRange = mondayStr.slice(5) + '~' + todayStr.slice(5);
+  const mRange = todayStr.slice(0, 7).replace('-', '년 ') + '월';
+  document.getElementById('mgr-req-week-range').textContent = wRange;
+  document.getElementById('mgr-req-month-range').textContent = mRange;
+
+  const teamEmps = employees.filter(function(e){ return e.dept === myDept && e.role !== 'admin'; });
+  const teamReqs = requests.filter(function(r){ const e=getEmpById(r.emp_id); return e && e.dept===myDept && r.status==='approved'; });
+
+  const leaveTypes = ['연차','반차 (오전)','반차 (오후)','병가','예비군/민방위'];
+
+  function countByType(reqs, types) {
+    const result = {};
+    types.forEach(function(t){ result[t] = 0; });
+    reqs.forEach(function(r){
+      if(result.hasOwnProperty(r.type)) result[r.type]++;
+    });
+    return result;
+  }
+
+  // 주간: 이번주 신청 (start_date 기준)
+  const weekReqs = teamReqs.filter(function(r){ return r.start_date >= mondayStr && r.start_date <= todayStr; });
+  const monthReqs = teamReqs.filter(function(r){ return r.start_date >= monthStart && r.start_date <= todayStr; });
+
+  const wCount = countByType(weekReqs, leaveTypes);
+  const mCount = countByType(monthReqs, leaveTypes);
+
+  function summaryRow(label, val, color) {
+    return '<div style="display:flex;justify-content:space-between;font-size:13px;padding:4px 0;border-bottom:0.5px solid var(--gray-100);">'
+      + '<span style="color:var(--gray-500);">' + label + '</span>'
+      + '<strong style="color:' + color + ';">' + val + '건</strong></div>';
+  }
+
+  const wReqSum = weekReqs.length;
+  const mReqSum = monthReqs.length;
+
+  document.getElementById('mgr-req-week-summary').innerHTML =
+    summaryRow('연차 사용', wCount['연차'], '#2ECC71') +
+    summaryRow('반차', wCount['반차 (오전)']+wCount['반차 (오후)'], '#E67E22') +
+    summaryRow('병가', wCount['병가'], '#E74C3C') +
+    summaryRow('예비군/민방위', wCount['예비군/민방위'], '#8E44AD') +
+    '<div style="display:flex;justify-content:space-between;font-size:13px;padding:4px 0;"><span style="color:var(--gray-500);">합계</span><strong style="color:var(--gray-900);">' + wReqSum + '건</strong></div>';
+
+  document.getElementById('mgr-req-month-summary').innerHTML =
+    summaryRow('연차 사용', mCount['연차'], '#2ECC71') +
+    summaryRow('반차', mCount['반차 (오전)']+mCount['반차 (오후)'], '#E67E22') +
+    summaryRow('병가', mCount['병가'], '#E74C3C') +
+    summaryRow('예비군/민방위', mCount['예비군/민방위'], '#8E44AD') +
+    '<div style="display:flex;justify-content:space-between;font-size:13px;padding:4px 0;"><span style="color:var(--gray-500);">합계</span><strong style="color:var(--gray-900);">' + mReqSum + '건</strong></div>';
+
+  renderMgrReqEmpTable();
+}
+
+function renderMgrReqEmpTable() {
+  const myEmp = getEmpById(currentEmpId); if(!myEmp) return;
+  const myDept = getLeaderDept(myEmp.name); if(!myDept) return;
+
+  const today = new Date(nowKST());
+  const todayStr = todayStrKST();
+  const dayOfWeek = today.getDay();
+  const monday = new Date(today);
+  monday.setDate(today.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
+  const mondayStr = monday.toISOString().slice(0, 10);
+  const monthStart = todayStr.slice(0, 7) + '-01';
+  const startStr = mgrReqTab === 'week' ? mondayStr : monthStart;
+
+  const teamEmps = employees.filter(function(e){ return e.dept === myDept && e.role !== 'admin'; });
+  const teamReqs = requests.filter(function(r){ const e=getEmpById(r.emp_id); return e && e.dept===myDept && r.status==='approved' && r.start_date >= startStr && r.start_date <= todayStr; });
+
+  const el = document.getElementById('mgr-req-emp-table');
+  let html = '<table style="width:100%;font-size:12px;border-collapse:collapse;">';
+  html += '<thead><tr style="border-bottom:0.5px solid var(--gray-200);">'
+    + '<th style="text-align:left;padding:7px 4px;color:var(--gray-600);font-weight:500;">직원</th>'
+    + '<th style="text-align:center;padding:7px 4px;color:#2ECC71;font-weight:500;">연차</th>'
+    + '<th style="text-align:center;padding:7px 4px;color:#E67E22;font-weight:500;">반차</th>'
+    + '<th style="text-align:center;padding:7px 4px;color:#E74C3C;font-weight:500;">병가</th>'
+    + '<th style="text-align:center;padding:7px 4px;color:#8E44AD;font-weight:500;">예비군</th>'
+    + '<th style="text-align:right;padding:7px 4px;color:var(--gray-600);font-weight:500;">잔여</th>'
+    + '</tr></thead><tbody>';
+
+  let tLeave=0, tHalf=0, tSick=0, tMil=0;
+  teamEmps.forEach(function(e) {
+    const eReqs = teamReqs.filter(function(r){ return r.emp_id === e.id; });
+    const leave = eReqs.filter(function(r){ return r.type==='연차'; }).length;
+    const half = eReqs.filter(function(r){ return r.type.includes('반차'); }).length;
+    const sick = eReqs.filter(function(r){ return r.type==='병가'; }).length;
+    const mil = eReqs.filter(function(r){ return r.type==='예비군/민방위'; }).length;
+    const rem = getRemaining(e);
+    tLeave+=leave; tHalf+=half; tSick+=sick; tMil+=mil;
+    html += '<tr style="border-bottom:0.5px solid var(--gray-100);">'
+      + '<td style="padding:7px 4px;color:var(--gray-700);">' + e.name + '</td>'
+      + '<td style="text-align:center;padding:7px 4px;color:' + (leave?'#2ECC71':'var(--gray-300)') + ';">' + leave + '</td>'
+      + '<td style="text-align:center;padding:7px 4px;color:' + (half?'#E67E22':'var(--gray-300)') + ';">' + half + '</td>'
+      + '<td style="text-align:center;padding:7px 4px;color:' + (sick?'#E74C3C':'var(--gray-300)') + ';">' + sick + '</td>'
+      + '<td style="text-align:center;padding:7px 4px;color:' + (mil?'#8E44AD':'var(--gray-300)') + ';">' + mil + '</td>'
+      + '<td style="text-align:right;padding:7px 4px;color:var(--gray-500);">' + rem + '일</td>'
+      + '</tr>';
+  });
+
+  html += '<tr style="border-top:0.5px solid var(--gray-200);background:var(--gray-50);">'
+    + '<td style="padding:7px 4px;font-weight:500;color:var(--gray-600);">합계</td>'
+    + '<td style="text-align:center;padding:7px 4px;color:#2ECC71;font-weight:500;">' + tLeave + '</td>'
+    + '<td style="text-align:center;padding:7px 4px;color:#E67E22;font-weight:500;">' + tHalf + '</td>'
+    + '<td style="text-align:center;padding:7px 4px;color:#E74C3C;font-weight:500;">' + tSick + '</td>'
+    + '<td style="text-align:center;padding:7px 4px;color:#8E44AD;font-weight:500;">' + tMil + '</td>'
+    + '<td style="text-align:right;padding:7px 4px;"></td>'
+    + '</tr>';
+
+  html += '</tbody></table>';
+  el.innerHTML = html;
 }
 
 function renderMyLeave() {
