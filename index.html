@@ -113,13 +113,13 @@ body { font-family: "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; backgrou
 .cal-day.leave-multi { background: #EEEDFE; color: #3C3489; font-weight: 600; }
 .cal-day.other { color: var(--gray-200); }
 /* 근태 캘린더 */
-.att-cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
-.att-cal-head { text-align: center; font-size: 10px; color: var(--gray-400); padding: 2px 0; font-weight: 500; }
-.att-cal-day { min-height: 44px; border-radius: 4px; border: 0.5px solid var(--gray-100); padding: 3px; font-size: 10px; position: relative; background: var(--white); }
+.att-cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+.att-cal-head { text-align: center; font-size: 11px; color: var(--gray-400); padding: 4px 0; font-weight: 500; }
+.att-cal-day { min-height: 64px; border-radius: 6px; border: 0.5px solid var(--gray-100); padding: 4px; font-size: 11px; position: relative; background: var(--white); }
 .att-cal-day.other-month { background: var(--gray-50); }
 .att-cal-day.weekend { background: #fafafa; }
-.att-cal-day .day-num { font-size: 10px; font-weight: 600; color: var(--gray-600); margin-bottom: 2px; }
-.att-cal-day.is-today .day-num { background: var(--primary); color: white; border-radius: 50%; width: 16px; height: 16px; display: flex; align-items: center; justify-content: center; font-size: 9px; }
+.att-cal-day .day-num { font-size: 11px; font-weight: 600; color: var(--gray-600); margin-bottom: 3px; }
+.att-cal-day.is-today .day-num { background: var(--primary); color: white; border-radius: 50%; width: 18px; height: 18px; display: flex; align-items: center; justify-content: center; font-size: 10px; }
 .att-tag { font-size: 9px; padding: 1px 4px; border-radius: 3px; margin-bottom: 2px; display: block; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .cal-legend { display: flex; gap: 12px; margin-top: 14px; flex-wrap: wrap; }
 .legend-item { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--gray-600); }
@@ -1057,10 +1057,9 @@ function renderAdminLeaveDashboard() {
   if(!employees.length) { return; } // 데이터 로드 전이면 스킵
   const visEmpIds = getVisibleEmployees().map(function(e){ return e.id; });
   const adminPending = requests.filter(function(r){ return r.admin_status==='pending' && r.status!=='approved' && (currentRole!=='deptadmin' || visEmpIds.includes(r.emp_id)); });
-  const docAdminPending = requests.filter(function(r){ return (r.type==='병가'||r.type==='예비군/민방위') && r.doc_url && (r.doc_status==='submitted'||r.doc_status==='manager-approved') && r.doc_status!=='confirmed' && r.status!=='rejected' && (currentRole!=='deptadmin' || visEmpIds.includes(r.emp_id)); });
+  const docAdminPending = requests.filter(function(r){ return (r.type==='병가'||r.type==='예비군/민방위') && r.doc_url && r.doc_status==='manager-approved' && r.status!=='rejected' && (currentRole!=='deptadmin' || visEmpIds.includes(r.emp_id)); });
   const approved = requests.filter(function(r){ return r.status==='approved' && (currentRole!=='deptadmin' || visEmpIds.includes(r.emp_id)); });
-  const allAdminPending = adminPending.concat(docAdminPending.filter(function(d){ return !adminPending.find(function(a){ return a.id===d.id; }); }))
-    .filter(function(r){ return !(r.status==='approved' && r.admin_status==='approved' && r.doc_status!=='submitted' && r.doc_status!=='manager-approved'); });
+  const allAdminPending = adminPending.concat(docAdminPending.filter(function(d){ return !adminPending.find(function(a){ return a.id===d.id; }); }));
   document.getElementById('m-total').textContent = activeEmps.length;
   document.getElementById('m-pending').textContent = adminPending.length + docAdminPending.length;
   document.getElementById('m-approved').textContent = approved.length;
@@ -1074,8 +1073,8 @@ function renderAdminLeaveDashboard() {
       const e = getEmpById(r.emp_id); if(!e) return '';
       const idx = employees.findIndex(function(x){ return x.id===e.id; });
       let docHtml = '';
-      if(r.doc_url && (r.doc_status==='submitted'||r.doc_status==='manager-approved')) {
-        const docLabel = r.type==='병가' ? '📎 진단서 확인 대기' : '📎 통지서 확인 대기';
+      if(r.doc_url && r.doc_status==='manager-approved') {
+        const docLabel = r.type==='병가' ? '📎 진단서 확인 대기 (팀장승인됨)' : '📎 통지서 확인 대기 (팀장승인됨)';
         docHtml = '<div style="background:var(--amber-light);border-radius:4px;padding:6px 8px;margin-top:6px;font-size:11px;color:var(--amber);">'+docLabel+' · <a href="'+r.doc_url+'" target="_blank" style="color:var(--blue);">첨부파일 보기</a> <button class="btn btn-approve" style="font-size:10px;padding:3px 8px;margin-left:6px;" onclick="confirmMedicalDoc('+r.id+')">✅ 확인 완료</button></div>';
       }
       const btnHtml = r.admin_status==='pending' ? '<div class="btn-row"><button class="btn btn-approve" onclick="adminApprove('+r.id+')">최종승인</button><button class="btn btn-reject" onclick="openRejectModal('+r.id+',\'admin\')">거절</button></div>' : '';
@@ -1098,9 +1097,15 @@ function renderAllRequests() {
     const e = getEmpById(r.emp_id); if(!e) return '';
     const idx = employees.findIndex(function(x){ return x.id===e.id; });
     let docHtml = '';
-    if(r.type==='병가' && r.doc_status==='manager-approved') docHtml = '<div style="background:var(--amber-light);border-radius:4px;padding:6px 8px;margin-top:6px;font-size:11px;color:var(--amber);">📎 팀장승인 진단서 · <a href="'+r.doc_url+'" target="_blank" style="color:var(--blue);">첨부파일</a> <button class="btn btn-approve" style="font-size:10px;padding:3px 8px;margin-left:6px;" onclick="confirmMedicalDoc('+r.id+')">✅ 연차 제외 확정</button></div>';
-    else if(r.type==='병가' && r.doc_status==='submitted') docHtml = '<div style="background:var(--amber-light);border-radius:4px;padding:6px 8px;margin-top:6px;font-size:11px;color:var(--amber);">📎 진단서 제출 · <a href="'+r.doc_url+'" target="_blank" style="color:var(--blue);">첨부파일</a> <button class="btn btn-approve" style="font-size:10px;padding:3px 8px;margin-left:6px;" onclick="confirmMedicalDoc('+r.id+')">✅ 연차 제외 확정</button></div>';
-    else if(r.type==='병가' && r.doc_status==='confirmed') docHtml = '<div style="font-size:11px;color:var(--primary-dark);margin-top:3px;">✅ 연차 제외 확정 <a href="'+r.doc_url+'" target="_blank" style="color:var(--blue);margin-left:4px;">📄 첨부파일</a></div>';
+    if((r.type==='병가'||r.type==='예비군/민방위') && r.doc_status==='submitted') {
+      const docLabel = r.type==='병가' ? '📎 진단서 제출됨 (팀장 승인 대기 중)' : '📎 통지서 제출됨 (팀장 승인 대기 중)';
+      docHtml = '<div style="background:var(--gray-100);border-radius:4px;padding:6px 8px;margin-top:6px;font-size:11px;color:var(--gray-500);">'+docLabel+' · <a href="'+r.doc_url+'" target="_blank" style="color:var(--blue);">첨부파일 보기</a></div>';
+    } else if((r.type==='병가'||r.type==='예비군/민방위') && r.doc_status==='manager-approved') {
+      const docLabel = r.type==='병가' ? '📎 팀장승인 진단서' : '📎 팀장승인 통지서';
+      docHtml = '<div style="background:var(--amber-light);border-radius:4px;padding:6px 8px;margin-top:6px;font-size:11px;color:var(--amber);">'+docLabel+' · <a href="'+r.doc_url+'" target="_blank" style="color:var(--blue);">첨부파일</a> <button class="btn btn-approve" style="font-size:10px;padding:3px 8px;margin-left:6px;" onclick="confirmMedicalDoc('+r.id+')">✅ 연차 제외 확정</button></div>';
+    } else if((r.type==='병가'||r.type==='예비군/민방위') && r.doc_status==='confirmed') {
+      docHtml = '<div style="font-size:11px;color:var(--primary-dark);margin-top:3px;">✅ 연차 제외 확정 <a href="'+r.doc_url+'" target="_blank" style="color:var(--blue);margin-left:4px;">📄 첨부파일</a></div>';
+    }
     return '<div class="req-row"><div class="avatar ' + avClass(idx) + '">' + ini(e.name) + '</div><div class="req-info"><div class="req-name">' + e.name + ' <span style="font-weight:400;font-size:11px;color:var(--gray-400)">' + e.dept + '</span></div><div class="req-detail">' + r.type + ' · ' + r.start_date + ' ~ ' + r.end_date + ' · ' + r.days + '일' + (r.reason?' · '+r.reason:'') + '</div>' + (r.status==='rejected'&&r.reject_reason?'<div style="font-size:11px;color:var(--red);margin-top:3px;">❌ 거절: '+r.reject_reason+'</div>':'') + docHtml + '</div>' + leaveBadge(r.status) + (r.admin_status==='pending'?'<div class="btn-row"><button class="btn btn-approve" onclick="adminApprove('+r.id+')">최종승인</button><button class="btn btn-reject" onclick="openRejectModal('+r.id+',\'admin\')">거절</button></div>':'') + '</div>';
   }).join('');
 }
@@ -1161,7 +1166,16 @@ function renderManagerAllRequests() {
     const e=getEmpById(r.emp_id); if(!e) return '';
     const idx=employees.findIndex(function(x){ return x.id===e.id; });
     let docHtml = '';
-    if(r.type==='병가' && r.doc_status==='pending') docHtml = '<div style="background:var(--amber-light);border-radius:4px;padding:6px 8px;margin-top:6px;font-size:11px;color:var(--amber);">📎 진단서 제출 · <a href="'+r.doc_url+'" target="_blank" style="color:var(--blue);">첨부파일</a> <button class="btn btn-approve" style="font-size:10px;padding:3px 8px;margin-left:6px;" onclick="managerApproveMedical('+r.id+')">✅ 1차 승인</button></div>';
+    if((r.type==='병가'||r.type==='예비군/민방위') && r.doc_url && r.doc_status==='submitted') {
+      const docLabel = r.type==='병가' ? '📎 진단서 확인 대기' : '📎 통지서 확인 대기';
+      const docBtn = currentRole!=='viewer' ? '<button class="btn btn-approve" style="font-size:10px;padding:3px 8px;margin-left:6px;" onclick="managerApproveMedical('+r.id+')">✅ 확인 → 관리자 전달</button>' : '';
+      docHtml = '<div style="background:var(--amber-light);border-radius:4px;padding:6px 8px;margin-top:6px;font-size:11px;color:var(--amber);">'+docLabel+' · <a href="'+r.doc_url+'" target="_blank" style="color:var(--blue);">첨부파일 보기</a> '+docBtn+'</div>';
+    } else if((r.type==='병가'||r.type==='예비군/민방위') && r.doc_url && r.doc_status==='manager-approved') {
+      const docLabel = r.type==='병가' ? '📎 진단서 관리자 전달됨' : '📎 통지서 관리자 전달됨';
+      docHtml = '<div style="font-size:11px;color:var(--primary-dark);margin-top:3px;">✅ '+docLabel+' <a href="'+r.doc_url+'" target="_blank" style="color:var(--blue);margin-left:4px;">📄 첨부파일</a></div>';
+    } else if((r.type==='병가'||r.type==='예비군/민방위') && r.doc_url && r.doc_status==='confirmed') {
+      docHtml = '<div style="font-size:11px;color:var(--primary-dark);margin-top:3px;">✅ 연차 제외 확정 <a href="'+r.doc_url+'" target="_blank" style="color:var(--blue);margin-left:4px;">📄 첨부파일</a></div>';
+    }
     const showBtn2 = r.status==='pending' && currentRole!=='viewer';
     return '<div class="req-row"><div class="avatar ' + avClass(idx) + '">' + ini(e.name) + '</div><div class="req-info"><div class="req-name">' + e.name + '</div><div class="req-detail">' + r.type + ' · ' + r.start_date + ' ~ ' + r.end_date + ' · ' + r.days + '일' + (r.reason?' · '+r.reason:'') + '</div>' + (r.status==='rejected'&&r.reject_reason?'<div style="font-size:11px;color:var(--red);margin-top:3px;">❌ 거절: '+r.reject_reason+'</div>':'') + docHtml + '</div>' + leaveBadge(r.status) + (showBtn2?'<div class="btn-row"><button class="btn btn-approve" onclick="managerApprove('+r.id+')">승인</button><button class="btn btn-reject" onclick="openRejectModal('+r.id+',\'manager\')">거절</button></div>':'') + '</div>';
   }).join('');
