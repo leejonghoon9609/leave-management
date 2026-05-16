@@ -180,7 +180,7 @@ body { font-family: "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; backgrou
       <div class="form-group"><label class="form-label">직급 *</label><input class="form-input" id="emp-position" placeholder="예: 대리, 과장, 부장"></div>
       <div class="form-group"><label class="form-label">부서 *</label>
         <select class="form-input" id="emp-dept">
-          <option>사업관리</option><option>사업관리(현장)</option><option>총무부</option><option>측량부</option>
+          <option>사업관리</option><option>사업관리(현장)</option><option>총무부</option><option>측량부</option><option>측량부(DB)</option>
         </select>
       </div>
       <div class="form-group"><label class="form-label">입사일 *</label><input type="date" class="form-input" id="emp-joindate"></div>
@@ -756,7 +756,7 @@ const TEAM_LEADERS = {
   '황현희': '총무부',
   '박영범': '사업관리(현장)',
   '남윤지': '사업관리',
-  '김성한': '측량부'
+  '김성한': '측량부(DB)'
 };
 // 뷰어: 팀 현황은 볼 수 있지만 승인/거절 불가
 const TEAM_VIEWERS = {
@@ -928,7 +928,7 @@ async function loadData() {
     const curVal = sel.value;
     sel.innerHTML = '<option value="">-- 직원 선택 --</option>';
     // 부서 순서 정의
-    const deptOrder = ['총무부', '사업관리', '사업관리(현장)', '측량부'];
+    const deptOrder = ['총무부', '사업관리', '사업관리(현장)', '측량부', '측량부(DB)'];
     const filtered = employees.filter(function(e){ return e.role !== 'admin' && e.name !== '송규헌'; });
     // 부서별 그룹 추가
     deptOrder.forEach(function(dept) {
@@ -1510,7 +1510,7 @@ async function adminApprove(id) { await dbUpdate('requests', id, { status:'appro
 async function managerApprove(id) {
   const r=requests.find(function(x){ return x.id===id; });
   const e=getEmpById(r.emp_id);
-  if(e && e.dept==='측량부') await dbUpdate('requests', id, { status:'approved', manager_status:'approved', admin_status:'approved' });
+  if(e && (e.dept==='측량부' || e.dept==='측량부(DB)')) await dbUpdate('requests', id, { status:'approved', manager_status:'approved', admin_status:'approved' });
   else await dbUpdate('requests', id, { status:'manager-approved', manager_status:'approved', admin_status:'pending' });
   await loadData(); renderAll();
 }
@@ -1623,7 +1623,7 @@ async function submitLeave() {
   const isManager=empData.role==='manager'||isTeamLeader(empData.name);
   const isDirect=isManager||DIRECT_TO_ADMIN_DEPTS.includes(empData.dept);
   // 측량부 직원은 송규헌(deptadmin)이 최종승인하므로 바로 admin pending으로
-  const isSurveyDept = empData.dept==='측량부';
+  const isSurveyDept = empData.dept==='측량부' || empData.dept==='측량부(DB)';
   const initStatus=isDirect?'manager-approved':(isSurveyDept?'manager-approved':'pending');
   const initManagerStatus=isDirect?'approved':(isSurveyDept?'approved':'pending');
   const initAdminStatus=isDirect?'pending':(isSurveyDept?'pending':'waiting');
@@ -1674,7 +1674,7 @@ function renderAttDashboard() {
   document.getElementById('m-att-absent').textContent=Math.max(0,visEmps.length-todayAtts.length);
   document.getElementById('m-att-checkout').textContent=checkout;
 
-  const deptOrder=['총무부','사업관리','사업관리(현장)','측량부'];
+  const deptOrder=['총무부','사업관리','사업관리(현장)','측량부','측량부(DB)'];
 
   // 빨간박스: 날짜별 출근현황 - 부서별 그룹
   const el=document.getElementById('today-list');
@@ -1719,7 +1719,7 @@ function renderDeptChart() {
   const now = new Date();
   const y = now.getFullYear(), m = now.getMonth();
   const prefix = y+'-'+String(m+1).padStart(2,'0');
-  const deptOrder=['총무부','사업관리','사업관리(현장)','측량부'];
+  const deptOrder=['총무부','사업관리','사업관리(현장)','측량부','측량부(DB)'];
   const visEmps = getVisibleEmployees();
   const visAtts = getVisibleAttendances();
   const monthAtts = visAtts.filter(function(a){ return a.att_date&&a.att_date.startsWith(prefix); });
@@ -1769,7 +1769,7 @@ function renderDeptChart() {
 function renderDeptDetail() {
   const picker=document.getElementById('att-dash-picker');
   const selDate=picker?picker.value:todayStrKST();
-  const deptOrder=['총무부','사업관리','사업관리(현장)','측량부'];
+  const deptOrder=['총무부','사업관리','사업관리(현장)','측량부','측량부(DB)'];
   const visEmps=getVisibleEmployees();
   const visAtts=getVisibleAttendances();
   const todayAtts=visAtts.filter(function(a){ return a.att_date===selDate; });
@@ -1848,9 +1848,9 @@ function renderAttEmpList() {
 function renderCheckin() {
   const att=getTodayAttendance(currentEmpId);
   const emp=getEmpById(currentEmpId);
-  // 측량부, 사업관리(현장) 직원에게만 현장퇴근 버튼 표시
+  // 측량부, 사업관리(현장) 직원에게만 현장퇴근 버튼 표시 (측량부(DB) 제외)
   const fieldDepts=['측량부','사업관리(현장)'];
-  const showFieldBtn = emp && fieldDepts.includes(emp.dept);
+  const showFieldBtn = emp && fieldDepts.includes(emp.dept) && emp.dept !== '측량부(DB)';
   const fieldBtn=document.getElementById('btn-field-checkout');
   const fieldCheckinBtn=document.getElementById('btn-field-checkin');
   const fieldBtnRow=document.getElementById('field-btn-row');
