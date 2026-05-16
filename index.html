@@ -1668,7 +1668,7 @@ function renderCheckin() {
   // 팀장이면 팀 출퇴근일람 표시, 이번주 내기록 숨김
   const teamSection = document.getElementById('team-today-section');
   const myWeekCard = document.getElementById('my-week-card');
-  if(emp && isTeamLeader(emp.name)) {
+  if(emp && (isTeamLeader(emp.name) || isTeamViewer(emp.name))) {
     if(teamSection) teamSection.style.display = 'block';
     if(myWeekCard) myWeekCard.style.display = 'none';
     renderTeamToday();
