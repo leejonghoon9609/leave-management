@@ -744,21 +744,22 @@ body { font-family: "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; backgrou
         <span id="my-monthly-title" style="font-size:14px;font-weight:600;"></span>
         <button class="filter-btn" onclick="changeMyAttMonth(1)">다음 →</button>
       </div>
+      <!-- 일자별 테이블 -->
+      <div class="card" style="margin-bottom:16px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
+          <div class="card-title" style="margin-bottom:0;">📋 내 근태 기록</div>
+          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+            <input type="date" id="my-rec-start" style="font-size:12px;border:1px solid var(--gray-200);border-radius:6px;padding:4px 8px;font-family:inherit;cursor:pointer;" onchange="renderMyAttTable()">
+            <span style="font-size:12px;color:var(--gray-500);">~</span>
+            <input type="date" id="my-rec-end" style="font-size:12px;border:1px solid var(--gray-200);border-radius:6px;padding:4px 8px;font-family:inherit;cursor:pointer;" onchange="renderMyAttTable()">
+          </div>
+        </div>
+        <div id="my-att-table"></div>
+      </div>
       <!-- 캘린더 -->
       <div class="card" style="margin-bottom:16px;">
         <div class="card-title">📅 캘린더</div>
         <div id="my-att-calendar"></div>
-      </div>
-      <!-- 일자별 테이블 -->
-      <div class="card">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
-          <div class="card-title" style="margin-bottom:0;">📋 내 근태 기록</div>
-          <div style="display:flex;gap:6px;">
-            <button class="filter-btn active" id="my-rec-tab-week" onclick="switchMyRecTab('week')">주간</button>
-            <button class="filter-btn" id="my-rec-tab-month" onclick="switchMyRecTab('month')">월간</button>
-          </div>
-        </div>
-        <div id="my-att-table"></div>
       </div>
     </div>
 
@@ -1979,15 +1980,7 @@ function renderMyWeek() {
 }
 
 let myRecTab = 'week';
-
-function switchMyRecTab(tab) {
-  myRecTab = tab;
-  const wBtn = document.getElementById('my-rec-tab-week');
-  const mBtn = document.getElementById('my-rec-tab-month');
-  if(wBtn) wBtn.className = 'filter-btn' + (tab==='week'?' active':'');
-  if(mBtn) mBtn.className = 'filter-btn' + (tab==='month'?' active':'');
-  renderMyAttTable();
-}
+function switchMyRecTab(tab) {} // 하위 호환용
 
 function renderMyAttRecords() {
   const titleEl = document.getElementById('my-monthly-title');
@@ -1999,6 +1992,18 @@ function renderMyAttRecords() {
   const m = myCurrentAttMonth.getMonth();
   const months = ['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'];
   titleEl.textContent = y + '년 ' + months[m];
+
+  // 날짜 picker 기본값: 해당 월 1일 ~ 말일
+  const startEl = document.getElementById('my-rec-start');
+  const endEl = document.getElementById('my-rec-end');
+  if(startEl && !startEl.value) {
+    startEl.value = y + '-' + String(m+1).padStart(2,'0') + '-01';
+  }
+  if(endEl && !endEl.value) {
+    const lastDay = new Date(y, m+1, 0);
+    endEl.value = lastDay.toISOString().slice(0,10);
+  }
+
   renderMyAttCalendar(y, m);
   renderMyAttTable();
 }
@@ -2061,24 +2066,20 @@ function renderMyAttCalendar(y, m) {
 }
 
 function renderMyAttTable() {
+  const todayStr = todayStrKST();
+  const startEl = document.getElementById('my-rec-start');
+  const endEl = document.getElementById('my-rec-end');
+
+  // picker 값 없으면 이번달로 기본값
   const y = myCurrentAttMonth.getFullYear();
   const m = myCurrentAttMonth.getMonth();
-  const todayStr = todayStrKST();
-  const isWeek = myRecTab === 'week';
+  const startStr = (startEl && startEl.value) ? startEl.value : y + '-' + String(m+1).padStart(2,'0') + '-01';
+  const lastDay = new Date(y, m+1, 0).toISOString().slice(0,10);
+  const endStr = (endEl && endEl.value) ? endEl.value : (lastDay < todayStr ? lastDay : todayStr);
 
-  // 주간: 이번주 월~오늘 / 월간: 이번달 전체
-  let startStr, endStr;
-  if(isWeek) {
-    const today = new Date(nowKST());
-    const dow = today.getDay();
-    const monday = new Date(today);
-    monday.setDate(today.getDate() - (dow===0?6:dow-1));
-    startStr = monday.toISOString().slice(0,10);
-    endStr = todayStr;
-  } else {
-    startStr = y + '-' + String(m+1).padStart(2,'0') + '-01';
-    endStr = todayStr;
-  }
+  // picker 라벨 업데이트
+  const labelEl = document.getElementById('my-att-month-label');
+  if(labelEl) labelEl.textContent = startStr + ' ~ ' + endStr;
 
   const myAtts = attendances.filter(function(a){
     return a.emp_id===currentEmpId && a.att_date>=startStr && a.att_date<=endStr && !a.overtime_checkin;
@@ -2162,6 +2163,13 @@ function changeAttMonth(dir) {
 }
 function changeMyAttMonth(dir) {
   myCurrentAttMonth=new Date(myCurrentAttMonth.getFullYear(), myCurrentAttMonth.getMonth()+dir);
+  // picker 값 해당 월로 초기화
+  const y = myCurrentAttMonth.getFullYear();
+  const m = myCurrentAttMonth.getMonth();
+  const startEl = document.getElementById('my-rec-start');
+  const endEl = document.getElementById('my-rec-end');
+  if(startEl) startEl.value = y + '-' + String(m+1).padStart(2,'0') + '-01';
+  if(endEl) endEl.value = new Date(y, m+1, 0).toISOString().slice(0,10);
   renderMyAttRecords();
 }
 
