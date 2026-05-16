@@ -339,6 +339,7 @@ body { font-family: "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; backgrou
       <div class="nav-item" onclick="showPage('my-leave',this)"><span>🏖️</span> 내 연차 기록</div>
       <div class="nav-item" onclick="showPage('manager-dashboard',this)"><span>📊</span> 팀 연차현황</div>
       <div class="nav-item" onclick="showPage('manager-requests',this)"><span>📝</span> 팀 신청 관리</div>
+      <div class="nav-item" onclick="showPage('my-calendar',this)"><span>📅</span> 팀 캘린더</div>
     </div>
 
     <!-- 직원 메뉴 -->
@@ -441,9 +442,10 @@ body { font-family: "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; backgrou
       <div class="card">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
           <div class="card-title" style="margin-bottom:0;">👥 직원별 세부통계</div>
-          <div style="display:flex;gap:6px;">
-            <button class="filter-btn active" id="mgr-req-tab-week" onclick="switchMgrReqTab('week')">주간</button>
-            <button class="filter-btn" id="mgr-req-tab-month" onclick="switchMgrReqTab('month')">월간</button>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <button class="cal-btn" onclick="changeMgrReqMonth(-1)">←</button>
+            <span id="mgr-req-month-label" style="font-size:13px;font-weight:600;min-width:80px;text-align:center;"></span>
+            <button class="cal-btn" onclick="changeMgrReqMonth(1)">→</button>
           </div>
         </div>
         <div id="mgr-req-emp-table"></div>
@@ -1175,13 +1177,14 @@ function renderManagerLeaveDashboard() {
   }
 }
 
-let mgrReqTab = 'week';
-function switchMgrReqTab(tab) {
-  mgrReqTab = tab;
-  document.getElementById('mgr-req-tab-week').className = 'filter-btn' + (tab==='week'?' active':'');
-  document.getElementById('mgr-req-tab-month').className = 'filter-btn' + (tab==='month'?' active':'');
+let mgrReqMonth = new Date(new Date().getFullYear(), new Date().getMonth());
+
+function changeMgrReqMonth(dir) {
+  mgrReqMonth = new Date(mgrReqMonth.getFullYear(), mgrReqMonth.getMonth() + dir);
   renderMgrReqEmpTable();
 }
+
+function switchMgrReqTab(tab) {} // 하위 호환용 빈 함수
 
 function renderManagerAllRequests() {
   const myEmp = getEmpById(currentEmpId); if(!myEmp) return;
@@ -1254,17 +1257,18 @@ function renderMgrReqEmpTable() {
   const myEmp = getEmpById(currentEmpId); if(!myEmp) return;
   const myDept = getLeaderDept(myEmp.name); if(!myDept) return;
 
-  const today = new Date(nowKST());
-  const todayStr = todayStrKST();
-  const dayOfWeek = today.getDay();
-  const monday = new Date(today);
-  monday.setDate(today.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
-  const mondayStr = monday.toISOString().slice(0, 10);
-  const monthStart = todayStr.slice(0, 7) + '-01';
-  const startStr = mgrReqTab === 'week' ? mondayStr : monthStart;
+  const y = mgrReqMonth.getFullYear();
+  const m = mgrReqMonth.getMonth();
+  const months = ['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'];
+  const startStr = y + '-' + String(m+1).padStart(2,'0') + '-01';
+  const endStr = new Date(y, m+1, 0).toISOString().slice(0,10);
+
+  // 월 라벨 업데이트
+  const labelEl = document.getElementById('mgr-req-month-label');
+  if(labelEl) labelEl.textContent = y + '년 ' + months[m];
 
   const teamEmps = employees.filter(function(e){ return e.dept === myDept && e.role !== 'admin'; });
-  const teamReqs = requests.filter(function(r){ const e=getEmpById(r.emp_id); return e && e.dept===myDept && r.status==='approved' && r.start_date >= startStr && r.start_date <= todayStr; });
+  const teamReqs = requests.filter(function(r){ const e=getEmpById(r.emp_id); return e && e.dept===myDept && r.status==='approved' && r.start_date >= startStr && r.start_date <= endStr; });
 
   const el = document.getElementById('mgr-req-emp-table');
   let html = '<table style="width:100%;font-size:12px;border-collapse:collapse;">';
