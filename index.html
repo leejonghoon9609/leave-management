@@ -3194,8 +3194,8 @@ function downloadAttExcel() {
     // 타이틀
     s1(1,0,'📊 월별 근태 결산', {font:{bold:true,name:'Arial',sz:16,color:{rgb:'FF1A1A1A'}}, alignment:{horizontal:'left',vertical:'center'}});
     ws1merge.push({s:{r:1,c:0}, e:{r:1,c:3}});
-    // 정보줄
-    s1(2,0, emp.name + '  |  부서: ' + emp.dept + '  |  기간: ' + monthLabel + ' (' + monthStart + ' ~ ' + monthEnd + ')', {font:{bold:true,name:'Arial',sz:11,color:{rgb:'FF333333'}}, border:medB, alignment:{horizontal:'left',vertical:'center'}});
+    // 정보줄 - 테두리 없음
+    s1(2,0, emp.name + '  |  부서: ' + emp.dept + '  |  기간: ' + monthLabel + ' (' + monthStart + ' ~ ' + monthEnd + ')', {font:{bold:true,name:'Arial',sz:11,color:{rgb:'FF333333'}}, alignment:{horizontal:'left',vertical:'center'}});
     ws1merge.push({s:{r:2,c:0}, e:{r:2,c:3}});
 
     // 요약카드: sz=8(헤더)/sz=12(값), border=medium
@@ -3216,6 +3216,7 @@ function downloadAttExcel() {
       s1(7,i,h,{font:{bold:true,name:'Arial',sz:8,color:{rgb:'FF111111'}}, fill:{fgColor:{rgb:'FFF5F5F0'},patternType:'solid'}, alignment:{horizontal:'center',vertical:'center'}, border:medB});
     });
 
+    // 세부 테이블 데이터행: 내부 thin, 좌우 외곽 medium
     const details = [
       ['정상출근', presentDates.length, '건', presentDates.join(', ')||'-', GREEN_BG, '0A5C3A'],
       ['지각',     lateDates.length,    '건', lateDates.join(', ')||'-',    AMBER_BG, '6B3A00'],
@@ -3226,15 +3227,25 @@ function downloadAttExcel() {
       ['본사 출근',officeDates.length,  '일', officeDates.join(', ')||'-',  'D0E8F8', '185FA5'],
       ['현장 출근',fieldDates.length,   '일', fieldDates.join(', ')||'-',   'D0E8F8', '185FA5'],
     ];
-    // 데이터행: sz=11(구분/건수/단위), sz=10(날짜), border=thin
+    const totalDetailRows = details.length;
     details.forEach(function(d,i){
       const r = 8+i;
-      s1(r,0,d[0],{font:{bold:true,name:'Arial',sz:11,color:{rgb:'FF111111'}}, alignment:{horizontal:'left',vertical:'center'}, border:thinB});
-      s1(r,1,d[1],{font:{bold:true,name:'Arial',sz:11,color:{rgb:'FF'+d[5]}}, fill:{fgColor:{rgb:'FF'+d[4]},patternType:'solid'}, alignment:{horizontal:'center',vertical:'center'}, border:thinB});
-      s1(r,2,d[2],{font:{name:'Arial',sz:11,color:{rgb:'FF444444'}}, alignment:{horizontal:'center',vertical:'center'}, border:thinB});
-      s1(r,3,d[3]||'-',{font:{name:'Arial',sz:10,color:{rgb:'FF333333'}}, alignment:{horizontal:'left',vertical:'center',wrapText:true}, border:thinB});
+      const isFirst = i===0, isLast = i===totalDetailRows-1;
+      // 좌우는 항상 medium, 상하는 첫행/마지막행만 medium, 나머지 thin
+      function makeCellBorder(isLeftEdge, isRightEdge) {
+        return {
+          top:    {style: isFirst ? 'medium' : 'thin', color:{rgb: isFirst ? 'FF222222':'FF444444'}},
+          bottom: {style: isLast  ? 'medium' : 'thin', color:{rgb: isLast  ? 'FF222222':'FF444444'}},
+          left:   {style: isLeftEdge  ? 'medium' : 'thin', color:{rgb: isLeftEdge  ? 'FF222222':'FF444444'}},
+          right:  {style: isRightEdge ? 'medium' : 'thin', color:{rgb: isRightEdge ? 'FF222222':'FF444444'}},
+        };
+      }
+      s1(r,0,d[0],{font:{bold:true,name:'Arial',sz:11,color:{rgb:'FF111111'}}, alignment:{horizontal:'left',vertical:'center'}, border:makeCellBorder(true,false)});
+      s1(r,1,d[1],{font:{bold:true,name:'Arial',sz:11,color:{rgb:'FF'+d[5]}}, fill:{fgColor:{rgb:'FF'+d[4]},patternType:'solid'}, alignment:{horizontal:'center',vertical:'center'}, border:makeCellBorder(false,false)});
+      s1(r,2,d[2],{font:{name:'Arial',sz:11,color:{rgb:'FF444444'}}, alignment:{horizontal:'center',vertical:'center'}, border:makeCellBorder(false,false)});
+      s1(r,3,d[3]||'-',{font:{name:'Arial',sz:10,color:{rgb:'FF333333'}}, alignment:{horizontal:'left',vertical:'center',wrapText:true}, border:makeCellBorder(false,true)});
     });
-    // 지각률: border=medium
+    // 지각률: border=medium (외곽)
     const lrRow = 8+details.length;
     ws1merge.push({s:{r:lrRow,c:0}, e:{r:lrRow,c:2}});
     s1(lrRow,0,'지각률 (출근일 기준)',{font:{bold:true,name:'Arial',sz:11,color:{rgb:'FF6B3A00'}}, fill:{fgColor:{rgb:'FFF5E8CC'},patternType:'solid'}, alignment:{horizontal:'left',vertical:'center'}, border:medB});
@@ -3272,7 +3283,30 @@ function downloadAttExcel() {
       s2(3,i,h,{font:{bold:true,name:'Arial',sz:9,color:{rgb:'FF111111'}}, fill:{fgColor:{rgb:'FFF5F5F0'},patternType:'solid'}, alignment:{horizontal:'center',vertical:'center'}, border:thickB2});
     });
 
+    // 시트2 외곽선 헬퍼: 맨 왼쪽/오른쪽 medium, 위아래는 마지막/첫 행만 medium
+    function s2b(r, c, v, style, isLeftEdge, isRightEdge, isTopEdge, isBottomEdge) {
+      const b = {
+        top:    {style: isTopEdge    ? 'medium':'thin', color:{rgb: isTopEdge    ? 'FF222222':'FF444444'}},
+        bottom: {style: isBottomEdge ? 'medium':'thin', color:{rgb: isBottomEdge ? 'FF222222':'FF444444'}},
+        left:   {style: isLeftEdge   ? 'medium':'thin', color:{rgb: isLeftEdge   ? 'FF222222':'FF444444'}},
+        right:  {style: isRightEdge  ? 'medium':'thin', color:{rgb: isRightEdge  ? 'FF222222':'FF444444'}},
+      };
+      const mergedStyle = Object.assign({}, style, {border: b});
+      const addr = XLSX.utils.encode_cell({r:r, c:c});
+      ws2[addr] = {v:v, t:typeof v==='number'?'n':'s', s:mergedStyle};
+    }
+
     let curRow = 4;
+    // 마지막 근무일이 몇 행인지 미리 계산 (외곽선 처리 위해)
+    let totalRows2 = 0;
+    workdays.forEach(function(ds){
+      const leave = myLeaves.find(function(r){ return r.start_date<=ds && r.end_date>=ds; });
+      const att = myAtts.find(function(a){ return a.att_date===ds; });
+      const ots = myOts.filter(function(a){ return a.att_date===ds; });
+      if(leave || !att) totalRows2 += 1;
+      else { totalRows2 += 2; totalRows2 += ots.length * 2; }
+    });
+    const lastDataRow = 4 + totalRows2 - 1;
     workdays.forEach(function(ds) {
       const leave = myLeaves.find(function(r){ return r.start_date<=ds && r.end_date>=ds; });
       const att = myAtts.find(function(a){ return a.att_date===ds; });
@@ -3281,21 +3315,22 @@ function downloadAttExcel() {
       const sz11 = 11; // 현장메모 F열만 sz=11
 
       if(leave) {
-        s2(curRow,0,ds,{font:{bold:true,name:'Arial',sz:sz9,color:{rgb:'FF633806'}}, fill:{fgColor:{rgb:'FFFAC775'},patternType:'solid'}, alignment:{horizontal:'center',vertical:'center'}, border:medB2});
-        s2(curRow,1,leave.type,{font:{bold:true,name:'Arial',sz:sz9,color:{rgb:'FF633806'}}, fill:{fgColor:{rgb:'FFFAC775'},patternType:'solid'}, alignment:{horizontal:'center',vertical:'center'}, border:medB2});
-        s2(curRow,2,'',{fill:{fgColor:{rgb:'FFFAC775'},patternType:'solid'}, border:medB2});
-        s2(curRow,3,'',{fill:{fgColor:{rgb:'FFFAC775'},patternType:'solid'}, border:medB2});
-        s2(curRow,4,'',{fill:{fgColor:{rgb:'FFFAC775'},patternType:'solid'}, border:medB2});
-        s2(curRow,5,'',{font:{name:'Arial',sz:sz11}, border:medB2});
+        const isT=curRow===4, isB=curRow===lastDataRow;
+        s2b(curRow,0,ds,{font:{bold:true,name:'Arial',sz:sz9,color:{rgb:'FF633806'}}, fill:{fgColor:{rgb:'FFFAC775'},patternType:'solid'}, alignment:{horizontal:'center',vertical:'center'}},true,false,isT,isB);
+        s2b(curRow,1,leave.type,{font:{bold:true,name:'Arial',sz:sz9,color:{rgb:'FF633806'}}, fill:{fgColor:{rgb:'FFFAC775'},patternType:'solid'}, alignment:{horizontal:'center',vertical:'center'}},false,false,isT,isB);
+        s2b(curRow,2,'',{fill:{fgColor:{rgb:'FFFAC775'},patternType:'solid'}},false,false,isT,isB);
+        s2b(curRow,3,'',{fill:{fgColor:{rgb:'FFFAC775'},patternType:'solid'}},false,false,isT,isB);
+        s2b(curRow,4,'',{fill:{fgColor:{rgb:'FFFAC775'},patternType:'solid'}},false,false,isT,isB);
+        s2b(curRow,5,'',{font:{name:'Arial',sz:sz11}},false,true,isT,isB);
         curRow++;
       } else if(!att) {
-        // 결근: A=날짜, B=결근, C~E=None+배경색, F=빈칸 (파일과 동일)
-        s2(curRow,0,ds,{font:{bold:true,name:'Arial',sz:sz9,color:{rgb:'FF8B0000'}}, fill:{fgColor:{rgb:'FFFAD5D5'},patternType:'solid'}, alignment:{horizontal:'center',vertical:'center'}, border:medB2});
-        s2(curRow,1,'결근',{font:{bold:true,name:'Arial',sz:sz9,color:{rgb:'FF8B0000'}}, fill:{fgColor:{rgb:'FFFAD5D5'},patternType:'solid'}, alignment:{horizontal:'center',vertical:'center'}, border:medB2});
-        s2(curRow,2,'',{fill:{fgColor:{rgb:'FFFAD5D5'},patternType:'solid'}, border:medB2});
-        s2(curRow,3,'',{fill:{fgColor:{rgb:'FFFAD5D5'},patternType:'solid'}, border:medB2});
-        s2(curRow,4,'',{fill:{fgColor:{rgb:'FFFAD5D5'},patternType:'solid'}, border:medB2});
-        s2(curRow,5,'',{font:{name:'Arial',sz:sz11}, border:medB2});
+        const isT=curRow===4, isB=curRow===lastDataRow;
+        s2b(curRow,0,ds,{font:{bold:true,name:'Arial',sz:sz9,color:{rgb:'FF8B0000'}}, fill:{fgColor:{rgb:'FFFAD5D5'},patternType:'solid'}, alignment:{horizontal:'center',vertical:'center'}},true,false,isT,isB);
+        s2b(curRow,1,'결근',{font:{bold:true,name:'Arial',sz:sz9,color:{rgb:'FF8B0000'}}, fill:{fgColor:{rgb:'FFFAD5D5'},patternType:'solid'}, alignment:{horizontal:'center',vertical:'center'}},false,false,isT,isB);
+        s2b(curRow,2,'',{fill:{fgColor:{rgb:'FFFAD5D5'},patternType:'solid'}},false,false,isT,isB);
+        s2b(curRow,3,'',{fill:{fgColor:{rgb:'FFFAD5D5'},patternType:'solid'}},false,false,isT,isB);
+        s2b(curRow,4,'',{fill:{fgColor:{rgb:'FFFAD5D5'},patternType:'solid'}},false,false,isT,isB);
+        s2b(curRow,5,'',{font:{name:'Arial',sz:sz11}},false,true,isT,isB);
         curRow++;
       } else {
         // 출근 행
@@ -3306,41 +3341,46 @@ function downloadAttExcel() {
         const isField = !!(att.checkin_field_memo);
         const gubun = isField ? '현장' : '본사';
 
-        s2(curRow,0,ds,{font:{bold:true,name:'Arial',sz:sz9,color:{rgb:'FF111111'}}, alignment:{horizontal:'center',vertical:'center'}, border:medB2});
-        s2(curRow,1,gubun,{font:{name:'Arial',sz:sz9,color:{rgb:'FF111111'}}, alignment:{horizontal:'center',vertical:'center'}, border:medB2});
-        s2(curRow,2,'출근',{font:{bold:true,name:'Arial',sz:sz9,color:{rgb:'FF185FA5'}}, fill:{fgColor:{rgb:'FFD0E8F8'},patternType:'solid'}, alignment:{horizontal:'center',vertical:'center'}, border:medB2});
-        s2(curRow,3,formatTimeKST(att.checkin_time),{font:{name:'Arial',sz:sz9,color:{rgb:'FF111111'}}, alignment:{horizontal:'center',vertical:'center'}, border:medB2});
-        s2(curRow,4,checkinLabel,{font:{bold:true,name:'Arial',sz:sz9,color:{rgb:'FF'+checkinFg}}, fill:{fgColor:{rgb:'FF'+checkinBg},patternType:'solid'}, alignment:{horizontal:'center',vertical:'center'}, border:medB2});
-        s2(curRow,5,att.checkin_field_memo||'',{font:{name:'Arial',sz:sz11,color:{rgb:'FF333333'}}, alignment:{horizontal:'left',vertical:'center'}, border:medB2});
+        const isT1=curRow===4, isB1=curRow===lastDataRow;
+        s2b(curRow,0,ds,{font:{bold:true,name:'Arial',sz:sz9,color:{rgb:'FF111111'}}, alignment:{horizontal:'center',vertical:'center'}},true,false,isT1,false);
+        s2b(curRow,1,gubun,{font:{name:'Arial',sz:sz9,color:{rgb:'FF111111'}}, alignment:{horizontal:'center',vertical:'center'}},false,false,isT1,false);
+        s2b(curRow,2,'출근',{font:{bold:true,name:'Arial',sz:sz9,color:{rgb:'FF185FA5'}}, fill:{fgColor:{rgb:'FFD0E8F8'},patternType:'solid'}, alignment:{horizontal:'center',vertical:'center'}},false,false,isT1,false);
+        s2b(curRow,3,formatTimeKST(att.checkin_time),{font:{name:'Arial',sz:sz9,color:{rgb:'FF111111'}}, alignment:{horizontal:'center',vertical:'center'}},false,false,isT1,false);
+        s2b(curRow,4,checkinLabel,{font:{bold:true,name:'Arial',sz:sz9,color:{rgb:'FF'+checkinFg}}, fill:{fgColor:{rgb:'FF'+checkinBg},patternType:'solid'}, alignment:{horizontal:'center',vertical:'center'}},false,false,isT1,false);
+        s2b(curRow,5,att.checkin_field_memo||'',{font:{name:'Arial',sz:sz11,color:{rgb:'FF333333'}}, alignment:{horizontal:'left',vertical:'center'}},false,true,isT1,false);
         curRow++;
 
         const coGubun = att.field_memo ? '현장' : '본사';
         const coLabel = att.checkout_time ? (att.checkout_status==='early'?'조기퇴근':'정상퇴근') : '-';
         const coBg = !att.checkout_time ? null : (att.checkout_status==='early' ? 'FAD5D5' : 'D8F0E6');
         const coFg = !att.checkout_time ? '888888' : (att.checkout_status==='early' ? '8B0000' : '0A5C3A');
-        s2(curRow,0,'',{font:{name:'Arial',sz:sz9}, alignment:{horizontal:'center',vertical:'center'}, border:medB2});
-        s2(curRow,1,att.checkout_time ? coGubun : '',{font:{name:'Arial',sz:sz9,color:{rgb:'FF111111'}}, alignment:{horizontal:'center',vertical:'center'}, border:medB2});
-        s2(curRow,2,'퇴근',{font:{bold:true,name:'Arial',sz:sz9,color:{rgb:'FF8B0000'}}, fill:{fgColor:{rgb:'FFFAD5D5'},patternType:'solid'}, alignment:{horizontal:'center',vertical:'center'}, border:medB2});
-        s2(curRow,3,att.checkout_time?formatTimeKST(att.checkout_time):'-',{font:{name:'Arial',sz:sz9,color:{rgb:'FF111111'}}, alignment:{horizontal:'center',vertical:'center'}, border:medB2});
-        s2(curRow,4,coLabel,{font:{bold:true,name:'Arial',sz:sz9,color:{rgb:'FF'+coFg}}, fill:coBg?{fgColor:{rgb:'FF'+coBg},patternType:'solid'}:undefined, alignment:{horizontal:'center',vertical:'center'}, border:medB2});
-        s2(curRow,5,att.field_memo||'',{font:{name:'Arial',sz:sz11,color:{rgb:'FF333333'}}, alignment:{horizontal:'left',vertical:'center'}, border:medB2});
+        const isB2 = ots.length===0 && curRow===lastDataRow;
+        s2b(curRow,0,'',{font:{name:'Arial',sz:sz9}, alignment:{horizontal:'center',vertical:'center'}},true,false,false,isB2);
+        s2b(curRow,1,att.checkout_time ? coGubun : '',{font:{name:'Arial',sz:sz9,color:{rgb:'FF111111'}}, alignment:{horizontal:'center',vertical:'center'}},false,false,false,isB2);
+        s2b(curRow,2,'퇴근',{font:{bold:true,name:'Arial',sz:sz9,color:{rgb:'FF8B0000'}}, fill:{fgColor:{rgb:'FFFAD5D5'},patternType:'solid'}, alignment:{horizontal:'center',vertical:'center'}},false,false,false,isB2);
+        s2b(curRow,3,att.checkout_time?formatTimeKST(att.checkout_time):'-',{font:{name:'Arial',sz:sz9,color:{rgb:'FF111111'}}, alignment:{horizontal:'center',vertical:'center'}},false,false,false,isB2);
+        s2b(curRow,4,coLabel,{font:{bold:true,name:'Arial',sz:sz9,color:{rgb:'FF'+coFg}}, fill:coBg?{fgColor:{rgb:'FF'+coBg},patternType:'solid'}:undefined, alignment:{horizontal:'center',vertical:'center'}},false,false,false,isB2);
+        s2b(curRow,5,att.field_memo||'',{font:{name:'Arial',sz:sz11,color:{rgb:'FF333333'}}, alignment:{horizontal:'left',vertical:'center'}},false,true,false,isB2);
         curRow++;
       }
 
-      ots.forEach(function(ot) {
-        s2(curRow,0,'🌙 특근',{font:{bold:true,name:'Arial',sz:sz9,color:{rgb:'FF534AB7'}}, fill:{fgColor:{rgb:'FFEEEDFE'},patternType:'solid'}, alignment:{horizontal:'center',vertical:'center'}, border:medB2});
-        s2(curRow,1,'본사',{font:{name:'Arial',sz:sz9,color:{rgb:'FF534AB7'}}, fill:{fgColor:{rgb:'FFEEEDFE'},patternType:'solid'}, alignment:{horizontal:'center',vertical:'center'}, border:medB2});
-        s2(curRow,2,'출근',{font:{bold:true,name:'Arial',sz:sz9,color:{rgb:'FF185FA5'}}, fill:{fgColor:{rgb:'FFD0E8F8'},patternType:'solid'}, alignment:{horizontal:'center',vertical:'center'}, border:medB2});
-        s2(curRow,3,formatTimeKST(ot.overtime_checkin),{font:{name:'Arial',sz:sz9,color:{rgb:'FF534AB7'}}, fill:{fgColor:{rgb:'FFEEEDFE'},patternType:'solid'}, alignment:{horizontal:'center',vertical:'center'}, border:medB2});
-        s2(curRow,4,'특근출근',{font:{bold:true,name:'Arial',sz:sz9,color:{rgb:'FF534AB7'}}, fill:{fgColor:{rgb:'FFEEEDFE'},patternType:'solid'}, alignment:{horizontal:'center',vertical:'center'}, border:medB2});
-        s2(curRow,5,ot.overtime_memo||'',{font:{name:'Arial',sz:sz11,color:{rgb:'FF534AB7'}}, fill:{fgColor:{rgb:'FFEEEDFE'},patternType:'solid'}, alignment:{horizontal:'left',vertical:'center'}, border:medB2});
+      ots.forEach(function(ot, otIdx) {
+        const isLastOt = otIdx===ots.length-1;
+        const isT3=false, isB3=isLastOt && curRow+1===lastDataRow+1;
+        s2b(curRow,0,'🌙 특근',{font:{bold:true,name:'Arial',sz:sz9,color:{rgb:'FF534AB7'}}, fill:{fgColor:{rgb:'FFEEEDFE'},patternType:'solid'}, alignment:{horizontal:'center',vertical:'center'}},true,false,isT3,false);
+        s2b(curRow,1,'본사',{font:{name:'Arial',sz:sz9,color:{rgb:'FF534AB7'}}, fill:{fgColor:{rgb:'FFEEEDFE'},patternType:'solid'}, alignment:{horizontal:'center',vertical:'center'}},false,false,isT3,false);
+        s2b(curRow,2,'출근',{font:{bold:true,name:'Arial',sz:sz9,color:{rgb:'FF185FA5'}}, fill:{fgColor:{rgb:'FFD0E8F8'},patternType:'solid'}, alignment:{horizontal:'center',vertical:'center'}},false,false,isT3,false);
+        s2b(curRow,3,formatTimeKST(ot.overtime_checkin),{font:{name:'Arial',sz:sz9,color:{rgb:'FF534AB7'}}, fill:{fgColor:{rgb:'FFEEEDFE'},patternType:'solid'}, alignment:{horizontal:'center',vertical:'center'}},false,false,isT3,false);
+        s2b(curRow,4,'특근출근',{font:{bold:true,name:'Arial',sz:sz9,color:{rgb:'FF534AB7'}}, fill:{fgColor:{rgb:'FFEEEDFE'},patternType:'solid'}, alignment:{horizontal:'center',vertical:'center'}},false,false,isT3,false);
+        s2b(curRow,5,ot.overtime_memo||'',{font:{name:'Arial',sz:sz11,color:{rgb:'FF534AB7'}}, fill:{fgColor:{rgb:'FFEEEDFE'},patternType:'solid'}, alignment:{horizontal:'left',vertical:'center'}},false,true,isT3,false);
         curRow++;
-        s2(curRow,0,'',{font:{name:'Arial',sz:sz9}, fill:{fgColor:{rgb:'FFEEEDFE'},patternType:'solid'}, border:medB2});
-        s2(curRow,1,'본사',{font:{name:'Arial',sz:sz9,color:{rgb:'FF534AB7'}}, fill:{fgColor:{rgb:'FFEEEDFE'},patternType:'solid'}, alignment:{horizontal:'center',vertical:'center'}, border:medB2});
-        s2(curRow,2,'퇴근',{font:{bold:true,name:'Arial',sz:sz9,color:{rgb:'FF8B0000'}}, fill:{fgColor:{rgb:'FFFAD5D5'},patternType:'solid'}, alignment:{horizontal:'center',vertical:'center'}, border:medB2});
-        s2(curRow,3,ot.overtime_checkout?formatTimeKST(ot.overtime_checkout):'-',{font:{name:'Arial',sz:sz9,color:{rgb:'FF534AB7'}}, fill:{fgColor:{rgb:'FFEEEDFE'},patternType:'solid'}, alignment:{horizontal:'center',vertical:'center'}, border:medB2});
-        s2(curRow,4,ot.overtime_checkout?'특근퇴근':'-',{font:{bold:true,name:'Arial',sz:sz9,color:{rgb:'FF534AB7'}}, fill:{fgColor:{rgb:'FFEEEDFE'},patternType:'solid'}, alignment:{horizontal:'center',vertical:'center'}, border:medB2});
-        s2(curRow,5,'',{font:{name:'Arial',sz:sz11}, fill:{fgColor:{rgb:'FFEEEDFE'},patternType:'solid'}, border:medB2});
+        const isB4 = isLastOt && curRow===lastDataRow;
+        s2b(curRow,0,'',{font:{name:'Arial',sz:sz9}, fill:{fgColor:{rgb:'FFEEEDFE'},patternType:'solid'}},true,false,false,isB4);
+        s2b(curRow,1,'본사',{font:{name:'Arial',sz:sz9,color:{rgb:'FF534AB7'}}, fill:{fgColor:{rgb:'FFEEEDFE'},patternType:'solid'}, alignment:{horizontal:'center',vertical:'center'}},false,false,false,isB4);
+        s2b(curRow,2,'퇴근',{font:{bold:true,name:'Arial',sz:sz9,color:{rgb:'FF8B0000'}}, fill:{fgColor:{rgb:'FFFAD5D5'},patternType:'solid'}, alignment:{horizontal:'center',vertical:'center'}},false,false,false,isB4);
+        s2b(curRow,3,ot.overtime_checkout?formatTimeKST(ot.overtime_checkout):'-',{font:{name:'Arial',sz:sz9,color:{rgb:'FF534AB7'}}, fill:{fgColor:{rgb:'FFEEEDFE'},patternType:'solid'}, alignment:{horizontal:'center',vertical:'center'}},false,false,false,isB4);
+        s2b(curRow,4,ot.overtime_checkout?'특근퇴근':'-',{font:{bold:true,name:'Arial',sz:sz9,color:{rgb:'FF534AB7'}}, fill:{fgColor:{rgb:'FFEEEDFE'},patternType:'solid'}, alignment:{horizontal:'center',vertical:'center'}},false,false,false,isB4);
+        s2b(curRow,5,'',{font:{name:'Arial',sz:sz11}, fill:{fgColor:{rgb:'FFEEEDFE'},patternType:'solid'}},false,true,false,isB4);
         curRow++;
       });
     });
