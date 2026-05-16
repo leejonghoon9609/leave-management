@@ -3194,14 +3194,8 @@ function downloadAttExcel() {
     // 타이틀
     s1(1,0,'📊 월별 근태 결산', {font:{bold:true,name:'Arial',sz:16,color:{rgb:'FF1A1A1A'}}, alignment:{horizontal:'left',vertical:'center'}});
     ws1merge.push({s:{r:1,c:0}, e:{r:1,c:3}});
-    // 정보줄: 크고 두껍게
+    // 정보줄
     s1(2,0, emp.name + '  |  부서: ' + emp.dept + '  |  기간: ' + monthLabel + ' (' + monthStart + ' ~ ' + monthEnd + ')', {font:{bold:true,name:'Arial',sz:11,color:{rgb:'FF333333'}}, border:medB, alignment:{horizontal:'left',vertical:'center'}});
-    ws1merge.push({s:{r:2,c:0}, e:{r:2,c:3}});
-
-    // 타이틀
-    s1(1,0,'📊 월별 근태 결산', {font:{bold:true,name:'Arial',sz:16,color:{rgb:'FF1A1A1A'}}, alignment:{horizontal:'left',vertical:'center'}});
-    ws1merge.push({s:{r:1,c:0}, e:{r:1,c:3}});
-    s1(2,0, emp.name + '  |  부서: ' + emp.dept + '  |  기간: ' + monthLabel + ' (' + monthStart + ' ~ ' + monthEnd + ')', {font:{bold:true,name:'Arial',sz:11,color:{rgb:'FF333333'}}, alignment:{horizontal:'left',vertical:'center'}});
     ws1merge.push({s:{r:2,c:0}, e:{r:2,c:3}});
 
     // 요약카드: sz=8(헤더)/sz=12(값), border=medium
