@@ -767,6 +767,16 @@ const TEAM_VIEWERS = {
 function isTeamLeader(name) { return !!TEAM_LEADERS[name]; }
 function isTeamViewer(name) { return !!TEAM_VIEWERS[name]; }
 function getLeaderDept(name) { return TEAM_LEADERS[name] || TEAM_VIEWERS[name] || null; }
+// 팀장이 관할하는 부서 배열 반환 (김성한은 측량부+측량부(DB) 전체)
+function getLeaderDepts(name) {
+  const dept = getLeaderDept(name);
+  if(!dept) return [];
+  if(name === '김성한') return ['측량부', '측량부(DB)'];
+  return [dept];
+}
+function isInLeaderDept(empDept, leaderName) {
+  return getLeaderDepts(leaderName).includes(empDept);
+}
 
 let employees = [], requests = [], attendances = [];
 let currentRole = null, currentEmpId = null, currentDept = null, currentPage = 'leave-dashboard';
@@ -1233,7 +1243,7 @@ function renderMgrDashCalendar() {
   const myEmp = getEmpById(currentEmpId); if(!myEmp) return;
   const myDept = getLeaderDept(myEmp.name); if(!myDept) return;
   renderCalendar('cal-body-mgr','cal-head-mgr','cal-title-mgr','cal-legend-mgr',
-    function(r){ const e=getEmpById(r.emp_id); return e && e.dept===myDept; },
+    function(r){ const e=getEmpById(r.emp_id); return e && isInLeaderDept(e.dept, myEmp.name); },
     mgrDashCalMonth
   );
 }
@@ -1272,8 +1282,8 @@ function renderManagerAllRequests() {
   document.getElementById('mgr-req-week-range').textContent = wRange;
   document.getElementById('mgr-req-month-range').textContent = mRange;
 
-  const teamEmps = employees.filter(function(e){ return e.dept === myDept && e.role !== 'admin'; });
-  const teamReqs = requests.filter(function(r){ const e=getEmpById(r.emp_id); return e && e.dept===myDept && r.status==='approved'; });
+  const teamEmps = employees.filter(function(e){ return isInLeaderDept(e.dept, myEmp.name) && e.role !== 'admin'; });
+  const teamReqs = requests.filter(function(r){ const e=getEmpById(r.emp_id); return e && isInLeaderDept(e.dept, myEmp.name) && r.status==='approved'; });
 
   const leaveTypes = ['연차','반차 (오전)','반차 (오후)','병가','예비군/민방위'];
 
@@ -1333,8 +1343,8 @@ function renderMgrReqEmpTable() {
   const labelEl = document.getElementById('mgr-req-month-label');
   if(labelEl) labelEl.textContent = y + '년 ' + months[m];
 
-  const teamEmps = employees.filter(function(e){ return e.dept === myDept && e.role !== 'admin'; });
-  const teamReqs = requests.filter(function(r){ const e=getEmpById(r.emp_id); return e && e.dept===myDept && r.status==='approved' && r.start_date >= startStr && r.start_date <= endStr; });
+  const teamEmps = employees.filter(function(e){ return isInLeaderDept(e.dept, myEmp.name) && e.role !== 'admin'; });
+  const teamReqs = requests.filter(function(r){ const e=getEmpById(r.emp_id); return e && isInLeaderDept(e.dept, myEmp.name) && r.status==='approved' && r.start_date >= startStr && r.start_date <= endStr; });
 
   const el = document.getElementById('mgr-req-emp-table');
   let html = '<table style="width:100%;font-size:12px;border-collapse:collapse;">';
@@ -2394,7 +2404,7 @@ function renderTeamMemberToday() {
   const teamEl = document.getElementById('team-today-records');
   if(!myDept) { teamEl.innerHTML = '<div class="empty">부서 정보 없음</div>'; return; }
 
-  const teamEmps = employees.filter(function(e){ return e.dept === myDept && e.role !== 'admin'; });
+  const teamEmps = employees.filter(function(e){ return isInLeaderDept(e.dept, emp.name) && e.role !== 'admin'; });
   teamEmps.sort(function(a, b){ return a.id === currentEmpId ? -1 : b.id === currentEmpId ? 1 : 0; });
   if(!teamEmps.length) { teamEl.innerHTML = '<div class="empty">팀원이 없습니다</div>'; return; }
 
@@ -2605,11 +2615,11 @@ function renderTeamAtt() {
   const monthStart = todayStr.slice(0, 7) + '-01';
 
   // 팀원 (본인 제외, 같은 부서)
-  const teamEmps = employees.filter(function(e){ return e.dept === myDept && e.role !== 'admin'; });
+  const teamEmps = employees.filter(function(e){ return isInLeaderDept(e.dept, emp.name) && e.role !== 'admin'; });
   // 부서 전체 근태 데이터
   const deptAtts = attendances.filter(function(a){
     const e = getEmpById(a.emp_id);
-    return e && e.dept === myDept && e.role !== 'admin';
+    return e && isInLeaderDept(e.dept, emp.name) && e.role !== 'admin';
   });
 
   // 주간 데이터 (월~오늘)
@@ -2745,7 +2755,7 @@ function renderTeamEmpTableWeek() {
   const emp = getEmpById(currentEmpId);
   const myDept = emp ? getLeaderDept(emp.name) : null;
   if(!myDept) return;
-  const teamEmps = employees.filter(function(e){ return e.dept === myDept && e.role !== 'admin'; });
+  const teamEmps = employees.filter(function(e){ return isInLeaderDept(e.dept, emp.name) && e.role !== 'admin'; });
 
   const today = new Date(nowKST());
   const dayOfWeek = today.getDay();
@@ -2782,7 +2792,7 @@ function renderTeamEmpTableMonth() {
   const emp = getEmpById(currentEmpId);
   const myDept = emp ? getLeaderDept(emp.name) : null;
   if(!myDept) return;
-  const teamEmps = employees.filter(function(e){ return e.dept === myDept && e.role !== 'admin'; });
+  const teamEmps = employees.filter(function(e){ return isInLeaderDept(e.dept, emp.name) && e.role !== 'admin'; });
 
   const y = teamMonthNav.getFullYear();
   const m = teamMonthNav.getMonth();
