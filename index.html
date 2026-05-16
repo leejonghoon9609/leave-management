@@ -2089,10 +2089,8 @@ function renderMyAttCalendar(y, m) {
 
     if(att) {
       const s = getAttStatus(att);
-      // 출근 태그
       if(s==='present') inner += '<span class="att-tag" style="background:#E1F5EE;color:#0F6E56;">정상출근</span>';
       else if(s==='late') inner += '<span class="att-tag" style="background:#FAEEDA;color:#854F0B;">지각</span>';
-      // 퇴근 태그
       if(att.checkout_time) {
         if(att.early_reason) inner += '<span class="att-tag" style="background:#E1F5EE;color:#0F6E56;">정상퇴근</span>';
         else if(att.checkout_status==='early') inner += '<span class="att-tag" style="background:#FAECE7;color:#993C1D;">조기퇴근</span>';
@@ -2100,6 +2098,9 @@ function renderMyAttCalendar(y, m) {
         else inner += '<span class="att-tag" style="background:#E1F5EE;color:#0F6E56;">정상퇴근</span>';
       }
     }
+    // 연차 뱃지 추가
+    const leave = getLeaveOnDate(currentEmpId, dateStr);
+    if(leave) inner += '<span class="att-tag" style="background:#FAC775;color:#633806;font-weight:600;">'+leave.type+'</span>';
     html += '<div class="' + cls + '">' + inner + '</div>';
   }
   // 뒷 빈칸
@@ -2113,6 +2114,7 @@ function renderMyAttCalendar(y, m) {
     + '<span style="display:flex;align-items:center;gap:4px;font-size:11px;"><span style="background:#FAEEDA;color:#854F0B;padding:1px 6px;border-radius:3px;font-size:9px;">지각</span></span>'
     + '<span style="display:flex;align-items:center;gap:4px;font-size:11px;"><span style="background:#E1F5EE;color:#0F6E56;padding:1px 6px;border-radius:3px;font-size:9px;">정상퇴근</span></span>'
     + '<span style="display:flex;align-items:center;gap:4px;font-size:11px;"><span style="background:#FAECE7;color:#993C1D;padding:1px 6px;border-radius:3px;font-size:9px;">조기퇴근</span></span>'
+    + '<span style="display:flex;align-items:center;gap:4px;font-size:11px;"><span style="background:#FAC775;color:#633806;padding:1px 6px;border-radius:3px;font-size:9px;">연차</span></span>'
     + '</div>';
 
   const calEl = document.getElementById('my-att-calendar');
