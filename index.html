@@ -753,14 +753,16 @@ const DIRECT_TO_ADMIN_DEPTS = ['총무부'];
 // 팀장 설정: 이름 → 담당 부서
 const TEAM_LEADERS = {
   '조윤미': '총무부',
-  '송규헌': '측량부',
+  '황현희': '총무부',
   '박영범': '사업관리(현장)',
-  '남윤지': '사업관리'
+  '남윤지': '사업관리',
+  '김성한': '측량부'
 };
 // 뷰어: 팀 현황은 볼 수 있지만 승인/거절 불가
 const TEAM_VIEWERS = {
   '조은주': '사업관리',
-  '최진복': '사업관리(현장)'
+  '최진복': '사업관리(현장)',
+  '이형석': '측량부'
 };
 function isTeamLeader(name) { return !!TEAM_LEADERS[name]; }
 function isTeamViewer(name) { return !!TEAM_VIEWERS[name]; }
