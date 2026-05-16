@@ -1213,31 +1213,29 @@ function renderManagerLeaveDashboard() {
   document.getElementById('mm-total').textContent = teamMembers.length;
   document.getElementById('mm-pending').textContent = isViewer ? '-' : (pending.length + docManagerPending.length);
 
-  // 뷰어는 대기 중인 신청 카드 숨김
+  // 뷰어도 대기 중인 신청 카드 표시 (버튼만 숨김)
   const pendingCard = document.getElementById('manager-pending-list');
   if(pendingCard) {
     const pendingCardParent = pendingCard.closest('.card');
-    if(pendingCardParent) pendingCardParent.style.display = isViewer ? 'none' : 'block';
+    if(pendingCardParent) pendingCardParent.style.display = 'block';
   }
 
   const el = document.getElementById('manager-pending-list');
-  if(!isViewer) {
-    if(!allManagerPending.length) {
-      el.innerHTML = '<div class="empty">대기 중인 신청이 없습니다</div>';
-    } else {
-      el.innerHTML = allManagerPending.map(function(r) {
-        const e = getEmpById(r.emp_id); if(!e) return '';
-        const idx = employees.findIndex(function(x){ return x.id===e.id; });
-        let docHtml = '';
-        if(r.doc_url && r.doc_status==='submitted') {
-          const docLabel = r.type==='병가' ? '📎 진단서 확인 대기' : '📎 통지서 확인 대기';
-          const docBtn = '<button class="btn btn-approve" style="font-size:10px;padding:3px 8px;margin-left:6px;" onclick="managerApproveMedical('+r.id+')">✅ 확인 → 관리자 전달</button>';
-          docHtml = '<div style="background:var(--amber-light);border-radius:4px;padding:6px 8px;margin-top:6px;font-size:11px;color:var(--amber);">'+docLabel+' · <a href="'+r.doc_url+'" target="_blank" style="color:var(--blue);">첨부파일 보기</a> '+docBtn+'</div>';
-        }
-        const btnHtml = r.status==='pending' ? '<div class="btn-row"><button class="btn btn-approve" onclick="managerApprove('+r.id+')">승인</button><button class="btn btn-reject" onclick="openRejectModal('+r.id+',\'manager\')">거절</button></div>' : '';
-        return '<div class="req-row"><div class="avatar ' + avClass(idx) + '">' + ini(e.name) + '</div><div class="req-info"><div class="req-name">' + e.name + '</div><div class="req-detail">' + r.type + ' · ' + r.start_date + ' ~ ' + r.end_date + ' · ' + r.days + '일' + (r.reason?' · <span style="color:var(--blue);">'+r.reason+'</span>':'') + '</div>' + docHtml + '</div>' + leaveBadge(r.status) + btnHtml + '</div>';
-      }).join('');
-    }
+  if(!allManagerPending.length) {
+    el.innerHTML = '<div class="empty">대기 중인 신청이 없습니다</div>';
+  } else {
+    el.innerHTML = allManagerPending.map(function(r) {
+      const e = getEmpById(r.emp_id); if(!e) return '';
+      const idx = employees.findIndex(function(x){ return x.id===e.id; });
+      let docHtml = '';
+      if(r.doc_url && r.doc_status==='submitted') {
+        const docLabel = r.type==='병가' ? '📎 진단서 확인 대기' : '📎 통지서 확인 대기';
+        const docBtn = isViewer ? '' : '<button class="btn btn-approve" style="font-size:10px;padding:3px 8px;margin-left:6px;" onclick="managerApproveMedical('+r.id+')">✅ 확인 → 관리자 전달</button>';
+        docHtml = '<div style="background:var(--amber-light);border-radius:4px;padding:6px 8px;margin-top:6px;font-size:11px;color:var(--amber);">'+docLabel+' · <a href="'+r.doc_url+'" target="_blank" style="color:var(--blue);">첨부파일 보기</a> '+docBtn+'</div>';
+      }
+      const btnHtml = (!isViewer && r.status==='pending') ? '<div class="btn-row"><button class="btn btn-approve" onclick="managerApprove('+r.id+')">승인</button><button class="btn btn-reject" onclick="openRejectModal('+r.id+',\'manager\')">거절</button></div>' : '';
+      return '<div class="req-row"><div class="avatar ' + avClass(idx) + '">' + ini(e.name) + '</div><div class="req-info"><div class="req-name">' + e.name + '</div><div class="req-detail">' + r.type + ' · ' + r.start_date + ' ~ ' + r.end_date + ' · ' + r.days + '일' + (r.reason?' · <span style="color:var(--blue);">'+r.reason+'</span>':'') + '</div>' + docHtml + '</div>' + leaveBadge(r.status) + btnHtml + '</div>';
+    }).join('');
   }
   // 팀원 연차 현황은 항상 렌더링
   const empEl = document.getElementById('manager-emp-progress');
