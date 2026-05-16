@@ -3188,16 +3188,16 @@ function downloadAttExcel() {
     }
 
     const thickBorder = {
-      top:{style:'medium',color:{rgb:'FF222222'}},
-      bottom:{style:'medium',color:{rgb:'FF222222'}},
-      left:{style:'medium',color:{rgb:'FF222222'}},
-      right:{style:'medium',color:{rgb:'FF222222'}}
+      top:{style:'thin',color:{rgb:'FF333333'}},
+      bottom:{style:'thin',color:{rgb:'FF333333'}},
+      left:{style:'thin',color:{rgb:'FF333333'}},
+      right:{style:'thin',color:{rgb:'FF333333'}}
     };
     const medBorder = {
-      top:{style:'thin',color:{rgb:'FF444444'}},
-      bottom:{style:'thin',color:{rgb:'FF444444'}},
-      left:{style:'thin',color:{rgb:'FF444444'}},
-      right:{style:'thin',color:{rgb:'FF444444'}}
+      top:{style:'hair',color:{rgb:'FF666666'}},
+      bottom:{style:'hair',color:{rgb:'FF666666'}},
+      left:{style:'hair',color:{rgb:'FF666666'}},
+      right:{style:'hair',color:{rgb:'FF666666'}}
     };
 
     // 타이틀
@@ -3219,10 +3219,10 @@ function downloadAttExcel() {
       s1(5, i, card[1], {font:{bold:true,name:'Arial',sz:20,color:{rgb:'FF'+card[3]}}, fill:{fgColor:{rgb:'FF'+card[2]},patternType:'solid'}, alignment:{horizontal:'center',vertical:'center'}, border:thickBorder});
     });
 
-    // 세부 테이블 헤더 - 두꺼운 테두리
+    // 세부 테이블 헤더
     const detailHdr = ['구분','건수','단위','해당 날짜'];
     detailHdr.forEach(function(h,i){
-      s1(7,i,h,{font:{bold:true,name:'Arial',sz:11,color:{rgb:'FF111111'}}, fill:{fgColor:{rgb:'FFF5F5F0'},patternType:'solid'}, alignment:{horizontal:'center',vertical:'center'}, border:{top:{style:'medium',color:{rgb:'FF222222'}},bottom:{style:'medium',color:{rgb:'FF222222'}},left:{style:'medium',color:{rgb:'FF222222'}},right:{style:'medium',color:{rgb:'FF222222'}}}});
+      s1(7,i,h,{font:{bold:true,name:'Arial',sz:11,color:{rgb:'FF111111'}}, fill:{fgColor:{rgb:'FFF5F5F0'},patternType:'solid'}, alignment:{horizontal:'center',vertical:'center'}, border:thickBorder});
     });
 
     const details = [
@@ -3251,8 +3251,8 @@ function downloadAttExcel() {
     s1(lrRow,3,lateRate+'%',{font:{bold:true,name:'Arial',sz:13,color:{rgb:'FF6B3A00'}}, fill:{fgColor:{rgb:'FFF5E8CC'},patternType:'solid'}, alignment:{horizontal:'center',vertical:'center'}, border:thickBorder});
 
     ws1['!ref'] = XLSX.utils.encode_range({s:{r:0,c:0}, e:{r:lrRow,c:3}});
-    ws1['!cols'] = [{wch:16},{wch:10},{wch:8},{wch:45}];
-    ws1['!rows'] = [{hpt:8},{hpt:28},{hpt:18},{hpt:8},{hpt:18},{hpt:30},{hpt:8},{hpt:20}];
+    ws1['!cols'] = [{wch:12},{wch:16},{wch:12},{wch:42}];
+    ws1['!rows'] = [{hpt:8},{hpt:28},{hpt:18},{hpt:8},{hpt:18},{hpt:32},{hpt:8},{hpt:20}];
     ws1['!merges'] = ws1merge;
     XLSX.utils.book_append_sheet(wb, ws1, '월별결산');
 
@@ -3269,8 +3269,8 @@ function downloadAttExcel() {
     s2(0,0,'📋 일별 근태 기록', {font:{bold:true,name:'Arial',sz:16,color:{rgb:'FF1A1A1A'}}, alignment:{horizontal:'left',vertical:'center'}});
     ws2merge.push({s:{r:0,c:0}, e:{r:0,c:5}});
     // 정보줄: 크고 두껍게 + 테두리
-    const thickB2 = {top:{style:'medium',color:{rgb:'FF222222'}},bottom:{style:'medium',color:{rgb:'FF222222'}},left:{style:'medium',color:{rgb:'FF222222'}},right:{style:'medium',color:{rgb:'FF222222'}}};
-    const medB2   = {top:{style:'thin',color:{rgb:'FF444444'}},bottom:{style:'thin',color:{rgb:'FF444444'}},left:{style:'thin',color:{rgb:'FF444444'}},right:{style:'thin',color:{rgb:'FF444444'}}};
+    const thickB2 = {top:{style:'thin',color:{rgb:'FF333333'}},bottom:{style:'thin',color:{rgb:'FF333333'}},left:{style:'thin',color:{rgb:'FF333333'}},right:{style:'thin',color:{rgb:'FF333333'}}};
+    const medB2   = {top:{style:'hair',color:{rgb:'FF666666'}},bottom:{style:'hair',color:{rgb:'FF666666'}},left:{style:'hair',color:{rgb:'FF666666'}},right:{style:'hair',color:{rgb:'FF666666'}}};
     s2(1,0, emp.name + '  |  부서: ' + emp.dept + '  |  기간: ' + monthLabel, {font:{bold:true,name:'Arial',sz:11,color:{rgb:'FF333333'}}, border:thickB2, alignment:{horizontal:'left',vertical:'center'}});
     ws2merge.push({s:{r:1,c:0}, e:{r:1,c:5}});
 
