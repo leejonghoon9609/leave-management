@@ -1204,30 +1204,40 @@ function renderLeaveEmpList() {
 
 function renderManagerLeaveDashboard() {
   const myEmp = getEmpById(currentEmpId); if(!myEmp) return;
-  const teamMembers = employees.filter(function(e){ return e.dept===myEmp.dept && e.id!==currentEmpId && e.role!=='admin'; });
-  const teamReqs = requests.filter(function(r){ const e=getEmpById(r.emp_id); return e && e.dept===myEmp.dept && r.emp_id!==currentEmpId; });
+  const isViewer = currentRole === 'viewer';
+  const teamMembers = employees.filter(function(e){ return isInLeaderDept(e.dept, myEmp.name) && e.id!==currentEmpId && e.role!=='admin'; });
+  const teamReqs = requests.filter(function(r){ const e=getEmpById(r.emp_id); return e && isInLeaderDept(e.dept, myEmp.name) && r.emp_id!==currentEmpId; });
   const pending = teamReqs.filter(function(r){ return r.status==='pending' && r.manager_status!=='approved'; });
   const docManagerPending = teamReqs.filter(function(r){ return (r.type==='병가'||r.type==='예비군/민방위') && r.doc_url && r.doc_status==='submitted' && r.status!=='rejected' && !pending.find(function(p){ return p.id===r.id; }); });
   const allManagerPending = pending.concat(docManagerPending);
   document.getElementById('mm-total').textContent = teamMembers.length;
-  document.getElementById('mm-pending').textContent = pending.length + docManagerPending.length;
+  document.getElementById('mm-pending').textContent = isViewer ? '-' : (pending.length + docManagerPending.length);
+
+  // 뷰어는 대기 중인 신청 카드 숨김
+  const pendingCard = document.getElementById('manager-pending-list');
+  if(pendingCard) {
+    const pendingCardParent = pendingCard.closest('.card');
+    if(pendingCardParent) pendingCardParent.style.display = isViewer ? 'none' : 'block';
+  }
+
   const el = document.getElementById('manager-pending-list');
-  if(!allManagerPending.length) {
-    el.innerHTML = '<div class="empty">대기 중인 신청이 없습니다</div>';
-  } else {
-    el.innerHTML = allManagerPending.map(function(r) {
-      const e = getEmpById(r.emp_id); if(!e) return '';
-      const idx = employees.findIndex(function(x){ return x.id===e.id; });
-      const isViewer = currentRole === 'viewer';
-      let docHtml = '';
-      if(r.doc_url && r.doc_status==='submitted') {
-        const docLabel = r.type==='병가' ? '📎 진단서 확인 대기' : '📎 통지서 확인 대기';
-        const docBtn = isViewer ? '' : '<button class="btn btn-approve" style="font-size:10px;padding:3px 8px;margin-left:6px;" onclick="managerApproveMedical('+r.id+')">✅ 확인 → 관리자 전달</button>';
-        docHtml = '<div style="background:var(--amber-light);border-radius:4px;padding:6px 8px;margin-top:6px;font-size:11px;color:var(--amber);">'+docLabel+' · <a href="'+r.doc_url+'" target="_blank" style="color:var(--blue);">첨부파일 보기</a> '+docBtn+'</div>';
-      }
-      const btnHtml = (!isViewer && r.status==='pending') ? '<div class="btn-row"><button class="btn btn-approve" onclick="managerApprove('+r.id+')">승인</button><button class="btn btn-reject" onclick="openRejectModal('+r.id+',\'manager\')">거절</button></div>' : '';
-      return '<div class="req-row"><div class="avatar ' + avClass(idx) + '">' + ini(e.name) + '</div><div class="req-info"><div class="req-name">' + e.name + '</div><div class="req-detail">' + r.type + ' · ' + r.start_date + ' ~ ' + r.end_date + ' · ' + r.days + '일' + (r.reason?' · <span style="color:var(--blue);">'+r.reason+'</span>':'') + '</div>' + docHtml + '</div>' + leaveBadge(r.status) + btnHtml + '</div>';
-    }).join('');
+  if(!isViewer) {
+    if(!allManagerPending.length) {
+      el.innerHTML = '<div class="empty">대기 중인 신청이 없습니다</div>';
+    } else {
+      el.innerHTML = allManagerPending.map(function(r) {
+        const e = getEmpById(r.emp_id); if(!e) return '';
+        const idx = employees.findIndex(function(x){ return x.id===e.id; });
+        let docHtml = '';
+        if(r.doc_url && r.doc_status==='submitted') {
+          const docLabel = r.type==='병가' ? '📎 진단서 확인 대기' : '📎 통지서 확인 대기';
+          const docBtn = '<button class="btn btn-approve" style="font-size:10px;padding:3px 8px;margin-left:6px;" onclick="managerApproveMedical('+r.id+')">✅ 확인 → 관리자 전달</button>';
+          docHtml = '<div style="background:var(--amber-light);border-radius:4px;padding:6px 8px;margin-top:6px;font-size:11px;color:var(--amber);">'+docLabel+' · <a href="'+r.doc_url+'" target="_blank" style="color:var(--blue);">첨부파일 보기</a> '+docBtn+'</div>';
+        }
+        const btnHtml = r.status==='pending' ? '<div class="btn-row"><button class="btn btn-approve" onclick="managerApprove('+r.id+')">승인</button><button class="btn btn-reject" onclick="openRejectModal('+r.id+',\'manager\')">거절</button></div>' : '';
+        return '<div class="req-row"><div class="avatar ' + avClass(idx) + '">' + ini(e.name) + '</div><div class="req-info"><div class="req-name">' + e.name + '</div><div class="req-detail">' + r.type + ' · ' + r.start_date + ' ~ ' + r.end_date + ' · ' + r.days + '일' + (r.reason?' · <span style="color:var(--blue);">'+r.reason+'</span>':'') + '</div>' + docHtml + '</div>' + leaveBadge(r.status) + btnHtml + '</div>';
+      }).join('');
+    }
   }
   // 팀원 연차 현황은 항상 렌더링
   const empEl = document.getElementById('manager-emp-progress');
@@ -1479,12 +1489,12 @@ function renderCalendar(bodyId, headId, titleId, legendId, filterFn, calMonth) {
     else if(items.length===1) {
       const e=getEmpById(items[0].empId);
       const idx=employees.findIndex(function(x){ return x.id===items[0].empId; });
-      const docStyle = items[0].isDocConfirmed ? 'color:#8E44AD;font-weight:600;' : 'opacity:0.8;';
+      const docStyle = items[0].isDocConfirmed ? 'color:#E74C3C;font-weight:600;' : 'opacity:0.8;';
       html+='<div class="cal-day '+leaveColors[idx%4]+'" style="flex-direction:column;height:auto;min-height:32px;padding:2px;font-size:10px;align-items:flex-start;justify-content:flex-start;" title="'+(e?e.name:'')+' '+items[0].reason+'"><div style="font-weight:700;font-size:11px;">'+d+'</div><div style="font-size:9px;line-height:1.2;">'+(e?e.name:'')+'</div>'+(items[0].reason?'<div style="font-size:8px;'+docStyle+'">'+items[0].reason+'</div>':'')+'</div>';
     } else {
       const names=items.map(function(it){ const e=getEmpById(it.empId); return e?e.name:''; }).join(', ');
       const hasDoc = items.some(function(it){ return it.isDocConfirmed; });
-      html+='<div class="cal-day leave-multi" style="flex-direction:column;height:auto;min-height:32px;padding:2px;font-size:10px;align-items:flex-start;justify-content:flex-start;"><div style="font-weight:700;font-size:11px;">'+d+'</div><div style="font-size:9px;line-height:1.2;">'+names+'</div>'+(hasDoc?'<div style="font-size:8px;color:#8E44AD;font-weight:600;">서류제출 연차차감</div>':'')+'</div>';
+      html+='<div class="cal-day leave-multi" style="flex-direction:column;height:auto;min-height:32px;padding:2px;font-size:10px;align-items:flex-start;justify-content:flex-start;"><div style="font-weight:700;font-size:11px;">'+d+'</div><div style="font-size:9px;line-height:1.2;">'+names+'</div>'+(hasDoc?'<div style="font-size:8px;color:#E74C3C;font-weight:600;">서류제출 연차차감</div>':'')+'</div>';
     }
   }
   document.getElementById(bodyId).innerHTML = html;
