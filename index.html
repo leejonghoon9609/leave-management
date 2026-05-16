@@ -339,7 +339,6 @@ body { font-family: "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; backgrou
       <div class="nav-item" onclick="showPage('my-leave',this)"><span>🏖️</span> 내 연차 기록</div>
       <div class="nav-item" onclick="showPage('manager-dashboard',this)"><span>📊</span> 팀 연차현황</div>
       <div class="nav-item" onclick="showPage('manager-requests',this)"><span>📝</span> 팀 신청 관리</div>
-      <div class="nav-item" onclick="showPage('my-calendar',this)"><span>📅</span> 팀 캘린더</div>
     </div>
 
     <!-- 직원 메뉴 -->
@@ -423,6 +422,19 @@ body { font-family: "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; backgrou
       <div class="grid-2">
         <div class="card"><div class="card-title">⏳ 대기 중인 신청</div><div id="manager-pending-list"><div class="loading">불러오는 중...</div></div></div>
         <div class="card"><div class="card-title">📈 팀원 연차 현황</div><div id="manager-emp-progress"><div class="loading">불러오는 중...</div></div></div>
+      </div>
+      <div class="card">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+          <div class="card-title" style="margin-bottom:0;">📅 팀 캘린더</div>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <button class="cal-btn" onclick="changeMgrDashCal(-1)">←</button>
+            <span id="cal-title-mgr" style="font-size:13px;font-weight:600;min-width:90px;text-align:center;"></span>
+            <button class="cal-btn" onclick="changeMgrDashCal(1)">→</button>
+          </div>
+        </div>
+        <div class="cal-grid" id="cal-head-mgr"></div>
+        <div class="cal-grid" style="margin-top:4px;" id="cal-body-mgr"></div>
+        <div class="cal-legend" id="cal-legend-mgr"></div>
       </div>
     </div>
 
@@ -1175,6 +1187,23 @@ function renderManagerLeaveDashboard() {
       return '<div class="req-row"><div class="avatar ' + avClass(idx) + '">' + ini(e.name) + '</div><div class="progress-wrap"><div style="display:flex;justify-content:space-between;font-size:12px;"><span style="font-weight:600">' + e.name + '</span><span style="color:var(--gray-400)">잔여 '+rem+'/'+total+'일</span></div><div class="progress-bar"><div class="progress-fill ' + (pct>80?'danger':'') + '" style="width:'+pct+'%"></div></div></div></div>';
     }).join('');
   }
+  renderMgrDashCalendar();
+}
+
+let mgrDashCalMonth = new Date(new Date().getFullYear(), new Date().getMonth());
+
+function renderMgrDashCalendar() {
+  const myEmp = getEmpById(currentEmpId); if(!myEmp) return;
+  const myDept = getLeaderDept(myEmp.name); if(!myDept) return;
+  renderCalendar('cal-body-mgr','cal-head-mgr','cal-title-mgr','cal-legend-mgr',
+    function(r){ const e=getEmpById(r.emp_id); return e && e.dept===myDept; },
+    mgrDashCalMonth
+  );
+}
+
+function changeMgrDashCal(dir) {
+  mgrDashCalMonth = new Date(mgrDashCalMonth.getFullYear(), mgrDashCalMonth.getMonth()+dir);
+  renderMgrDashCalendar();
 }
 
 let mgrReqMonth = new Date(new Date().getFullYear(), new Date().getMonth());
@@ -1331,8 +1360,9 @@ function renderMyLeave() {
   }).join('');
 }
 
-function renderCalendar(bodyId, headId, titleId, legendId, filterFn) {
-  const y=currentLeaveMonth.getFullYear(), m=currentLeaveMonth.getMonth();
+function renderCalendar(bodyId, headId, titleId, legendId, filterFn, calMonth) {
+  const refMonth = calMonth || currentLeaveMonth;
+  const y=refMonth.getFullYear(), m=refMonth.getMonth();
   const months=['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'];
   document.getElementById(titleId).textContent = y+'년 '+months[m];
   document.getElementById(headId).innerHTML = ['일','월','화','수','목','금','토'].map(function(d){ return '<div class="cal-head">'+d+'</div>'; }).join('');
