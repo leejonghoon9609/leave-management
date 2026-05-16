@@ -573,15 +573,27 @@ body { font-family: "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; backgrou
         </div>
       </div>
       <!-- 직원별 주간·월간 테이블 -->
-      <div class="card">
+      <div class="card" style="margin-bottom:16px;">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
-          <div class="card-title" style="margin-bottom:0;">👥 직원별 세부통계</div>
-          <div style="display:flex;gap:6px;">
-            <button class="filter-btn active" id="team-tab-week" onclick="switchTeamTab('week')">주간</button>
-            <button class="filter-btn" id="team-tab-month" onclick="switchTeamTab('month')">월간</button>
+          <div class="card-title" style="margin-bottom:0;">👥 직원별 세부통계 (주간)</div>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <button class="cal-btn" onclick="changeTeamWeek(-1)">←</button>
+            <span id="team-week-nav-label" style="font-size:12px;font-weight:600;min-width:130px;text-align:center;"></span>
+            <button class="cal-btn" onclick="changeTeamWeek(1)">→</button>
           </div>
         </div>
-        <div id="team-emp-table"></div>
+        <div id="team-emp-table-week"></div>
+      </div>
+      <div class="card">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+          <div class="card-title" style="margin-bottom:0;">👥 직원별 세부통계 (월간)</div>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <button class="cal-btn" onclick="changeTeamMonth(-1)">←</button>
+            <span id="team-month-nav-label" style="font-size:12px;font-weight:600;min-width:90px;text-align:center;"></span>
+            <button class="cal-btn" onclick="changeTeamMonth(1)">→</button>
+          </div>
+        </div>
+        <div id="team-emp-table-month"></div>
       </div>
     </div>
 
@@ -2509,14 +2521,7 @@ async function confirmOvertimeAction() {
 }
 
 // ===== 팀장 전용: 팀 출퇴근현황 =====
-let teamAttTab = 'week'; // 'week' | 'month'
-
-function switchTeamTab(tab) {
-  teamAttTab = tab;
-  document.getElementById('team-tab-week').className = 'filter-btn' + (tab==='week' ? ' active' : '');
-  document.getElementById('team-tab-month').className = 'filter-btn' + (tab==='month' ? ' active' : '');
-  renderTeamEmpTable();
-}
+function switchTeamTab(tab) {} // 하위 호환용
 
 function renderTeamAtt() {
   const emp = getEmpById(currentEmpId);
@@ -2614,33 +2619,26 @@ function renderTeamAtt() {
   renderTeamEmpTable();
 }
 
+// 팀 출퇴근 주간/월간 네비게이션
+let teamWeekOffset = 0; // 0=이번주, -1=지난주, ...
+let teamMonthNav = new Date(new Date().getFullYear(), new Date().getMonth());
+
+function changeTeamWeek(dir) {
+  teamWeekOffset += dir;
+  renderTeamEmpTableWeek();
+}
+
+function changeTeamMonth(dir) {
+  teamMonthNav = new Date(teamMonthNav.getFullYear(), teamMonthNav.getMonth() + dir);
+  renderTeamEmpTableMonth();
+}
+
 function renderTeamEmpTable() {
-  const emp = getEmpById(currentEmpId);
-  const myDept = emp ? getLeaderDept(emp.name) : null;
-  if(!myDept) return;
+  renderTeamEmpTableWeek();
+  renderTeamEmpTableMonth();
+}
 
-  const today = new Date(nowKST());
-  const todayStr = todayStrKST();
-  const dayOfWeek = today.getDay();
-  const monday = new Date(today);
-  monday.setDate(today.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
-  const mondayStr = monday.toISOString().slice(0, 10);
-  const monthStart = todayStr.slice(0, 7) + '-01';
-
-  const teamEmps = employees.filter(function(e){ return e.dept === myDept && e.role !== 'admin'; });
-  const isWeek = teamAttTab === 'week';
-  const startStr = isWeek ? mondayStr : monthStart;
-
-  // 근무일 수
-  let totalDays = 0;
-  const startD = new Date(startStr);
-  const endD = new Date(today);
-  const c = new Date(startD);
-  while(c <= endD) {
-    if(c.getDay() !== 0 && c.getDay() !== 6) totalDays++;
-    c.setDate(c.getDate() + 1);
-  }
-
+function buildTeamEmpTableHtml(teamEmps, startStr, endStr, totalDays) {
   let html = '<table style="width:100%;font-size:12px;border-collapse:collapse;">';
   html += '<thead><tr style="border-bottom:0.5px solid var(--gray-200);">'
     + '<th style="text-align:left;padding:7px 4px;color:var(--gray-600);font-weight:500;">직원</th>'
@@ -2652,29 +2650,25 @@ function renderTeamEmpTable() {
     + '</tr></thead><tbody>';
 
   let totPresent=0, totLate=0, totAbsent=0, totOvertime=0;
-
   teamEmps.forEach(function(e) {
     const empAtts = attendances.filter(function(a){
-      return a.emp_id === e.id && a.att_date >= startStr && a.att_date <= todayStr && !a.overtime_checkin;
+      return a.emp_id === e.id && a.att_date >= startStr && a.att_date <= endStr && !a.overtime_checkin;
     });
     const present = empAtts.filter(function(a){ return getAttStatus(a)==='present'; }).length;
     const late = empAtts.filter(function(a){ return getAttStatus(a)==='late'; }).length;
-    const absent = totalDays - empAtts.filter(function(a){ return a.checkin_time; }).length;
-    const overtime = attendances.filter(function(a){ return a.emp_id===e.id && a.att_date>=startStr && a.att_date<=todayStr && a.overtime_checkin; }).length;
+    const absent = Math.max(0, totalDays - empAtts.filter(function(a){ return a.checkin_time; }).length);
+    const overtime = attendances.filter(function(a){ return a.emp_id===e.id && a.att_date>=startStr && a.att_date<=endStr && a.overtime_checkin; }).length;
     const lateRate = totalDays > 0 ? Math.round(late / totalDays * 100) : 0;
-
-    totPresent+=present; totLate+=late; totAbsent+=absent<0?0:absent; totOvertime+=overtime;
-
+    totPresent+=present; totLate+=late; totAbsent+=absent; totOvertime+=overtime;
     html += '<tr style="border-bottom:0.5px solid var(--gray-100);">'
       + '<td style="padding:7px 4px;font-weight:500;color:var(--gray-900);">' + e.name + '</td>'
       + '<td style="text-align:center;color:#2ECC71;padding:7px 4px;">' + present + '</td>'
       + '<td style="text-align:center;color:#E67E22;padding:7px 4px;">' + late + '</td>'
-      + '<td style="text-align:center;color:#E74C3C;padding:7px 4px;">' + (absent<0?0:absent) + '</td>'
+      + '<td style="text-align:center;color:#E74C3C;padding:7px 4px;">' + absent + '</td>'
       + '<td style="text-align:center;color:#8E44AD;padding:7px 4px;">' + overtime + '</td>'
       + '<td style="text-align:right;padding:7px 4px;font-weight:500;">' + lateRate + '%</td>'
       + '</tr>';
   });
-
   const totLateRate = totalDays > 0 && teamEmps.length > 0 ? Math.round(totLate / (totalDays * teamEmps.length) * 100) : 0;
   html += '<tr style="border-top:0.5px solid var(--gray-200);background:var(--gray-50);">'
     + '<td style="padding:7px 4px;font-weight:500;color:var(--gray-600);">합계</td>'
@@ -2683,10 +2677,72 @@ function renderTeamEmpTable() {
     + '<td style="text-align:center;color:#E74C3C;font-weight:500;padding:7px 4px;">' + totAbsent + '</td>'
     + '<td style="text-align:center;color:#8E44AD;font-weight:500;padding:7px 4px;">' + totOvertime + '</td>'
     + '<td style="text-align:right;font-weight:500;padding:7px 4px;">' + totLateRate + '%</td>'
-    + '</tr>';
+    + '</tr></tbody></table>';
+  return html;
+}
 
-  html += '</tbody></table>';
-  document.getElementById('team-emp-table').innerHTML = html;
+function renderTeamEmpTableWeek() {
+  const emp = getEmpById(currentEmpId);
+  const myDept = emp ? getLeaderDept(emp.name) : null;
+  if(!myDept) return;
+  const teamEmps = employees.filter(function(e){ return e.dept === myDept && e.role !== 'admin'; });
+
+  const today = new Date(nowKST());
+  const dayOfWeek = today.getDay();
+  const thisMonday = new Date(today);
+  thisMonday.setDate(today.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
+
+  // offset 적용
+  const monday = new Date(thisMonday);
+  monday.setDate(monday.getDate() + teamWeekOffset * 7);
+  const sunday = new Date(monday);
+  sunday.setDate(monday.getDate() + 6);
+
+  const mondayStr = monday.toISOString().slice(0,10);
+  const sundayStr = sunday.toISOString().slice(0,10);
+  const endStr = sundayStr < todayStrKST() ? sundayStr : todayStrKST();
+
+  // 라벨
+  const labelEl = document.getElementById('team-week-nav-label');
+  if(labelEl) labelEl.textContent = mondayStr.slice(5) + ' ~ ' + sundayStr.slice(5);
+
+  // 근무일 수
+  let totalDays = 0;
+  const c = new Date(monday);
+  const end = new Date(endStr);
+  while(c <= end) {
+    if(c.getDay() !== 0 && c.getDay() !== 6) totalDays++;
+    c.setDate(c.getDate() + 1);
+  }
+
+  document.getElementById('team-emp-table-week').innerHTML = buildTeamEmpTableHtml(teamEmps, mondayStr, endStr, totalDays);
+}
+
+function renderTeamEmpTableMonth() {
+  const emp = getEmpById(currentEmpId);
+  const myDept = emp ? getLeaderDept(emp.name) : null;
+  if(!myDept) return;
+  const teamEmps = employees.filter(function(e){ return e.dept === myDept && e.role !== 'admin'; });
+
+  const y = teamMonthNav.getFullYear();
+  const m = teamMonthNav.getMonth();
+  const months = ['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'];
+  const startStr = y + '-' + String(m+1).padStart(2,'0') + '-01';
+  const lastDay = new Date(y, m+1, 0).toISOString().slice(0,10);
+  const endStr = lastDay < todayStrKST() ? lastDay : todayStrKST();
+
+  const labelEl = document.getElementById('team-month-nav-label');
+  if(labelEl) labelEl.textContent = y + '년 ' + months[m];
+
+  let totalDays = 0;
+  const c = new Date(startStr);
+  const end = new Date(endStr);
+  while(c <= end) {
+    if(c.getDay() !== 0 && c.getDay() !== 6) totalDays++;
+    c.setDate(c.getDate() + 1);
+  }
+
+  document.getElementById('team-emp-table-month').innerHTML = buildTeamEmpTableHtml(teamEmps, startStr, endStr, totalDays);
 }
 
 // ===== 엑셀 다운로드 =====
