@@ -1062,7 +1062,7 @@ async function empLogin() {
   document.getElementById('login-overlay').style.display = 'none';
   document.getElementById('main-app').style.display = 'flex';
   document.getElementById('sidebar-year').textContent = CY + '년 인사관리';
-  document.getElementById('user-info-box').innerHTML = '<div class="user-avatar ' + avClass(idx) + '">' + ini(empData.name) + '</div><div><div class="user-name">' + empData.name + '</div><div class="user-role">' + (currentRole==='manager'?'팀장 · ':'') + empData.dept + '</div></div>';
+  document.getElementById('user-info-box').innerHTML = '<div class="user-avatar ' + avClass(idx) + '">' + ini(empData.name) + '</div><div><div class="user-name">' + empData.name + '</div><div class="user-role">' + (currentRole==='manager'?'팀장 · ':currentRole==='viewer'?'팀장(뷰어) · ':'') + empData.dept + '</div></div>';
   document.getElementById('my-leave-sub').textContent = empData.name + '님의 연차 현황';
   document.getElementById('checkin-sub').textContent = empData.name + '님';
 
@@ -1902,10 +1902,10 @@ function renderCheckin() {
     if(overtimeCheckoutBtn) { overtimeCheckoutBtn.disabled=true; overtimeCheckoutBtn.style.opacity='0.5'; }
   }
   renderMyWeek();
-  // 팀장이면 팀 출퇴근일람 표시, 이번주 내기록 숨김
+  // 팀장/뷰어이면 팀 출퇴근일람 표시, 이번주 내기록 숨김
   const teamSection = document.getElementById('team-today-section');
   const myWeekCard = document.getElementById('my-week-card');
-  if(emp && isTeamLeader(emp.name)) {
+  if(emp && (isTeamLeader(emp.name) || isTeamViewer(emp.name))) {
     if(teamSection) teamSection.style.display = 'block';
     if(myWeekCard) myWeekCard.style.display = 'none';
     renderTeamToday();
