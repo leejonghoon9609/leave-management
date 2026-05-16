@@ -713,7 +713,7 @@ body { font-family: "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; backgrou
               <div class="card-title" style="margin-bottom:0;">📅 내 출퇴근일람</div>
               <div style="display:flex;align-items:center;gap:6px;">
                 <button onclick="changeEmpDate(-1)" style="padding:2px 8px;font-size:12px;border:1px solid var(--gray-200);border-radius:4px;background:white;cursor:pointer;">←</button>
-                <span id="emp-today-date" style="font-size:12px;font-weight:600;color:var(--gray-600);"></span>
+                <span id="emp-today-date" style="font-size:12px;font-weight:600;color:var(--gray-600);min-width:70px;text-align:center;"></span>
                 <button onclick="changeEmpDate(1)" style="padding:2px 8px;font-size:12px;border:1px solid var(--gray-200);border-radius:4px;background:white;cursor:pointer;">→</button>
               </div>
             </div>
@@ -2537,8 +2537,9 @@ let empWeekOffset = 0;
 
 function renderEmpToday() {
   const dateStr = empTodayDate.toISOString().slice(0, 10);
-  const displayDate = empTodayDate.toLocaleDateString('ko-KR', {month:'numeric', day:'numeric', weekday:'short'});
+  const displayDate = dateStr.slice(5); // MM-DD 형식
   const dateEl = document.getElementById('emp-today-date');
+  if(dateEl) dateEl.textContent = displayDate;
 
   const emp = getEmpById(currentEmpId);
   const el = document.getElementById('emp-today-record');
@@ -2560,8 +2561,8 @@ function renderEmpToday() {
     }
     const memo = att.checkin_field_memo ? ' <span style="font-size:10px;color:var(--blue);">[출근:'+att.checkin_field_memo+']</span>' : (att.field_memo ? ' <span style="font-size:10px;color:var(--amber);">[퇴근:'+att.field_memo+']</span>' : '');
     el.innerHTML = '<div style="font-size:13px;font-weight:600;margin-bottom:6px;">' + (emp?emp.name:'') + memo + '</div>'
-      + '<div style="display:flex;align-items:center;gap:4px;font-size:12px;color:var(--gray-500);margin-bottom:3px;"><span style="width:28px;">출근</span><span>' + formatTimeKST(att.checkin_time) + '</span>' + checkinBadge + '</div>'
-      + '<div style="display:flex;align-items:center;gap:4px;font-size:12px;color:var(--gray-500);"><span style="width:28px;">퇴근</span><span>' + formatTimeKST(att.checkout_time) + '</span>' + checkoutBadgeHtml + '</div>';
+      + '<div style="display:flex;align-items:center;justify-content:space-between;font-size:12px;color:var(--gray-500);margin-bottom:3px;"><div style="display:flex;align-items:center;gap:4px;"><span style="width:28px;">출근</span><span>' + formatTimeKST(att.checkin_time) + '</span></div>' + checkinBadge + '</div>'
+      + '<div style="display:flex;align-items:center;justify-content:space-between;font-size:12px;color:var(--gray-500);"><div style="display:flex;align-items:center;gap:4px;"><span style="width:28px;">퇴근</span><span>' + formatTimeKST(att.checkout_time) + '</span></div>' + checkoutBadgeHtml + '</div>';
   } else {
     el.innerHTML = '<div class="empty" style="font-size:12px;">출근 기록이 없습니다</div>';
   }
@@ -2626,8 +2627,8 @@ function renderEmpWeek() {
       }
       return '<div style="padding:6px 0;border-bottom:0.5px solid var(--gray-100);">'
         + '<div style="font-size:11px;font-weight:600;color:var(--gray-800);margin-bottom:3px;">' + dateLabel + '</div>'
-        + '<div style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--gray-500);margin-bottom:2px;"><span style="width:26px;">출근</span><span>' + formatTimeKST(att.checkin_time) + '</span>' + checkinBadge + '</div>'
-        + '<div style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--gray-500);"><span style="width:26px;">퇴근</span><span>' + formatTimeKST(att.checkout_time) + '</span>' + checkoutBadgeHtml + '</div>'
+        + '<div style="display:flex;align-items:center;justify-content:space-between;font-size:11px;color:var(--gray-500);margin-bottom:2px;"><div style="display:flex;align-items:center;gap:4px;"><span style="width:26px;">출근</span><span>' + formatTimeKST(att.checkin_time) + '</span></div>' + checkinBadge + '</div>'
+        + '<div style="display:flex;align-items:center;justify-content:space-between;font-size:11px;color:var(--gray-500);"><div style="display:flex;align-items:center;gap:4px;"><span style="width:26px;">퇴근</span><span>' + formatTimeKST(att.checkout_time) + '</span></div>' + checkoutBadgeHtml + '</div>'
         + '</div>';
     } else {
       return '<div style="padding:6px 0;border-bottom:0.5px solid var(--gray-100);display:flex;align-items:center;justify-content:space-between;">'
