@@ -1129,7 +1129,16 @@ function renderAdminLeaveDashboard() {
   if(!employees.length) { return; } // 데이터 로드 전이면 스킵
   const visEmpIds = getVisibleEmployees().map(function(e){ return e.id; });
   const adminPending = requests.filter(function(r){ return r.admin_status==='pending' && r.status!=='approved' && (currentRole!=='deptadmin' || visEmpIds.includes(r.emp_id)); });
-  const docAdminPending = requests.filter(function(r){ return (r.type==='병가'||r.type==='예비군/민방위') && r.doc_url && r.doc_status==='manager-approved' && r.status!=='rejected' && (currentRole!=='deptadmin' || visEmpIds.includes(r.emp_id)); });
+  const docAdminPending = requests.filter(function(r){
+    if(!(r.type==='병가'||r.type==='예비군/민방위')) return false;
+    if(!r.doc_url || r.status==='rejected') return false;
+    if(currentRole!=='deptadmin' && !visEmpIds.includes(r.emp_id)) return false;
+    if(currentRole==='deptadmin' && !visEmpIds.includes(r.emp_id)) return false;
+    // deptadmin(송규헌)은 submitted도 표시 (측량부는 별도 팀장 없음)
+    // 일반 관리자는 manager-approved만 표시
+    const showSubmitted = currentRole === 'deptadmin';
+    return showSubmitted ? (r.doc_status==='submitted' || r.doc_status==='manager-approved') : r.doc_status==='manager-approved';
+  });
   const approved = requests.filter(function(r){ return r.status==='approved' && (currentRole!=='deptadmin' || visEmpIds.includes(r.emp_id)); });
   const allAdminPending = adminPending.concat(docAdminPending.filter(function(d){ return !adminPending.find(function(a){ return a.id===d.id; }); }));
   document.getElementById('m-total').textContent = activeEmps.length;
@@ -1145,7 +1154,10 @@ function renderAdminLeaveDashboard() {
       const e = getEmpById(r.emp_id); if(!e) return '';
       const idx = employees.findIndex(function(x){ return x.id===e.id; });
       let docHtml = '';
-      if(r.doc_url && r.doc_status==='manager-approved') {
+      if(r.doc_url && r.doc_status==='submitted' && currentRole==='deptadmin') {
+        const docLabel = r.type==='병가' ? '📎 진단서 확인 대기' : '📎 통지서 확인 대기';
+        docHtml = '<div style="background:var(--amber-light);border-radius:4px;padding:6px 8px;margin-top:6px;font-size:11px;color:var(--amber);">'+docLabel+' · <a href="'+r.doc_url+'" target="_blank" style="color:var(--blue);">첨부파일 보기</a> <button class="btn btn-approve" style="font-size:10px;padding:3px 8px;margin-left:6px;" onclick="confirmMedicalDoc('+r.id+')">✅ 확인 완료</button></div>';
+      } else if(r.doc_url && r.doc_status==='manager-approved') {
         const docLabel = r.type==='병가' ? '📎 진단서 확인 대기 (팀장승인됨)' : '📎 통지서 확인 대기 (팀장승인됨)';
         docHtml = '<div style="background:var(--amber-light);border-radius:4px;padding:6px 8px;margin-top:6px;font-size:11px;color:var(--amber);">'+docLabel+' · <a href="'+r.doc_url+'" target="_blank" style="color:var(--blue);">첨부파일 보기</a> <button class="btn btn-approve" style="font-size:10px;padding:3px 8px;margin-left:6px;" onclick="confirmMedicalDoc('+r.id+')">✅ 확인 완료</button></div>';
       }
