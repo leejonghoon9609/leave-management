@@ -335,9 +335,9 @@ body { font-family: "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; backgrou
       <div style="padding:4px 0;"><button class="excel-btn" onclick="downloadAttExcel()" style="margin:4px 20px 0;">📥 근태현황 다운로드(.xlsx)</button></div>
       <div class="nav-divider"></div>
       <div class="nav-section">📋 연차관리</div>
-      <div class="nav-item" onclick="showPage('apply',this)"><span>✏️</span> 신청하기</div>
-      <div class="nav-item" onclick="showPage('my-leave',this)"><span>🏖️</span> 내 연차</div>
-      <div class="nav-item" onclick="showPage('manager-dashboard',this)"><span>📊</span> 팀 대시보드</div>
+      <div class="nav-item" onclick="showPage('apply',this)"><span>✏️</span> 연차신청</div>
+      <div class="nav-item" onclick="showPage('my-leave',this)"><span>🏖️</span> 내 연차 기록</div>
+      <div class="nav-item" onclick="showPage('manager-dashboard',this)"><span>📊</span> 팀 연차현황</div>
       <div class="nav-item" onclick="showPage('manager-requests',this)"><span>📝</span> 팀 신청 관리</div>
       <div class="nav-item" onclick="showPage('my-calendar',this)"><span>📅</span> 팀 캘린더</div>
     </div>
@@ -350,8 +350,8 @@ body { font-family: "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; backgrou
       <div style="padding:4px 0;"><button class="excel-btn" onclick="downloadAttExcel()" style="margin:4px 20px 0;">📥 근태현황 다운로드(.xlsx)</button></div>
       <div class="nav-divider"></div>
       <div class="nav-section">📋 연차관리</div>
-      <div class="nav-item" onclick="showPage('apply',this)"><span>✏️</span> 신청하기</div>
-      <div class="nav-item" onclick="showPage('my-leave',this)"><span>🏖️</span> 내 연차</div>
+      <div class="nav-item" onclick="showPage('apply',this)"><span>✏️</span> 연차신청</div>
+      <div class="nav-item" onclick="showPage('my-leave',this)"><span>🏖️</span> 내 연차 기록</div>
       <div class="nav-item" onclick="showPage('my-calendar',this)"><span>📅</span> 캘린더</div>
     </div>
 
@@ -1668,7 +1668,7 @@ function renderCheckin() {
   // 팀장이면 팀 출퇴근일람 표시, 이번주 내기록 숨김
   const teamSection = document.getElementById('team-today-section');
   const myWeekCard = document.getElementById('my-week-card');
-  if(emp && (isTeamLeader(emp.name) || isTeamViewer(emp.name))) {
+  if(emp && isTeamLeader(emp.name)) {
     if(teamSection) teamSection.style.display = 'block';
     if(myWeekCard) myWeekCard.style.display = 'none';
     renderTeamToday();
