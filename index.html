@@ -2454,11 +2454,8 @@ function renderMyToday() {
 function overtimeHtml(otRecs) {
   if(!otRecs || !otRecs.length) return '';
 
-  // 출근만 있는 레코드, 출근+퇴근 같이 있는 레코드, 퇴근만 있는 레코드 구분
   const checkinRec = otRecs.find(function(ot){ return !!ot.overtime_checkin; });
   const checkoutRec = otRecs.find(function(ot){ return !!ot.overtime_checkout; });
-
-  // 같은 레코드에 출퇴근 둘 다 있는 경우 (당일 특근 퇴근 업데이트된 경우)
   const combinedRec = otRecs.find(function(ot){ return !!ot.overtime_checkin && !!ot.overtime_checkout; });
 
   const memo = (checkinRec && checkinRec.overtime_memo) || (checkoutRec && checkoutRec.overtime_memo) || '';
@@ -2468,15 +2465,13 @@ function overtimeHtml(otRecs) {
   const checkoutTime = combinedRec ? formatTimeKST(combinedRec.overtime_checkout)
                      : (checkoutRec ? formatTimeKST(checkoutRec.overtime_checkout) : '-');
 
-  let badges = '';
-  if(checkinRec) badges += '<span class="badge" style="background:#FDEDEC;color:#C0392B;margin-left:4px;">특근출근</span>';
-  if(combinedRec && combinedRec.overtime_checkout || checkoutRec) badges += '<span class="badge" style="background:#FDEDEC;color:#C0392B;margin-left:4px;">특근퇴근</span>';
+  const hasCheckout = !!(combinedRec && combinedRec.overtime_checkout) || !!checkoutRec;
 
-  return '<div class="att-row" style="border-top:1px dashed #fcc;margin-top:4px;padding-top:8px;">'
-    + '<div class="att-info">'
-    + '<div class="att-name" style="color:#C0392B;">🌙 특근' + memoNote + '</div>'
-    + '<div class="att-detail">출근 ' + checkinTime + ' · 퇴근 ' + checkoutTime + '</div>'
-    + '</div>' + badges + '</div>';
+  return '<div style="border-top:1px dashed #fcc;margin-top:6px;padding-top:8px;">'
+    + '<div style="font-size:11px;font-weight:600;color:#C0392B;margin-bottom:4px;">🌙 특근' + memoNote + '</div>'
+    + (checkinRec ? '<div style="display:flex;align-items:center;justify-content:space-between;font-size:11px;color:var(--gray-500);margin-bottom:3px;"><div style="display:flex;align-items:center;gap:4px;"><span style="width:26px;">출근</span><span>' + checkinTime + '</span></div><span style="font-size:10px;padding:1px 6px;border-radius:20px;background:#FDEDEC;color:#C0392B;white-space:nowrap;">특근출근</span></div>' : '')
+    + (hasCheckout ? '<div style="display:flex;align-items:center;justify-content:space-between;font-size:11px;color:var(--gray-500);"><div style="display:flex;align-items:center;gap:4px;"><span style="width:26px;">퇴근</span><span>' + checkoutTime + '</span></div><span style="font-size:10px;padding:1px 6px;border-radius:20px;background:#FDEDEC;color:#C0392B;white-space:nowrap;">특근퇴근</span></div>' : '')
+    + '</div>';
 }
 
 function renderTeamMemberToday() {
