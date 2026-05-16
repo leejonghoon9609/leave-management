@@ -3156,15 +3156,20 @@ function downloadAttExcel() {
 
     function makeStyle(bg, fg, bold, align, border) {
       const s = { alignment:{horizontal:align||'left', vertical:'center', wrapText:true} };
-      if(bold) s.font = {bold:true, name:'Arial', color:{rgb:'FF'+fg}, sz:10};
-      else s.font = {name:'Arial', color:{rgb:'FF'+(fg||'333333')}, sz:10};
+      if(bold) s.font = {bold:true, name:'Arial', color:{rgb:'FF'+(fg||'111111')}, sz:10};
+      else s.font = {name:'Arial', color:{rgb:'FF'+(fg||'111111')}, sz:10};
       if(bg) s.fill = {fgColor:{rgb:'FF'+bg}, patternType:'solid'};
-      if(border) s.border = {top:{style:'thin',color:{rgb:'FFDDDDDD'}},bottom:{style:'thin',color:{rgb:'FFDDDDDD'}},left:{style:'thin',color:{rgb:'FFDDDDDD'}},right:{style:'thin',color:{rgb:'FFDDDDDD'}}};
+      if(border) s.border = {
+        top:{style:'thin',color:{rgb:'FF444444'}},
+        bottom:{style:'thin',color:{rgb:'FF444444'}},
+        left:{style:'thin',color:{rgb:'FF444444'}},
+        right:{style:'thin',color:{rgb:'FF444444'}}
+      };
       return s;
     }
     function thickBottomStyle(bg, fg) {
       const s = makeStyle(bg, fg, true, 'center', true);
-      s.border.bottom = {style:'medium', color:{rgb:'FFAAAAAA'}};
+      s.border.bottom = {style:'medium', color:{rgb:'FF222222'}};
       return s;
     }
 
@@ -3283,24 +3288,25 @@ function downloadAttExcel() {
         const isField = !!(att.checkin_field_memo);
         const gubun = isField ? '현장' : '본사';
 
-        s2(curRow,0,ds,makeStyle(null,'333333',true,'center',true));
-        s2(curRow,1,gubun,makeStyle(null,'666666',false,'center',true));
+        s2(curRow,0,ds,makeStyle(null,'111111',true,'center',true));
+        s2(curRow,1,gubun,makeStyle(null,'111111',false,'center',true));
         s2(curRow,2,'출근',makeStyle(BLUE_BG,BLUE_FG,true,'center',true));
-        s2(curRow,3,formatTimeKST(att.checkin_time),makeStyle(null,'333333',false,'center',true));
+        s2(curRow,3,formatTimeKST(att.checkin_time),makeStyle(null,'111111',false,'center',true));
         s2(curRow,4,checkinLabel,makeStyle(checkinBg,checkinFg,true,'center',true));
-        s2(curRow,5,att.checkin_field_memo||'',makeStyle(null,'666666',false,'left',true));
+        s2(curRow,5,att.checkin_field_memo||'',makeStyle(null,'333333',false,'left',true));
         curRow++;
 
-        // 퇴근 행
+        // 퇴근 행 - 현장퇴근이면 '현장', 아니면 '본사'
+        const coGubun = att.field_memo ? '현장' : '본사';
         const coLabel = att.checkout_time ? (att.checkout_status==='early'?'조기퇴근':'정상퇴근') : '-';
         const coBg = !att.checkout_time ? null : (att.checkout_status==='early' ? RED_BG : GREEN_BG);
-        const coFg = !att.checkout_time ? '999999' : (att.checkout_status==='early' ? RED_FG : GREEN_FG);
-        s2(curRow,0,'',makeStyle(null,'999999',false,'center',true));
-        s2(curRow,1,att.field_memo||'',makeStyle(null,'666666',false,'center',true));
-        s2(curRow,2,'퇴근',makeStyle('FCEBEB',RED_FG,true,'center',true));
-        s2(curRow,3,att.checkout_time?formatTimeKST(att.checkout_time):'-',makeStyle(null,'333333',false,'center',true));
+        const coFg = !att.checkout_time ? '888888' : (att.checkout_status==='early' ? RED_FG : GREEN_FG);
+        s2(curRow,0,'',makeStyle(null,'111111',false,'center',true));
+        s2(curRow,1,att.checkout_time ? coGubun : '',makeStyle(null,'111111',false,'center',true));
+        s2(curRow,2,'퇴근',makeStyle(RED_BG,RED_FG,true,'center',true));
+        s2(curRow,3,att.checkout_time?formatTimeKST(att.checkout_time):'-',makeStyle(null,'111111',false,'center',true));
         s2(curRow,4,coLabel,makeStyle(coBg,coFg,true,'center',true));
-        s2(curRow,5,att.field_memo||'',makeStyle(null,'666666',false,'left',true));
+        s2(curRow,5,att.field_memo||'',makeStyle(null,'333333',false,'left',true));
         curRow++;
       }
 
