@@ -891,6 +891,21 @@ function getTotal(e) { return calcLeave(getYears(e)); }
 function getUsed(e) { return requests.filter(function(r){ return r.emp_id===e.id&&r.status==='approved'; }).reduce(function(s,r){ return s+Number(r.days); },0); }
 function getRemaining(e) { return Math.max(0, getTotal(e) - getUsed(e)); }
 
+// 특정 날짜에 승인된 연차 반환 (연차/반차/병가 등)
+function getLeaveOnDate(empId, dateStr) {
+  return requests.find(function(r){
+    return r.emp_id === empId && r.status === 'approved'
+      && r.start_date <= dateStr && r.end_date >= dateStr;
+  }) || null;
+}
+
+// 연차 뱃지 HTML
+function leaveDayBadge(leaveType) {
+  const color = '#FAC775'; const textColor = '#633806';
+  const label = leaveType || '연차';
+  return '<span style="font-size:10px;padding:1px 8px;border-radius:20px;background:'+color+';color:'+textColor+';font-weight:500;white-space:nowrap;">'+label+'</span>';
+}
+
 function leaveBadge(s) {
   const m = { pending:'badge-pending', approved:'badge-approved', rejected:'badge-rejected', 'manager-approved':'badge-manager-approved' };
   const l = { pending:'대기 중', approved:'최종승인', rejected:'거절됨', 'manager-approved':'팀장승인' };
@@ -2422,6 +2437,8 @@ function renderMyToday() {
   // 특근 기록
   const otRecs = attendances.filter(function(a){ return a.emp_id === currentEmpId && a.att_date === dateStr && (a.overtime_checkin || a.overtime_checkout); });
 
+  const leave = getLeaveOnDate(currentEmpId, dateStr);
+
   myEl.style.textAlign = 'left';
   let html = '';
 
@@ -2435,11 +2452,15 @@ function renderMyToday() {
       + '<div style="font-size:13px;font-weight:600;margin-bottom:4px;">' + (emp ? emp.name : '') + memo + earlyNote + '</div>'
       + '<div style="display:flex;gap:4px;font-size:12px;color:var(--gray-400);"><span style="width:30px;">출근</span><span>' + formatTimeKST(myAtt.checkin_time) + '</span></div>'
       + '<div style="display:flex;gap:4px;font-size:12px;color:var(--gray-400);margin-top:2px;"><span style="width:30px;">퇴근</span><span>' + formatTimeKST(myAtt.checkout_time) + '</span></div>'
+      + (leave ? '<div style="margin-top:4px;">'+leaveDayBadge(leave.type)+'</div>' : '')
       + '</div>'
       + '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px;padding-top:22px;flex-shrink:0;">'
       + attBadge(s) + (checkoutBadge || '')
       + '</div>'
       + '</div>';
+  } else if(leave) {
+    html += '<div style="font-size:13px;font-weight:600;margin-bottom:8px;">' + (emp?emp.name:'') + '</div>'
+      + leaveDayBadge(leave.type);
   } else {
     html += '<div class="empty">출근 기록이 없습니다</div>';
   }
@@ -2536,7 +2557,7 @@ let empWeekOffset = 0;
 
 function renderEmpToday() {
   const dateStr = empTodayDate.toISOString().slice(0, 10);
-  const displayDate = dateStr.slice(5); // MM-DD 형식
+  const displayDate = dateStr.slice(5);
   const dateEl = document.getElementById('emp-today-date');
   if(dateEl) dateEl.textContent = displayDate;
 
@@ -2546,26 +2567,32 @@ function renderEmpToday() {
 
   const att = attendances.find(function(a){ return a.emp_id===currentEmpId && a.att_date===dateStr && !a.overtime_checkin; });
   const otRecs = attendances.filter(function(a){ return a.emp_id===currentEmpId && a.att_date===dateStr && (a.overtime_checkin||a.overtime_checkout); });
+  const leave = getLeaveOnDate(currentEmpId, dateStr);
 
   el.style.textAlign = 'left';
 
   if(att) {
     const s = getAttStatus(att);
-    const checkinBadge = s==='late' ? '<span style="font-size:10px;padding:1px 6px;border-radius:20px;background:#FAEEDA;color:#854F0B;margin-left:4px;">지각</span>' : '<span style="font-size:10px;padding:1px 6px;border-radius:20px;background:#E1F5EE;color:#0F6E56;margin-left:4px;">정상출근</span>';
+    const checkinBadge = s==='late' ? '<span style="font-size:10px;padding:1px 6px;border-radius:20px;background:#FAEEDA;color:#854F0B;">지각</span>' : '<span style="font-size:10px;padding:1px 6px;border-radius:20px;background:#E1F5EE;color:#0F6E56;">정상출근</span>';
     let checkoutBadgeHtml = '';
     if(att.checkout_time) {
-      if(att.early_reason) checkoutBadgeHtml = '<span style="font-size:10px;padding:1px 6px;border-radius:20px;background:#E1F5EE;color:#0F6E56;margin-left:4px;">정상퇴근</span>';
-      else if(att.checkout_status==='early') checkoutBadgeHtml = '<span style="font-size:10px;padding:1px 6px;border-radius:20px;background:#FAECE7;color:#993C1D;margin-left:4px;">조기퇴근</span>';
-      else checkoutBadgeHtml = '<span style="font-size:10px;padding:1px 6px;border-radius:20px;background:#E1F5EE;color:#0F6E56;margin-left:4px;">정상퇴근</span>';
+      if(att.early_reason) checkoutBadgeHtml = '<span style="font-size:10px;padding:1px 6px;border-radius:20px;background:#E1F5EE;color:#0F6E56;">정상퇴근</span>';
+      else if(att.checkout_status==='early') checkoutBadgeHtml = '<span style="font-size:10px;padding:1px 6px;border-radius:20px;background:#FAECE7;color:#993C1D;">조기퇴근</span>';
+      else checkoutBadgeHtml = '<span style="font-size:10px;padding:1px 6px;border-radius:20px;background:#E1F5EE;color:#0F6E56;">정상퇴근</span>';
     }
     const memo = att.checkin_field_memo ? ' <span style="font-size:10px;color:var(--blue);">[출근:'+att.checkin_field_memo+']</span>' : (att.field_memo ? ' <span style="font-size:10px;color:var(--amber);">[퇴근:'+att.field_memo+']</span>' : '');
+    const leavePart = leave ? '<div style="margin-top:4px;">'+leaveDayBadge(leave.type)+'</div>' : '';
     el.innerHTML = '<div style="font-size:13px;font-weight:600;margin-bottom:6px;">' + (emp?emp.name:'') + memo + '</div>'
       + '<div style="display:flex;align-items:center;justify-content:space-between;font-size:12px;color:var(--gray-500);margin-bottom:3px;"><div style="display:flex;align-items:center;gap:4px;"><span style="width:28px;">출근</span><span>' + formatTimeKST(att.checkin_time) + '</span></div>' + checkinBadge + '</div>'
-      + '<div style="display:flex;align-items:center;justify-content:space-between;font-size:12px;color:var(--gray-500);"><div style="display:flex;align-items:center;gap:4px;"><span style="width:28px;">퇴근</span><span>' + formatTimeKST(att.checkout_time) + '</span></div>' + checkoutBadgeHtml + '</div>';
+      + '<div style="display:flex;align-items:center;justify-content:space-between;font-size:12px;color:var(--gray-500);"><div style="display:flex;align-items:center;gap:4px;"><span style="width:28px;">퇴근</span><span>' + formatTimeKST(att.checkout_time) + '</span></div>' + checkoutBadgeHtml + '</div>'
+      + leavePart;
+  } else if(leave) {
+    // 출근 기록 없지만 연차인 경우
+    el.innerHTML = '<div style="font-size:13px;font-weight:600;margin-bottom:8px;">' + (emp?emp.name:'') + '</div>'
+      + leaveDayBadge(leave.type);
   } else {
     el.innerHTML = '<div class="empty" style="font-size:12px;">출근 기록이 없습니다</div>';
   }
-  // 특근
   if(otRecs.length) el.innerHTML += overtimeHtml(otRecs);
 }
 
@@ -2614,20 +2641,28 @@ function renderEmpWeek() {
   el.style.textAlign='left';
   el.innerHTML = dates.map(function(ds) {
     const att = attendances.find(function(a){ return a.emp_id===currentEmpId && a.att_date===ds && !a.overtime_checkin; });
+    const leave = getLeaveOnDate(currentEmpId, ds);
     const dateLabel = ds.slice(5).replace('-','월 ')+'일';
     if(att) {
       const s = getAttStatus(att);
-      const checkinBadge = s==='late' ? '<span style="font-size:10px;padding:1px 5px;border-radius:20px;background:#FAEEDA;color:#854F0B;margin-left:3px;">지각</span>' : '<span style="font-size:10px;padding:1px 5px;border-radius:20px;background:#E1F5EE;color:#0F6E56;margin-left:3px;">정상출근</span>';
+      const checkinBadge = s==='late' ? '<span style="font-size:10px;padding:1px 5px;border-radius:20px;background:#FAEEDA;color:#854F0B;">지각</span>' : '<span style="font-size:10px;padding:1px 5px;border-radius:20px;background:#E1F5EE;color:#0F6E56;">정상출근</span>';
       let checkoutBadgeHtml = '';
       if(att.checkout_time) {
-        if(att.early_reason) checkoutBadgeHtml = '<span style="font-size:10px;padding:1px 5px;border-radius:20px;background:#E1F5EE;color:#0F6E56;margin-left:3px;">정상퇴근</span>';
-        else if(att.checkout_status==='early') checkoutBadgeHtml = '<span style="font-size:10px;padding:1px 5px;border-radius:20px;background:#FAECE7;color:#993C1D;margin-left:3px;">조기퇴근</span>';
-        else checkoutBadgeHtml = '<span style="font-size:10px;padding:1px 5px;border-radius:20px;background:#E1F5EE;color:#0F6E56;margin-left:3px;">정상퇴근</span>';
+        if(att.early_reason) checkoutBadgeHtml = '<span style="font-size:10px;padding:1px 5px;border-radius:20px;background:#E1F5EE;color:#0F6E56;">정상퇴근</span>';
+        else if(att.checkout_status==='early') checkoutBadgeHtml = '<span style="font-size:10px;padding:1px 5px;border-radius:20px;background:#FAECE7;color:#993C1D;">조기퇴근</span>';
+        else checkoutBadgeHtml = '<span style="font-size:10px;padding:1px 5px;border-radius:20px;background:#E1F5EE;color:#0F6E56;">정상퇴근</span>';
       }
+      const leavePart = leave ? '<div style="margin-top:3px;">'+leaveDayBadge(leave.type)+'</div>' : '';
       return '<div style="padding:6px 0;border-bottom:0.5px solid var(--gray-100);">'
         + '<div style="font-size:11px;font-weight:600;color:var(--gray-800);margin-bottom:3px;">' + dateLabel + '</div>'
         + '<div style="display:flex;align-items:center;justify-content:space-between;font-size:11px;color:var(--gray-500);margin-bottom:2px;"><div style="display:flex;align-items:center;gap:4px;"><span style="width:26px;">출근</span><span>' + formatTimeKST(att.checkin_time) + '</span></div>' + checkinBadge + '</div>'
         + '<div style="display:flex;align-items:center;justify-content:space-between;font-size:11px;color:var(--gray-500);"><div style="display:flex;align-items:center;gap:4px;"><span style="width:26px;">퇴근</span><span>' + formatTimeKST(att.checkout_time) + '</span></div>' + checkoutBadgeHtml + '</div>'
+        + leavePart
+        + '</div>';
+    } else if(leave) {
+      return '<div style="padding:6px 0;border-bottom:0.5px solid var(--gray-100);display:flex;align-items:center;justify-content:space-between;">'
+        + '<div style="font-size:11px;font-weight:600;color:var(--gray-800);">' + dateLabel + '</div>'
+        + leaveDayBadge(leave.type)
         + '</div>';
     } else {
       return '<div style="padding:6px 0;border-bottom:0.5px solid var(--gray-100);display:flex;align-items:center;justify-content:space-between;">'
