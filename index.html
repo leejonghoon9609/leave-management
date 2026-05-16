@@ -739,11 +739,6 @@ body { font-family: "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; backgrou
     <!-- 내 근태 기록 -->
     <div class="page" id="page-my-records">
       <div class="page-header"><div><div class="page-title">내 근태 기록</div></div></div>
-      <div style="display:flex;gap:8px;margin-bottom:16px;align-items:center;">
-        <button class="filter-btn" onclick="changeMyAttMonth(-1)">← 이전</button>
-        <span id="my-monthly-title" style="font-size:14px;font-weight:600;"></span>
-        <button class="filter-btn" onclick="changeMyAttMonth(1)">다음 →</button>
-      </div>
       <!-- 일자별 테이블 -->
       <div class="card" style="margin-bottom:16px;">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
@@ -758,7 +753,14 @@ body { font-family: "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; backgrou
       </div>
       <!-- 캘린더 -->
       <div class="card" style="margin-bottom:16px;">
-        <div class="card-title">📅 캘린더</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+          <div class="card-title" style="margin-bottom:0;">📅 캘린더</div>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <button class="filter-btn" onclick="changeMyAttMonth(-1)">← 이전</button>
+            <span id="my-monthly-title" style="font-size:13px;font-weight:600;"></span>
+            <button class="filter-btn" onclick="changeMyAttMonth(1)">다음 →</button>
+          </div>
+        </div>
         <div id="my-att-calendar"></div>
       </div>
     </div>
@@ -1993,15 +1995,18 @@ function renderMyAttRecords() {
   const months = ['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'];
   titleEl.textContent = y + '년 ' + months[m];
 
-  // 날짜 picker 기본값: 해당 월 1일 ~ 말일
+  // 날짜 picker 기본값: 이번 주 월~일
   const startEl = document.getElementById('my-rec-start');
   const endEl = document.getElementById('my-rec-end');
   if(startEl && !startEl.value) {
-    startEl.value = y + '-' + String(m+1).padStart(2,'0') + '-01';
-  }
-  if(endEl && !endEl.value) {
-    const lastDay = new Date(y, m+1, 0);
-    endEl.value = lastDay.toISOString().slice(0,10);
+    const today = new Date(nowKST());
+    const dow = today.getDay();
+    const monday = new Date(today);
+    monday.setDate(today.getDate() - (dow === 0 ? 6 : dow - 1));
+    const sunday = new Date(monday);
+    sunday.setDate(monday.getDate() + 6);
+    startEl.value = monday.toISOString().slice(0,10);
+    endEl.value = sunday.toISOString().slice(0,10);
   }
 
   renderMyAttCalendar(y, m);
@@ -2163,14 +2168,12 @@ function changeAttMonth(dir) {
 }
 function changeMyAttMonth(dir) {
   myCurrentAttMonth=new Date(myCurrentAttMonth.getFullYear(), myCurrentAttMonth.getMonth()+dir);
-  // picker 값 해당 월로 초기화
   const y = myCurrentAttMonth.getFullYear();
   const m = myCurrentAttMonth.getMonth();
-  const startEl = document.getElementById('my-rec-start');
-  const endEl = document.getElementById('my-rec-end');
-  if(startEl) startEl.value = y + '-' + String(m+1).padStart(2,'0') + '-01';
-  if(endEl) endEl.value = new Date(y, m+1, 0).toISOString().slice(0,10);
-  renderMyAttRecords();
+  const months = ['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'];
+  const titleEl = document.getElementById('my-monthly-title');
+  if(titleEl) titleEl.textContent = y + '년 ' + months[m];
+  renderMyAttCalendar(y, m);
 }
 
 // ===== 출퇴근 =====
