@@ -767,15 +767,8 @@ const TEAM_VIEWERS = {
 function isTeamLeader(name) { return !!TEAM_LEADERS[name]; }
 function isTeamViewer(name) { return !!TEAM_VIEWERS[name]; }
 function getLeaderDept(name) { return TEAM_LEADERS[name] || TEAM_VIEWERS[name] || null; }
-// 팀장이 관할하는 부서 배열 반환 (김성한은 측량부+측량부(DB) 전체)
-function getLeaderDepts(name) {
-  const dept = getLeaderDept(name);
-  if(!dept) return [];
-  if(name === '김성한') return ['측량부', '측량부(DB)'];
-  return [dept];
-}
 function isInLeaderDept(empDept, leaderName) {
-  return getLeaderDepts(leaderName).includes(empDept);
+  return empDept === getLeaderDept(leaderName);
 }
 
 let employees = [], requests = [], attendances = [];
