@@ -1457,11 +1457,13 @@ function renderCalendar(bodyId, headId, titleId, legendId, filterFn, calMonth) {
   const approved = requests.filter(function(r){ return r.status==='approved' && (!filterFn || filterFn(r)); });
   const dateMap = {};
   approved.forEach(function(r) {
+    const isDocConfirmed = (r.type==='병가'||r.type==='예비군/민방위') && r.doc_status==='confirmed';
+    const displayReason = isDocConfirmed ? '서류제출 연차차감' : (r.reason||'');
     let d=new Date(r.start_date); const end=new Date(r.end_date);
     while(d<=end) {
       const k=d.toISOString().slice(0,10);
       if(!dateMap[k]) dateMap[k]=[];
-      dateMap[k].push({ empId:r.emp_id, reason:r.reason||'' });
+      dateMap[k].push({ empId:r.emp_id, reason:displayReason, isDocConfirmed:isDocConfirmed });
       d.setDate(d.getDate()+1);
     }
   });
@@ -1477,10 +1479,12 @@ function renderCalendar(bodyId, headId, titleId, legendId, filterFn, calMonth) {
     else if(items.length===1) {
       const e=getEmpById(items[0].empId);
       const idx=employees.findIndex(function(x){ return x.id===items[0].empId; });
-      html+='<div class="cal-day '+leaveColors[idx%4]+'" style="flex-direction:column;height:auto;min-height:32px;padding:2px;font-size:10px;align-items:flex-start;justify-content:flex-start;" title="'+(e?e.name:'')+' '+items[0].reason+'"><div style="font-weight:700;font-size:11px;">'+d+'</div><div style="font-size:9px;line-height:1.2;">'+(e?e.name:'')+'</div>'+(items[0].reason?'<div style="font-size:8px;opacity:0.8;">'+items[0].reason+'</div>':'')+'</div>';
+      const docStyle = items[0].isDocConfirmed ? 'color:#8E44AD;font-weight:600;' : 'opacity:0.8;';
+      html+='<div class="cal-day '+leaveColors[idx%4]+'" style="flex-direction:column;height:auto;min-height:32px;padding:2px;font-size:10px;align-items:flex-start;justify-content:flex-start;" title="'+(e?e.name:'')+' '+items[0].reason+'"><div style="font-weight:700;font-size:11px;">'+d+'</div><div style="font-size:9px;line-height:1.2;">'+(e?e.name:'')+'</div>'+(items[0].reason?'<div style="font-size:8px;'+docStyle+'">'+items[0].reason+'</div>':'')+'</div>';
     } else {
       const names=items.map(function(it){ const e=getEmpById(it.empId); return e?e.name:''; }).join(', ');
-      html+='<div class="cal-day leave-multi" style="flex-direction:column;height:auto;min-height:32px;padding:2px;font-size:10px;align-items:flex-start;justify-content:flex-start;"><div style="font-weight:700;font-size:11px;">'+d+'</div><div style="font-size:9px;line-height:1.2;">'+names+'</div></div>';
+      const hasDoc = items.some(function(it){ return it.isDocConfirmed; });
+      html+='<div class="cal-day leave-multi" style="flex-direction:column;height:auto;min-height:32px;padding:2px;font-size:10px;align-items:flex-start;justify-content:flex-start;"><div style="font-weight:700;font-size:11px;">'+d+'</div><div style="font-size:9px;line-height:1.2;">'+names+'</div>'+(hasDoc?'<div style="font-size:8px;color:#8E44AD;font-weight:600;">서류제출 연차차감</div>':'')+'</div>';
     }
   }
   document.getElementById(bodyId).innerHTML = html;
