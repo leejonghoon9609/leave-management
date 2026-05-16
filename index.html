@@ -337,9 +337,8 @@ body { font-family: "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; backgrou
       <div class="nav-section">📋 연차관리</div>
       <div class="nav-item" onclick="showPage('apply',this)"><span>✏️</span> 연차신청</div>
       <div class="nav-item" onclick="showPage('my-leave',this)"><span>🏖️</span> 내 연차 기록</div>
-      <div class="nav-item" onclick="showPage('manager-dashboard',this)"><span>📊</span> 팀 연차 대시보드</div>
+      <div class="nav-item" onclick="showPage('manager-dashboard',this)"><span>📊</span> 팀 연차현황</div>
       <div class="nav-item" onclick="showPage('manager-requests',this)"><span>📝</span> 팀 신청 관리</div>
-      <div class="nav-item" onclick="showPage('my-calendar',this)"><span>📅</span> 팀 캘린더</div>
     </div>
 
     <!-- 직원 메뉴 -->
@@ -412,30 +411,17 @@ body { font-family: "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; backgrou
     <!-- 팀장 대시보드 -->
     <div class="page" id="page-manager-dashboard">
       <div class="page-header">
-        <div><div class="page-title">팀 연차 대시보드</div><div class="page-sub" id="manager-dash-sub"></div></div>
+        <div><div class="page-title">팀 연차 현황</div><div class="page-sub" id="manager-dash-sub"></div></div>
         <div class="last-updated" id="manager-last-updated"></div>
       </div>
-      <div class="metrics" style="grid-template-columns:repeat(3,1fr);margin-bottom:12px;">
-        <div class="metric-card" style="padding:12px 16px;"><div class="metric-label" style="font-size:11px;">팀원 수</div><div class="metric-value" style="font-size:20px;" id="mm-total">-</div><div class="metric-unit" style="font-size:11px;">명</div></div>
-        <div class="metric-card amber" style="padding:12px 16px;"><div class="metric-label" style="font-size:11px;">대기 중</div><div class="metric-value" style="font-size:20px;" id="mm-pending">-</div><div class="metric-unit" style="font-size:11px;">건</div></div>
-        <div class="metric-card green" style="padding:12px 16px;"><div class="metric-label" style="font-size:11px;">승인된 신청</div><div class="metric-value" style="font-size:20px;" id="mm-approved">-</div><div class="metric-unit" style="font-size:11px;">건</div></div>
+      <div class="metrics" style="grid-template-columns:repeat(3,1fr);">
+        <div class="metric-card"><div class="metric-label">팀원 수</div><div class="metric-value" id="mm-total">-</div><div class="metric-unit">명</div></div>
+        <div class="metric-card amber"><div class="metric-label">대기 중</div><div class="metric-value" id="mm-pending">-</div><div class="metric-unit">건</div></div>
+        <div class="metric-card green"><div class="metric-label">승인된 신청</div><div class="metric-value" id="mm-approved">-</div><div class="metric-unit">건</div></div>
       </div>
-      <div class="grid-2" style="margin-bottom:16px;">
+      <div class="grid-2">
         <div class="card"><div class="card-title">⏳ 대기 중인 신청</div><div id="manager-pending-list"><div class="loading">불러오는 중...</div></div></div>
         <div class="card"><div class="card-title">📈 팀원 연차 현황</div><div id="manager-emp-progress"><div class="loading">불러오는 중...</div></div></div>
-      </div>
-      <div class="card">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
-          <div class="card-title" style="margin-bottom:0;">📅 팀 캘린더</div>
-          <div style="display:flex;align-items:center;gap:8px;">
-            <button class="cal-btn" onclick="changeMgrDashCal(-1)">←</button>
-            <span id="cal-title-mgr" style="font-size:13px;font-weight:600;"></span>
-            <button class="cal-btn" onclick="changeMgrDashCal(1)">→</button>
-          </div>
-        </div>
-        <div class="cal-grid" id="cal-head-mgr"></div>
-        <div class="cal-grid" style="margin-top:4px;" id="cal-body-mgr"></div>
-        <div class="cal-legend" id="cal-legend-mgr"></div>
       </div>
     </div>
 
@@ -736,7 +722,6 @@ let currentRole = null, currentEmpId = null, currentDept = null, currentPage = '
 let teamTodayDate = new Date();  // 팀 출퇴근일람 날짜
 let myTodayDate = new Date();    // 내 출퇴근일람 날짜
 let currentLeaveMonth = new Date(CY, new Date().getMonth());
-let mgrDashCalMonth = new Date(CY, new Date().getMonth());
 let currentAttMonth = new Date();
 let myCurrentAttMonth = new Date();
 let currentAttFilter = 'all';
@@ -1188,21 +1173,6 @@ function renderManagerLeaveDashboard() {
       return '<div class="req-row"><div class="avatar ' + avClass(idx) + '">' + ini(e.name) + '</div><div class="progress-wrap"><div style="display:flex;justify-content:space-between;font-size:12px;"><span style="font-weight:600">' + e.name + '</span><span style="color:var(--gray-400)">잔여 '+rem+'/'+total+'일</span></div><div class="progress-bar"><div class="progress-fill ' + (pct>80?'danger':'') + '" style="width:'+pct+'%"></div></div></div></div>';
     }).join('');
   }
-  // 팀 캘린더 렌더
-  const myEmpForCal = getEmpById(currentEmpId);
-  renderCalendar('cal-body-mgr','cal-head-mgr','cal-title-mgr','cal-legend-mgr',
-    function(r){ const e=getEmpById(r.emp_id); return e && e.dept===myEmpForCal.dept; },
-    mgrDashCalMonth
-  );
-}
-
-function changeMgrDashCal(dir) {
-  mgrDashCalMonth = new Date(mgrDashCalMonth.getFullYear(), mgrDashCalMonth.getMonth()+dir);
-  const myEmpForCal = getEmpById(currentEmpId);
-  renderCalendar('cal-body-mgr','cal-head-mgr','cal-title-mgr','cal-legend-mgr',
-    function(r){ const e=getEmpById(r.emp_id); return e && e.dept===myEmpForCal.dept; },
-    mgrDashCalMonth
-  );
 }
 
 let mgrReqTab = 'week';
@@ -1357,9 +1327,8 @@ function renderMyLeave() {
   }).join('');
 }
 
-function renderCalendar(bodyId, headId, titleId, legendId, filterFn, calMonth) {
-  const refMonth = calMonth || currentLeaveMonth;
-  const y=refMonth.getFullYear(), m=refMonth.getMonth();
+function renderCalendar(bodyId, headId, titleId, legendId, filterFn) {
+  const y=currentLeaveMonth.getFullYear(), m=currentLeaveMonth.getMonth();
   const months=['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'];
   document.getElementById(titleId).textContent = y+'년 '+months[m];
   document.getElementById(headId).innerHTML = ['일','월','화','수','목','금','토'].map(function(d){ return '<div class="cal-head">'+d+'</div>'; }).join('');
