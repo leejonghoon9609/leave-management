@@ -704,7 +704,34 @@ body { font-family: "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; backgrou
         <div class="checkin-status" id="checkin-status">오늘 출근 기록이 없습니다</div>
         <div class="gps-info" id="gps-info"></div>
       </div>
-      <div class="card" id="my-week-card"><div class="card-title">📋 이번 주 내 기록</div><div id="my-week-records"><div class="loading">불러오는 중...</div></div></div>
+      <div class="card" id="my-week-card" style="display:none;"><div class="card-title">📋 이번 주 내 기록</div><div id="my-week-records"><div class="loading">불러오는 중...</div></div></div>
+      <!-- 직원 전용: 내 출퇴근일람 + 이번 주 내 기록 -->
+      <div id="employee-today-section" style="display:none;margin-top:0;">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+          <div class="card" style="margin-bottom:0;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+              <div class="card-title" style="margin-bottom:0;">📅 내 출퇴근일람</div>
+              <div style="display:flex;align-items:center;gap:6px;">
+                <button onclick="changeEmpDate(-1)" style="padding:2px 8px;font-size:12px;border:1px solid var(--gray-200);border-radius:4px;background:white;cursor:pointer;">←</button>
+                <span id="emp-today-date" style="font-size:12px;font-weight:600;color:var(--gray-600);"></span>
+                <button onclick="changeEmpDate(1)" style="padding:2px 8px;font-size:12px;border:1px solid var(--gray-200);border-radius:4px;background:white;cursor:pointer;">→</button>
+              </div>
+            </div>
+            <div id="emp-today-record"><div class="loading">불러오는 중...</div></div>
+          </div>
+          <div class="card" style="margin-bottom:0;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+              <div class="card-title" style="margin-bottom:0;">📋 이번 주 내 기록</div>
+              <div style="display:flex;align-items:center;gap:6px;">
+                <button onclick="changeEmpWeek(-1)" style="padding:2px 8px;font-size:12px;border:1px solid var(--gray-200);border-radius:4px;background:white;cursor:pointer;">←</button>
+                <span id="emp-week-label" style="font-size:12px;font-weight:600;color:var(--gray-600);"></span>
+                <button onclick="changeEmpWeek(1)" style="padding:2px 8px;font-size:12px;border:1px solid var(--gray-200);border-radius:4px;background:white;cursor:pointer;">→</button>
+              </div>
+            </div>
+            <div id="emp-week-records"><div class="loading">불러오는 중...</div></div>
+          </div>
+        </div>
+      </div>
       <!-- 팀장 전용: 팀 출퇴근일람 -->
       <div id="team-today-section" style="display:none;margin-top:32px;">
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:0;">
@@ -1951,16 +1978,21 @@ function renderCheckin() {
     if(overtimeCheckoutBtn) { overtimeCheckoutBtn.disabled=true; overtimeCheckoutBtn.style.opacity='0.5'; }
   }
   renderMyWeek();
-  // 팀장/뷰어이면 팀 출퇴근일람 표시, 이번주 내기록 숨김
+  // 팀장/뷰어이면 팀 출퇴근일람 표시, 직원이면 내 출퇴근일람+주간기록 표시
   const teamSection = document.getElementById('team-today-section');
   const myWeekCard = document.getElementById('my-week-card');
+  const empSection = document.getElementById('employee-today-section');
   if(emp && (isTeamLeader(emp.name) || isTeamViewer(emp.name))) {
     if(teamSection) teamSection.style.display = 'block';
     if(myWeekCard) myWeekCard.style.display = 'none';
+    if(empSection) empSection.style.display = 'none';
     renderTeamToday();
   } else {
     if(teamSection) teamSection.style.display = 'none';
-    if(myWeekCard) myWeekCard.style.display = 'block';
+    if(myWeekCard) myWeekCard.style.display = 'none';
+    if(empSection) empSection.style.display = 'block';
+    renderEmpToday();
+    renderEmpWeek();
   }
 }
 
@@ -2496,6 +2528,113 @@ function renderTeamMemberToday() {
     }
     rowHtml += overtimeHtml(otRecs);
     return rowHtml;
+  }).join('');
+}
+
+// ===== 직원 출퇴근일람 + 주간기록 =====
+let empTodayDate = new Date(nowKST());
+let empWeekOffset = 0;
+
+function renderEmpToday() {
+  const dateStr = empTodayDate.toISOString().slice(0, 10);
+  const displayDate = empTodayDate.toLocaleDateString('ko-KR', {month:'numeric', day:'numeric', weekday:'short'});
+  const dateEl = document.getElementById('emp-today-date');
+
+  const emp = getEmpById(currentEmpId);
+  const el = document.getElementById('emp-today-record');
+  if(!el) return;
+
+  const att = attendances.find(function(a){ return a.emp_id===currentEmpId && a.att_date===dateStr && !a.overtime_checkin; });
+  const otRecs = attendances.filter(function(a){ return a.emp_id===currentEmpId && a.att_date===dateStr && (a.overtime_checkin||a.overtime_checkout); });
+
+  el.style.textAlign = 'left';
+
+  if(att) {
+    const s = getAttStatus(att);
+    const checkinBadge = s==='late' ? '<span style="font-size:10px;padding:1px 6px;border-radius:20px;background:#FAEEDA;color:#854F0B;margin-left:4px;">지각</span>' : '<span style="font-size:10px;padding:1px 6px;border-radius:20px;background:#E1F5EE;color:#0F6E56;margin-left:4px;">정상출근</span>';
+    let checkoutBadgeHtml = '';
+    if(att.checkout_time) {
+      if(att.early_reason) checkoutBadgeHtml = '<span style="font-size:10px;padding:1px 6px;border-radius:20px;background:#E1F5EE;color:#0F6E56;margin-left:4px;">정상퇴근</span>';
+      else if(att.checkout_status==='early') checkoutBadgeHtml = '<span style="font-size:10px;padding:1px 6px;border-radius:20px;background:#FAECE7;color:#993C1D;margin-left:4px;">조기퇴근</span>';
+      else checkoutBadgeHtml = '<span style="font-size:10px;padding:1px 6px;border-radius:20px;background:#E1F5EE;color:#0F6E56;margin-left:4px;">정상퇴근</span>';
+    }
+    const memo = att.checkin_field_memo ? ' <span style="font-size:10px;color:var(--blue);">[출근:'+att.checkin_field_memo+']</span>' : (att.field_memo ? ' <span style="font-size:10px;color:var(--amber);">[퇴근:'+att.field_memo+']</span>' : '');
+    el.innerHTML = '<div style="font-size:13px;font-weight:600;margin-bottom:6px;">' + (emp?emp.name:'') + memo + '</div>'
+      + '<div style="display:flex;align-items:center;gap:4px;font-size:12px;color:var(--gray-500);margin-bottom:3px;"><span style="width:28px;">출근</span><span>' + formatTimeKST(att.checkin_time) + '</span>' + checkinBadge + '</div>'
+      + '<div style="display:flex;align-items:center;gap:4px;font-size:12px;color:var(--gray-500);"><span style="width:28px;">퇴근</span><span>' + formatTimeKST(att.checkout_time) + '</span>' + checkoutBadgeHtml + '</div>';
+  } else {
+    el.innerHTML = '<div class="empty" style="font-size:12px;">출근 기록이 없습니다</div>';
+  }
+  // 특근
+  if(otRecs.length) el.innerHTML += overtimeHtml(otRecs);
+}
+
+function changeEmpDate(dir) {
+  empTodayDate = new Date(empTodayDate);
+  empTodayDate.setDate(empTodayDate.getDate() + dir);
+  renderEmpToday();
+}
+
+function changeEmpWeek(dir) {
+  empWeekOffset += dir;
+  renderEmpWeek();
+}
+
+function renderEmpWeek() {
+  const el = document.getElementById('emp-week-records');
+  const labelEl = document.getElementById('emp-week-label');
+  if(!el) return;
+
+  const today = new Date(nowKST());
+  const dow = today.getDay();
+  const thisMonday = new Date(today);
+  thisMonday.setDate(today.getDate() - (dow===0?6:dow-1));
+
+  const monday = new Date(thisMonday);
+  monday.setDate(monday.getDate() + empWeekOffset*7);
+  const sunday = new Date(monday);
+  sunday.setDate(monday.getDate()+6);
+
+  const mondayStr = monday.toISOString().slice(0,10);
+  const sundayStr = sunday.toISOString().slice(0,10);
+  const endStr = sundayStr < todayStrKST() ? sundayStr : todayStrKST();
+
+  if(labelEl) labelEl.textContent = mondayStr.slice(5)+' ~ '+sundayStr.slice(5);
+
+  // 날짜 목록 (평일)
+  const dates = [];
+  const c = new Date(monday);
+  while(c <= sunday) {
+    if(c.getDay()!==0&&c.getDay()!==6) dates.push(c.toISOString().slice(0,10));
+    c.setDate(c.getDate()+1);
+  }
+
+  if(!dates.length) { el.innerHTML='<div class="empty">기록이 없습니다</div>'; return; }
+
+  el.style.textAlign='left';
+  el.innerHTML = dates.map(function(ds) {
+    const att = attendances.find(function(a){ return a.emp_id===currentEmpId && a.att_date===ds && !a.overtime_checkin; });
+    const dateLabel = ds.slice(5).replace('-','월 ')+'일';
+    if(att) {
+      const s = getAttStatus(att);
+      const checkinBadge = s==='late' ? '<span style="font-size:10px;padding:1px 5px;border-radius:20px;background:#FAEEDA;color:#854F0B;margin-left:3px;">지각</span>' : '<span style="font-size:10px;padding:1px 5px;border-radius:20px;background:#E1F5EE;color:#0F6E56;margin-left:3px;">정상출근</span>';
+      let checkoutBadgeHtml = '';
+      if(att.checkout_time) {
+        if(att.early_reason) checkoutBadgeHtml = '<span style="font-size:10px;padding:1px 5px;border-radius:20px;background:#E1F5EE;color:#0F6E56;margin-left:3px;">정상퇴근</span>';
+        else if(att.checkout_status==='early') checkoutBadgeHtml = '<span style="font-size:10px;padding:1px 5px;border-radius:20px;background:#FAECE7;color:#993C1D;margin-left:3px;">조기퇴근</span>';
+        else checkoutBadgeHtml = '<span style="font-size:10px;padding:1px 5px;border-radius:20px;background:#E1F5EE;color:#0F6E56;margin-left:3px;">정상퇴근</span>';
+      }
+      return '<div style="padding:6px 0;border-bottom:0.5px solid var(--gray-100);">'
+        + '<div style="font-size:11px;font-weight:600;color:var(--gray-800);margin-bottom:3px;">' + dateLabel + '</div>'
+        + '<div style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--gray-500);margin-bottom:2px;"><span style="width:26px;">출근</span><span>' + formatTimeKST(att.checkin_time) + '</span>' + checkinBadge + '</div>'
+        + '<div style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--gray-500);"><span style="width:26px;">퇴근</span><span>' + formatTimeKST(att.checkout_time) + '</span>' + checkoutBadgeHtml + '</div>'
+        + '</div>';
+    } else {
+      return '<div style="padding:6px 0;border-bottom:0.5px solid var(--gray-100);display:flex;align-items:center;justify-content:space-between;">'
+        + '<div style="font-size:11px;font-weight:600;color:var(--gray-800);">' + dateLabel + '</div>'
+        + '<span style="font-size:10px;padding:1px 5px;border-radius:20px;background:#FCEBEB;color:#A32D2D;">결근</span>'
+        + '</div>';
+    }
   }).join('');
 }
 
