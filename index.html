@@ -468,7 +468,30 @@ body { font-family: "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; backgrou
     <div class="page" id="page-my-leave">
       <div class="page-header"><div><div class="page-title">내 연차</div><div class="page-sub" id="my-leave-sub"></div></div></div>
       <div class="metrics" style="grid-template-columns:repeat(3,1fr);" id="my-metrics"></div>
-      <div class="card"><div class="card-title">📋 내 신청 내역</div><div id="my-requests"><div class="loading">불러오는 중...</div></div></div>
+      <div class="card">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+          <div class="card-title" style="margin-bottom:0;">📋 내 신청 내역</div>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <button class="cal-btn" onclick="changeMyLeaveMonth(-1)">←</button>
+            <span id="my-leave-month-label" style="font-size:12px;font-weight:600;min-width:90px;text-align:center;"></span>
+            <button class="cal-btn" onclick="changeMyLeaveMonth(1)">→</button>
+          </div>
+        </div>
+        <div id="my-requests"><div class="loading">불러오는 중...</div></div>
+      </div>
+      <div class="card">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+          <div class="card-title" style="margin-bottom:0;">📅 내 캘린더</div>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <button class="cal-btn" onclick="changeMyLeaveCal(-1)">←</button>
+            <span id="cal-title-my-leave" style="font-size:13px;font-weight:600;min-width:90px;text-align:center;"></span>
+            <button class="cal-btn" onclick="changeMyLeaveCal(1)">→</button>
+          </div>
+        </div>
+        <div class="cal-grid" id="cal-head-my-leave"></div>
+        <div class="cal-grid" style="margin-top:4px;" id="cal-body-my-leave"></div>
+        <div class="cal-legend" id="cal-legend-my-leave"></div>
+      </div>
     </div>
 
     <!-- 연차 신청하기 -->
@@ -1354,14 +1377,40 @@ function renderMgrReqEmpTable() {
   el.innerHTML = html;
 }
 
-function renderMyLeave() {
-  const empData = getEmpById(currentEmpId); if(!empData) return;
-  const years=getYears(empData), total=getTotal(empData), used=getUsed(empData), rem=getRemaining(empData);
-  document.getElementById('my-metrics').innerHTML = '<div class="metric-card blue"><div class="metric-label">근속 / 연차 부여</div><div class="metric-value">'+years+'년</div><div class="metric-unit">'+total+'일 부여</div></div><div class="metric-card amber"><div class="metric-label">사용한 연차</div><div class="metric-value">'+used+'</div><div class="metric-unit">일</div></div><div class="metric-card green"><div class="metric-label">남은 연차</div><div class="metric-value">'+rem+'</div><div class="metric-unit">일</div></div>';
-  document.getElementById('rem-info').textContent = '현재 잔여 연차: ' + rem + '일 (총 ' + total + '일 중 ' + used + '일 사용)';
-  const mine = requests.filter(function(r){ return r.emp_id===currentEmpId; });
+let myLeaveMonth = new Date(new Date().getFullYear(), new Date().getMonth());
+let myLeaveCalMonth = new Date(new Date().getFullYear(), new Date().getMonth());
+
+function changeMyLeaveMonth(dir) {
+  myLeaveMonth = new Date(myLeaveMonth.getFullYear(), myLeaveMonth.getMonth() + dir);
+  renderMyLeaveRequests();
+}
+
+function changeMyLeaveCal(dir) {
+  myLeaveCalMonth = new Date(myLeaveCalMonth.getFullYear(), myLeaveCalMonth.getMonth() + dir);
+  renderMyLeaveCalendar();
+}
+
+function renderMyLeaveCalendar() {
+  renderCalendar('cal-body-my-leave','cal-head-my-leave','cal-title-my-leave','cal-legend-my-leave',
+    function(r){ return r.emp_id === currentEmpId; },
+    myLeaveCalMonth
+  );
+}
+
+function renderMyLeaveRequests() {
+  const months = ['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'];
+  const y = myLeaveMonth.getFullYear();
+  const m = myLeaveMonth.getMonth();
+  const labelEl = document.getElementById('my-leave-month-label');
+  if(labelEl) labelEl.textContent = y + '년 ' + months[m];
+
+  const startStr = y + '-' + String(m+1).padStart(2,'0') + '-01';
+  const endStr = new Date(y, m+1, 0).toISOString().slice(0,10);
+  const mine = requests.filter(function(r){
+    return r.emp_id === currentEmpId && r.start_date >= startStr && r.start_date <= endStr;
+  });
   const el = document.getElementById('my-requests');
-  if(!mine.length) { el.innerHTML = '<div class="empty">신청 내역이 없습니다</div>'; return; }
+  if(!mine.length) { el.innerHTML = '<div class="empty">이 달의 신청 내역이 없습니다</div>'; return; }
   el.innerHTML = mine.map(function(r) {
     let docHtml = '';
     if((r.type==='병가'||r.type==='예비군/민방위') && r.status==='approved' && !r.doc_url) {
@@ -1370,6 +1419,15 @@ function renderMyLeave() {
     }
     return '<div class="req-row" style="flex-wrap:wrap;"><div class="req-info" style="width:100%;"><div class="req-name">'+r.type+'</div><div class="req-detail">'+r.start_date+' ~ '+r.end_date+' · '+r.days+'일'+(r.reason?' · '+r.reason:'')+'</div>'+(r.status==='rejected'&&r.reject_reason?'<div style="font-size:11px;color:var(--red);margin-top:3px;">❌ 거절: '+r.reject_reason+'</div>':'')+docHtml+'</div>'+leaveBadge(r.status)+'</div>';
   }).join('');
+}
+
+function renderMyLeave() {
+  const empData = getEmpById(currentEmpId); if(!empData) return;
+  const years=getYears(empData), total=getTotal(empData), used=getUsed(empData), rem=getRemaining(empData);
+  document.getElementById('my-metrics').innerHTML = '<div class="metric-card blue"><div class="metric-label">근속 / 연차 부여</div><div class="metric-value">'+years+'년</div><div class="metric-unit">'+total+'일 부여</div></div><div class="metric-card amber"><div class="metric-label">사용한 연차</div><div class="metric-value">'+used+'</div><div class="metric-unit">일</div></div><div class="metric-card green"><div class="metric-label">남은 연차</div><div class="metric-value">'+rem+'</div><div class="metric-unit">일</div></div>';
+  document.getElementById('rem-info').textContent = '현재 잔여 연차: ' + rem + '일 (총 ' + total + '일 중 ' + used + '일 사용)';
+  renderMyLeaveRequests();
+  renderMyLeaveCalendar();
 }
 
 function renderCalendar(bodyId, headId, titleId, legendId, filterFn, calMonth) {
