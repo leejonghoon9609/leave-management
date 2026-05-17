@@ -2521,10 +2521,18 @@ async function cancelAttendance(attId, empId) {
   const name = emp ? emp.name : '직원';
   if(!confirm(name + '의 출근 기록을 삭제하시겠습니까?')) return;
   try {
-    await dbDelete('attendances', attId);
+    const ok = await dbDelete('attendances', attId);
+    if(!ok) { alert('삭제 중 오류가 발생했습니다.'); return; }
+    // 로컬 즉시 제거
     attendances = attendances.filter(function(a){ return a.id !== attId; });
-    loadData();
-    alert('출근 기록이 삭제되었습니다.');
+    // 현재 페이지 즉시 재렌더링
+    if(currentPage==='checkin') renderCheckin();
+    else if(currentPage==='leave-dashboard') renderAttDashboard();
+    // DB에서 최신 데이터 재로드
+    await loadData();
+    // 재로드 후 다시 렌더링
+    if(currentPage==='checkin') renderCheckin();
+    else if(currentPage==='leave-dashboard') renderAttDashboard();
   } catch(e) {
     alert('삭제 중 오류가 발생했습니다.');
   }
