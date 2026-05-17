@@ -869,7 +869,15 @@ function formatTimeKST(isoStr) {
 async function dbGet(table, extra) {
   let url = SUPABASE_URL + '/rest/v1/' + table + '?select=*';
   if(extra) url += '&' + extra;
-  const res = await fetch(url, { headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY } });
+  url += '&_=' + Date.now(); // 캐시 방지
+  const res = await fetch(url, {
+    headers: {
+      'apikey': SUPABASE_ANON_KEY,
+      'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
+      'Cache-Control': 'no-cache, no-store',
+      'Pragma': 'no-cache'
+    }
+  });
   if(!res.ok) return [];
   return await res.json();
 }
