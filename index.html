@@ -2527,9 +2527,9 @@ async function cancelAttendance(attId, empId) {
   }
 }
 
-// 취소 버튼 표시 여부
+// 취소 버튼 표시 여부 - 관리자만 가능
 function canCancel(empId) {
-  return currentRole === 'admin' || currentEmpId === empId;
+  return currentRole === 'admin';
 }
 
 function cancelBtnHtml(attId, empId) {
