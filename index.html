@@ -2573,13 +2573,14 @@ function renderMyToday() {
 
 // ===== 출근 취소 =====
 window.cancelAtt = async function(attId, empId) {
+  attId = Number(attId); empId = Number(empId);
   const emp = getEmpById(empId);
   const name = emp ? emp.name : '직원';
   if(!confirm(name + '의 기록을 삭제하시겠습니까?')) return;
   try {
     const ok = await dbDelete('attendances', attId);
     if(!ok) { alert('삭제 실패'); return; }
-    attendances = attendances.filter(function(a){ return String(a.id) !== String(attId); });
+    attendances = attendances.filter(function(a){ return Number(a.id) !== attId; });
     if(currentPage==='att-dashboard') renderAttDashboard();
     else if(currentPage==='checkin') renderCheckin();
     else if(currentPage==='team-att') renderTeamAtt();
@@ -2600,8 +2601,9 @@ document.addEventListener('click', function(ev) {
   if (!btn) return;
   const attId = btn.dataset.attId;
   const empId = btn.dataset.empId;
+  console.log('취소 버튼 클릭됨 attId:', attId, 'empId:', empId);
   if (attId && empId) {
-    window.cancelAtt(attId, empId);
+    window.cancelAtt(Number(attId), Number(empId));
   }
 });
 
