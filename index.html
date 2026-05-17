@@ -2924,7 +2924,9 @@ async function confirmOvertimeAction() {
       document.getElementById('checkin-status').textContent = '🌙 ' + formatTimeKST(nowISO) + ' 특근 퇴근 완료 (' + memo + ')';
     }
   }
-  await loadData(); renderAll();
+  await loadData();
+  renderAll();
+  if(currentPage === 'checkin') renderCheckin();
 }
 
 // ===== 특근 현황 =====
