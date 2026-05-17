@@ -1830,7 +1830,7 @@ function renderAttDashboard() {
           const otMemo = ot.overtime_memo ? ' <span style="font-size:10px;color:#8E44AD;">('+ot.overtime_memo+')</span>' : '';
           const otGps = ot.checkin_lat ? ' <a href="https://maps.google.com/?q='+ot.checkin_lat+','+ot.checkin_lng+'" target="_blank" style="font-size:11px;color:var(--blue);">📍</a>' : '';
           const otCancelBtn = !ot.overtime_checkout ? '<span style="font-size:10px;color:var(--gray-400);cursor:pointer;text-decoration:underline;margin-left:6px;" onclick="cancelAttendance('+ot.id+',\''+e.id+'\')">취소</span>' : '';
-          return '<div style="font-size:11px;color:#8E44AD;margin-top:3px;padding-left:4px;display:flex;align-items:center;justify-content:space-between;"><span>🌙 특근'+otMemo+otGps+' · 출근 '+formatTimeKST(ot.overtime_checkin)+(ot.overtime_checkout?' · 퇴근 '+formatTimeKST(ot.overtime_checkout):'')+'<span class="badge" style="background:#EEEDFE;color:#534AB7;font-size:10px;margin-left:4px;">'+(ot.overtime_checkout?'특근퇴근':'특근출근')+'</span></span>'+otCancelBtn+'</div>';
+          return '<div style="font-size:11px;color:#8E44AD;margin-top:3px;padding-left:4px;display:flex;align-items:center;justify-content:space-between;"><span>🌙 특근'+otMemo+otGps+' · 출근 '+formatTimeKST(ot.overtime_checkin)+(ot.overtime_checkout?' · 퇴근 '+formatTimeKST(ot.overtime_checkout)+(ot.checkout_lat?' <a href="https://maps.google.com/?q='+ot.checkout_lat+','+ot.checkout_lng+'" target="_blank" style="font-size:11px;color:var(--red);">📍</a>':''): '')+'<span class="badge" style="background:#EEEDFE;color:#534AB7;font-size:10px;margin-left:4px;">'+(ot.overtime_checkout?'특근퇴근':'특근출근')+'</span></span>'+otCancelBtn+'</div>';
         }).join('');
         const cancelBtn = !a.checkout_time ? '<span style="font-size:10px;color:var(--gray-400);cursor:pointer;text-decoration:underline;margin-left:6px;" onclick="cancelAttendance('+a.id+',\''+e.id+'\')">취소</span>' : '';
         return '<div class="att-row" style="flex-wrap:wrap;"><div class="avatar '+avClass(idx)+'">'+ini(e.name)+'</div><div class="att-info" style="flex:1;"><div class="att-name" style="display:flex;align-items:center;justify-content:space-between;">'+e.name+fm+cancelBtn+'</div><div class="att-detail">출근 '+formatTimeKST(a.checkin_time)+gps+' · 퇴근 '+formatTimeKST(a.checkout_time)+gps2+'</div>'+otHtml+'</div>'+attBadge(s)+cb+'</div>';
@@ -1850,7 +1850,7 @@ function renderAttDashboard() {
           const otMemo = ot.overtime_memo ? ' <span style="font-size:10px;color:#8E44AD;">('+ot.overtime_memo+')</span>' : '';
           const otGps = ot.checkin_lat ? ' <a href="https://maps.google.com/?q='+ot.checkin_lat+','+ot.checkin_lng+'" target="_blank" style="font-size:11px;color:var(--blue);">📍</a>' : '';
           const otCancelBtn = !ot.overtime_checkout ? '<span style="font-size:10px;color:var(--gray-400);cursor:pointer;text-decoration:underline;margin-left:6px;" onclick="cancelAttendance('+ot.id+',\''+e.id+'\')">취소</span>' : '';
-          return '<div style="font-size:11px;color:#8E44AD;margin-top:3px;padding-left:4px;display:flex;align-items:center;justify-content:space-between;"><span>🌙 특근'+otMemo+otGps+' · 출근 '+formatTimeKST(ot.overtime_checkin)+(ot.overtime_checkout?' · 퇴근 '+formatTimeKST(ot.overtime_checkout):'')+'<span class="badge" style="background:#EEEDFE;color:#534AB7;font-size:10px;margin-left:4px;">'+(ot.overtime_checkout?'특근퇴근':'특근출근')+'</span></span>'+otCancelBtn+'</div>';
+          return '<div style="font-size:11px;color:#8E44AD;margin-top:3px;padding-left:4px;display:flex;align-items:center;justify-content:space-between;"><span>🌙 특근'+otMemo+otGps+' · 출근 '+formatTimeKST(ot.overtime_checkin)+(ot.overtime_checkout?' · 퇴근 '+formatTimeKST(ot.overtime_checkout)+(ot.checkout_lat?' <a href="https://maps.google.com/?q='+ot.checkout_lat+','+ot.checkout_lng+'" target="_blank" style="font-size:11px;color:var(--red);">📍</a>':''): '')+'<span class="badge" style="background:#EEEDFE;color:#534AB7;font-size:10px;margin-left:4px;">'+(ot.overtime_checkout?'특근퇴근':'특근출근')+'</span></span>'+otCancelBtn+'</div>';
         }).join('');
         return '<div class="att-row" style="flex-wrap:wrap;"><div class="avatar '+avClass(idx)+'">'+ini(e.name)+'</div><div class="att-info" style="flex:1;"><div class="att-name">'+e.name+'</div>'+otHtml+'</div></div>';
       }).join('');
@@ -2887,9 +2887,19 @@ async function confirmOvertimeAction() {
     });
 
     if(otRec) {
+      // 퇴근 시 GPS 위치 저장
+      let posOut = null;
+      try {
+        posOut = await new Promise(function(resolve, reject) {
+          navigator.geolocation.getCurrentPosition(resolve, reject, {timeout:5000});
+        });
+      } catch(e) { posOut = null; }
+
       await dbUpdate('attendances', otRec.id, {
         checkout_time: nowISO,
-        overtime_checkout: nowISO
+        overtime_checkout: nowISO,
+        checkout_lat: posOut ? posOut.coords.latitude : null,
+        checkout_lng: posOut ? posOut.coords.longitude : null
       });
       document.getElementById('checkin-status').textContent = '🌙 ' + formatTimeKST(nowISO) + ' 특근 퇴근 완료';
     } else {
