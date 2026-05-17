@@ -2493,10 +2493,10 @@ function renderMyToday() {
   const emp = getEmpById(currentEmpId);
   const myEl = document.getElementById('my-today-record');
 
-  // 일반 출퇴근 기록
-  const myAtt = attendances.find(function(a){ return a.emp_id === currentEmpId && a.att_date === dateStr; });
+  // 일반 출퇴근 기록 (특근 제외)
+  const myAtt = attendances.find(function(a){ return a.emp_id === currentEmpId && a.att_date === dateStr && !a.overtime_checkin; });
   // 특근 기록
-  const otRecs = attendances.filter(function(a){ return a.emp_id === currentEmpId && a.att_date === dateStr && (a.overtime_checkin || a.overtime_checkout); });
+  const otRecs = attendances.filter(function(a){ return a.emp_id === currentEmpId && a.att_date === dateStr && a.overtime_checkin; });
 
   const leave = getLeaveOnDate(currentEmpId, dateStr);
 
@@ -2573,27 +2573,30 @@ function overtimeHtml(otRecs, empId) {
   if(!otRecs || !otRecs.length) return '';
   const _empId = empId || currentEmpId;
 
-  const checkinRec = otRecs.find(function(ot){ return !!ot.overtime_checkin; });
-  const checkoutRec = otRecs.find(function(ot){ return !!ot.overtime_checkout; });
-  const combinedRec = otRecs.find(function(ot){ return !!ot.overtime_checkin && !!ot.overtime_checkout; });
-
-  const memo = (checkinRec && checkinRec.overtime_memo) || (checkoutRec && checkoutRec.overtime_memo) || '';
-  const memoNote = memo ? '<div style="font-size:10px;color:#7F77DD;margin-top:2px;padding-left:30px;">'+memo+'</div>' : '';
-
-  const checkinTime = checkinRec ? formatTimeKST(checkinRec.overtime_checkin) : '-';
-  const checkoutTime = combinedRec ? formatTimeKST(combinedRec.overtime_checkout)
-                     : (checkoutRec ? formatTimeKST(checkoutRec.overtime_checkout) : '-');
-  const hasCheckout = !!(combinedRec && combinedRec.overtime_checkout) || !!checkoutRec;
-  const otId = checkinRec ? checkinRec.id : (checkoutRec ? checkoutRec.id : null);
-
-  return '<div style="border-top:1px dashed #CECBF6;margin-top:6px;padding-top:8px;">'
-    + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">'
-    + '<span style="font-size:11px;font-weight:600;color:#534AB7;">🌙 특근</span>'
-    + (otId && !hasCheckout ? cancelBtnHtml(otId, _empId) : '')
-    + '</div>'
-    + (checkinRec ? '<div style="display:flex;align-items:center;justify-content:space-between;font-size:11px;color:#7F77DD;margin-bottom:3px;"><div style="display:flex;align-items:center;gap:4px;"><span style="width:26px;">출근</span><span>' + checkinTime + '</span></div><span style="font-size:10px;padding:1px 6px;border-radius:20px;background:#EEEDFE;color:#534AB7;white-space:nowrap;">특근출근</span></div>' : '')
-    + (hasCheckout ? '<div style="display:flex;align-items:center;justify-content:space-between;font-size:11px;color:#7F77DD;"><div style="display:flex;align-items:center;gap:4px;"><span style="width:26px;">퇴근</span><span>' + checkoutTime + '</span></div><span style="font-size:10px;padding:1px 6px;border-radius:20px;background:#EEEDFE;color:#534AB7;white-space:nowrap;">특근퇴근</span></div>' : '')
-    + memoNote
+  return '<div style="border-top:0.5px dashed #CECBF6;margin-top:10px;padding-top:10px;">'
+    + '<div style="font-size:12px;font-weight:500;color:#534AB7;margin-bottom:6px;">🌙 특근</div>'
+    + otRecs.map(function(ot) {
+        const memo = ot.overtime_memo ? '<div style="font-size:10px;color:#7F77DD;margin-top:3px;">'+ot.overtime_memo+'</div>' : '';
+        const cancelBtn = (!ot.overtime_checkout && canCancel(_empId))
+          ? '<span style="font-size:10px;color:var(--gray-400);cursor:pointer;text-decoration:underline;margin-left:6px;" onclick="cancelAttendance('+ot.id+',\''+_empId+'\')">취소</span>' : '';
+        return '<div style="background:#EEEDFE;border-radius:6px;padding:8px 10px;margin-bottom:4px;">'
+          + '<div style="display:flex;align-items:center;justify-content:space-between;font-size:12px;color:#534AB7;margin-bottom:3px;">'
+          + '<div style="display:flex;align-items:center;gap:4px;"><span style="width:28px;">출근</span><span>' + formatTimeKST(ot.overtime_checkin) + '</span></div>'
+          + '<div style="display:flex;align-items:center;gap:4px;">'
+          + '<span style="font-size:10px;padding:1px 6px;border-radius:20px;background:#CECBF6;color:#3C3489;">특근출근</span>'
+          + cancelBtn
+          + '</div>'
+          + '</div>'
+          + (ot.overtime_checkout
+            ? '<div style="display:flex;align-items:center;justify-content:space-between;font-size:12px;color:#534AB7;">'
+              + '<div style="display:flex;align-items:center;gap:4px;"><span style="width:28px;">퇴근</span><span>' + formatTimeKST(ot.overtime_checkout) + '</span></div>'
+              + '<span style="font-size:10px;padding:1px 6px;border-radius:20px;background:#CECBF6;color:#3C3489;">특근퇴근</span>'
+              + '</div>'
+            : '<div style="display:flex;align-items:center;font-size:12px;color:#7F77DD;"><span style="width:28px;">퇴근</span><span>-</span></div>'
+          )
+          + memo
+          + '</div>';
+      }).join('')
     + '</div>';
 }
 
@@ -2616,7 +2619,7 @@ function renderTeamMemberToday() {
 
   teamEl.innerHTML = teamEmps.map(function(e, idx) {
     const att = attendances.find(function(a){ return a.emp_id === e.id && a.att_date === dateStr && !a.overtime_checkin; });
-    const otRecs = attendances.filter(function(a){ return a.emp_id === e.id && a.att_date === dateStr && (a.overtime_checkin || a.overtime_checkout); });
+    const otRecs = attendances.filter(function(a){ return a.emp_id === e.id && a.att_date === dateStr && a.overtime_checkin; });
     const isLast = idx === teamEmps.length - 1 && !otRecs.length;
     const border = isLast ? 'none' : '1px solid var(--gray-100)';
 
@@ -2671,7 +2674,7 @@ function renderEmpToday() {
   if(!el) return;
 
   const att = attendances.find(function(a){ return a.emp_id===currentEmpId && a.att_date===dateStr && !a.overtime_checkin; });
-  const otRecs = attendances.filter(function(a){ return a.emp_id===currentEmpId && a.att_date===dateStr && (a.overtime_checkin||a.overtime_checkout); });
+  const otRecs = attendances.filter(function(a){ return a.emp_id===currentEmpId && a.att_date===dateStr && a.overtime_checkin; });
   const leave = getLeaveOnDate(currentEmpId, dateStr);
 
   el.style.textAlign = 'left';
