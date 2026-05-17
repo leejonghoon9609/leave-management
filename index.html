@@ -890,6 +890,14 @@ async function dbUpdate(table, id, data) {
   return res.ok;
 }
 
+async function dbDelete(table, id) {
+  const res = await fetch(SUPABASE_URL + '/rest/v1/' + table + '?id=eq.' + id, {
+    method: 'DELETE',
+    headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY, 'Prefer': 'return=minimal' }
+  });
+  return res.ok;
+}
+
 // ===== 공통 유틸 =====
 function avClass(i) { return 'av-' + (i % 5); }
 function ini(n) { return n ? n.slice(0,2) : ''; }
@@ -2479,16 +2487,17 @@ function renderMyToday() {
     const checkoutBadge = getCheckoutBadge(myAtt);
     const memo = myAtt.checkin_field_memo ? ' <span style="font-size:10px;color:var(--blue);">[출근:'+myAtt.checkin_field_memo+']</span>' : (myAtt.field_memo ? ' <span style="font-size:10px;color:var(--amber);">[퇴근:'+myAtt.field_memo+']</span>' : '');
     const earlyNote = myAtt.early_reason ? ' <span style="font-size:10px;color:var(--primary);">['+myAtt.early_reason+']</span>' : '';
-    html += '<div style="text-align:left;display:flex;align-items:flex-start;gap:10px;padding:2px 0;">'
-      + '<div style="flex:1;min-width:0;text-align:left;">'
-      + '<div style="font-size:13px;font-weight:600;margin-bottom:4px;">' + (emp ? emp.name : '') + memo + earlyNote + '</div>'
-      + '<div style="display:flex;gap:4px;font-size:12px;color:var(--gray-400);"><span style="width:30px;">출근</span><span>' + formatTimeKST(myAtt.checkin_time) + '</span></div>'
-      + '<div style="display:flex;gap:4px;font-size:12px;color:var(--gray-400);margin-top:2px;"><span style="width:30px;">퇴근</span><span>' + formatTimeKST(myAtt.checkout_time) + '</span></div>'
+    // 취소버튼: 퇴근 전이고 본인/관리자만
+    const cancelBtn = (!myAtt.checkout_time && canCancel(myAtt.emp_id))
+      ? cancelBtnHtml(myAtt.id, myAtt.emp_id) : '';
+    html += '<div style="text-align:left;padding:2px 0;">'
+      + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">'
+      + '<div style="font-size:13px;font-weight:600;">' + (emp ? emp.name : '') + memo + earlyNote + '</div>'
+      + cancelBtn
+      + '</div>'
+      + '<div style="display:flex;align-items:center;justify-content:space-between;font-size:12px;color:var(--gray-400);margin-bottom:2px;"><div style="display:flex;gap:4px;"><span style="width:30px;">출근</span><span>' + formatTimeKST(myAtt.checkin_time) + '</span></div>' + attBadge(s) + '</div>'
+      + '<div style="display:flex;align-items:center;justify-content:space-between;font-size:12px;color:var(--gray-400);"><div style="display:flex;gap:4px;"><span style="width:30px;">퇴근</span><span>' + formatTimeKST(myAtt.checkout_time) + '</span></div>' + (checkoutBadge||'') + '</div>'
       + (leave ? '<div style="margin-top:4px;">'+leaveDayBadge(leave.type)+'</div>' : '')
-      + '</div>'
-      + '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px;padding-top:22px;flex-shrink:0;">'
-      + attBadge(s) + (checkoutBadge || '')
-      + '</div>'
       + '</div>';
   } else if(leave) {
     html += '<div style="font-size:13px;font-weight:600;margin-bottom:8px;">' + (emp?emp.name:'') + '</div>'
@@ -2503,27 +2512,56 @@ function renderMyToday() {
   myEl.innerHTML = html;
 }
 
-// 특근 기록 HTML 생성 (공통)
-function overtimeHtml(otRecs) {
+// ===== 출근 취소 =====
+async function cancelAttendance(attId, empId) {
+  const emp = getEmpById(empId||currentEmpId);
+  const name = emp ? emp.name : '직원';
+  if(!confirm(name + '의 출근 기록을 삭제하시겠습니까?')) return;
+  try {
+    await dbDelete('attendances', attId);
+    attendances = attendances.filter(function(a){ return a.id !== attId; });
+    loadData();
+    alert('출근 기록이 삭제되었습니다.');
+  } catch(e) {
+    alert('삭제 중 오류가 발생했습니다.');
+  }
+}
+
+// 취소 버튼 표시 여부
+function canCancel(empId) {
+  return currentRole === 'admin' || currentEmpId === empId;
+}
+
+function cancelBtnHtml(attId, empId) {
+  if(!canCancel(empId)) return '';
+  return '<span style="font-size:10px;color:var(--gray-400);cursor:pointer;text-decoration:underline;margin-left:6px;" onclick="cancelAttendance('+attId+',\''+empId+'\')">취소</span>';
+}
+
+function overtimeHtml(otRecs, empId) {
   if(!otRecs || !otRecs.length) return '';
+  const _empId = empId || currentEmpId;
 
   const checkinRec = otRecs.find(function(ot){ return !!ot.overtime_checkin; });
   const checkoutRec = otRecs.find(function(ot){ return !!ot.overtime_checkout; });
   const combinedRec = otRecs.find(function(ot){ return !!ot.overtime_checkin && !!ot.overtime_checkout; });
 
   const memo = (checkinRec && checkinRec.overtime_memo) || (checkoutRec && checkoutRec.overtime_memo) || '';
-  const memoNote = memo ? ' <span style="font-size:10px;color:#C0392B;">('+memo+')</span>' : '';
+  const memoNote = memo ? '<div style="font-size:10px;color:#7F77DD;margin-top:2px;padding-left:30px;">'+memo+'</div>' : '';
 
   const checkinTime = checkinRec ? formatTimeKST(checkinRec.overtime_checkin) : '-';
   const checkoutTime = combinedRec ? formatTimeKST(combinedRec.overtime_checkout)
                      : (checkoutRec ? formatTimeKST(checkoutRec.overtime_checkout) : '-');
-
   const hasCheckout = !!(combinedRec && combinedRec.overtime_checkout) || !!checkoutRec;
+  const otId = checkinRec ? checkinRec.id : (checkoutRec ? checkoutRec.id : null);
 
-  return '<div style="border-top:1px dashed #fcc;margin-top:6px;padding-top:8px;">'
-    + '<div style="font-size:11px;font-weight:600;color:#C0392B;margin-bottom:4px;">🌙 특근' + memoNote + '</div>'
-    + (checkinRec ? '<div style="display:flex;align-items:center;justify-content:space-between;font-size:11px;color:var(--gray-500);margin-bottom:3px;"><div style="display:flex;align-items:center;gap:4px;"><span style="width:26px;">출근</span><span>' + checkinTime + '</span></div><span style="font-size:10px;padding:1px 6px;border-radius:20px;background:#FDEDEC;color:#C0392B;white-space:nowrap;">특근출근</span></div>' : '')
-    + (hasCheckout ? '<div style="display:flex;align-items:center;justify-content:space-between;font-size:11px;color:var(--gray-500);"><div style="display:flex;align-items:center;gap:4px;"><span style="width:26px;">퇴근</span><span>' + checkoutTime + '</span></div><span style="font-size:10px;padding:1px 6px;border-radius:20px;background:#FDEDEC;color:#C0392B;white-space:nowrap;">특근퇴근</span></div>' : '')
+  return '<div style="border-top:1px dashed #CECBF6;margin-top:6px;padding-top:8px;">'
+    + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">'
+    + '<span style="font-size:11px;font-weight:600;color:#534AB7;">🌙 특근</span>'
+    + (otId && !hasCheckout ? cancelBtnHtml(otId, _empId) : '')
+    + '</div>'
+    + (checkinRec ? '<div style="display:flex;align-items:center;justify-content:space-between;font-size:11px;color:#7F77DD;margin-bottom:3px;"><div style="display:flex;align-items:center;gap:4px;"><span style="width:26px;">출근</span><span>' + checkinTime + '</span></div><span style="font-size:10px;padding:1px 6px;border-radius:20px;background:#EEEDFE;color:#534AB7;white-space:nowrap;">특근출근</span></div>' : '')
+    + (hasCheckout ? '<div style="display:flex;align-items:center;justify-content:space-between;font-size:11px;color:#7F77DD;"><div style="display:flex;align-items:center;gap:4px;"><span style="width:26px;">퇴근</span><span>' + checkoutTime + '</span></div><span style="font-size:10px;padding:1px 6px;border-radius:20px;background:#EEEDFE;color:#534AB7;white-space:nowrap;">특근퇴근</span></div>' : '')
+    + memoNote
     + '</div>';
 }
 
@@ -2556,15 +2594,18 @@ function renderTeamMemberToday() {
       const checkoutBadge = getCheckoutBadge(att);
       const memo = att.checkin_field_memo ? ' <span style="font-size:10px;color:var(--blue);">[출근:'+att.checkin_field_memo+']</span>' : (att.field_memo ? ' <span style="font-size:10px;color:var(--amber);">[퇴근:'+att.field_memo+']</span>' : '');
       const earlyNote = att.early_reason ? ' <span style="font-size:10px;color:var(--primary);">['+att.early_reason+']</span>' : '';
-      rowHtml = '<div style="text-align:left;display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:'+border+'">'
+      const cancelBtn3 = (!att.checkout_time && canCancel(att.emp_id)) ? cancelBtnHtml(att.id, att.emp_id) : '';
+      rowHtml = '<div style="text-align:left;padding:10px 0;border-bottom:'+border+'">'
+        + '<div style="display:flex;align-items:flex-start;gap:10px;">'
         + '<div class="avatar ' + avClass(idx) + '" style="flex-shrink:0;margin-top:2px;">' + ini(e.name) + '</div>'
-        + '<div style="flex:1;min-width:0;text-align:left;">'
-        + '<div style="font-size:13px;font-weight:600;margin-bottom:4px;">' + e.name + memo + earlyNote + '</div>'
-        + '<div style="display:flex;gap:4px;font-size:12px;color:var(--gray-400);"><span style="width:30px;">출근</span><span>' + formatTimeKST(att.checkin_time) + '</span></div>'
-        + '<div style="display:flex;gap:4px;font-size:12px;color:var(--gray-400);margin-top:2px;"><span style="width:30px;">퇴근</span><span>' + formatTimeKST(att.checkout_time) + '</span></div>'
+        + '<div style="flex:1;min-width:0;">'
+        + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">'
+        + '<div style="font-size:13px;font-weight:600;">' + e.name + memo + earlyNote + '</div>'
+        + cancelBtn3
         + '</div>'
-        + '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px;padding-top:22px;flex-shrink:0;">'
-        + attBadge(s) + (checkoutBadge || '')
+        + '<div style="display:flex;align-items:center;justify-content:space-between;font-size:12px;color:var(--gray-400);"><div style="display:flex;gap:4px;"><span style="width:30px;">출근</span><span>' + formatTimeKST(att.checkin_time) + '</span></div>' + attBadge(s) + '</div>'
+        + '<div style="display:flex;align-items:center;justify-content:space-between;font-size:12px;color:var(--gray-400);margin-top:2px;"><div style="display:flex;gap:4px;"><span style="width:30px;">퇴근</span><span>' + formatTimeKST(att.checkout_time) + '</span></div>' + (checkoutBadge||'') + '</div>'
+        + '</div>'
         + '</div>'
         + '</div>';
     } else {
@@ -2578,7 +2619,7 @@ function renderTeamMemberToday() {
         + '</div>'
         + '</div>';
     }
-    rowHtml += overtimeHtml(otRecs);
+    rowHtml += overtimeHtml(otRecs, e.id);
     return rowHtml;
   }).join('');
 }
@@ -2614,7 +2655,12 @@ function renderEmpToday() {
     }
     const memo = att.checkin_field_memo ? ' <span style="font-size:10px;color:var(--blue);">[출근:'+att.checkin_field_memo+']</span>' : (att.field_memo ? ' <span style="font-size:10px;color:var(--amber);">[퇴근:'+att.field_memo+']</span>' : '');
     const leavePart = leave ? '<div style="margin-top:4px;">'+leaveDayBadge(leave.type)+'</div>' : '';
-    el.innerHTML = '<div style="font-size:13px;font-weight:600;margin-bottom:6px;">' + (emp?emp.name:'') + memo + '</div>'
+    const cancelBtn2 = (!att.checkout_time && canCancel(att.emp_id)) ? cancelBtnHtml(att.id, att.emp_id) : '';
+    el.innerHTML = '<div style="padding:2px 0;">'
+      + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">'
+      + '<div style="font-size:13px;font-weight:600;">' + (emp?emp.name:'') + memo + '</div>'
+      + cancelBtn2
+      + '</div>'
       + '<div style="display:flex;align-items:center;justify-content:space-between;font-size:12px;color:var(--gray-500);margin-bottom:3px;"><div style="display:flex;align-items:center;gap:4px;"><span style="width:28px;">출근</span><span>' + formatTimeKST(att.checkin_time) + '</span></div>' + checkinBadge + '</div>'
       + '<div style="display:flex;align-items:center;justify-content:space-between;font-size:12px;color:var(--gray-500);"><div style="display:flex;align-items:center;gap:4px;"><span style="width:28px;">퇴근</span><span>' + formatTimeKST(att.checkout_time) + '</span></div>' + checkoutBadgeHtml + '</div>'
       + leavePart;
