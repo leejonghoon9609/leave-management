@@ -1841,7 +1841,7 @@ function renderAttDashboard() {
           + empOts.map(function(ot){
               const otGpsIn = ot.checkin_lat ? ' <a href="https://maps.google.com/?q='+ot.checkin_lat+','+ot.checkin_lng+'" target="_blank" style="font-size:11px;color:var(--blue);">📍</a>' : '';
               const otGpsOut = ot.checkout_lat ? ' <a href="https://maps.google.com/?q='+ot.checkout_lat+','+ot.checkout_lng+'" target="_blank" style="font-size:11px;color:var(--red);">📍</a>' : '';
-              const otCancelBtn = !ot.overtime_checkout ? '<button type="button" class="cancel-att-btn" data-att-id="'+ot.id+'" data-emp-id="'+e.id+'" style="font-size:10px;color:#bbb;cursor:pointer;background:none;border:none;text-decoration:underline;padding:0;">취소</button>' : '';
+              const otCancelBtn = canCancel(e.id) ? '<button type="button" class="cancel-att-btn" data-att-id="'+ot.id+'" data-emp-id="'+e.id+'" style="font-size:10px;color:#bbb;cursor:pointer;background:none;border:none;text-decoration:underline;padding:0;">취소</button>' : '';
               return '<div style="background:#EEEDFE;border-radius:6px;padding:6px 8px;margin-bottom:4px;">'
                 + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:3px;">'
                 + '<div style="font-size:11px;color:#534AB7;font-weight:500;">' + (ot.overtime_memo||'') + '</div>'
@@ -1871,7 +1871,7 @@ function renderAttDashboard() {
           + empOts.map(function(ot){
               const otGpsIn = ot.checkin_lat ? ' <a href="https://maps.google.com/?q='+ot.checkin_lat+','+ot.checkin_lng+'" target="_blank" style="font-size:11px;color:var(--blue);">📍</a>' : '';
               const otGpsOut = ot.checkout_lat ? ' <a href="https://maps.google.com/?q='+ot.checkout_lat+','+ot.checkout_lng+'" target="_blank" style="font-size:11px;color:var(--red);">📍</a>' : '';
-              const otCancelBtn = !ot.overtime_checkout ? '<button type="button" class="cancel-att-btn" data-att-id="'+ot.id+'" data-emp-id="'+e.id+'" style="font-size:10px;color:#bbb;cursor:pointer;background:none;border:none;text-decoration:underline;padding:0;">취소</button>' : '';
+              const otCancelBtn = canCancel(e.id) ? '<button type="button" class="cancel-att-btn" data-att-id="'+ot.id+'" data-emp-id="'+e.id+'" style="font-size:10px;color:#bbb;cursor:pointer;background:none;border:none;text-decoration:underline;padding:0;">취소</button>' : '';
               return '<div style="background:#EEEDFE;border-radius:6px;padding:6px 8px;margin-bottom:4px;">'
                 + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:3px;">'
                 + '<div style="font-size:11px;color:#534AB7;font-weight:500;">' + (ot.overtime_memo||'') + '</div>'
