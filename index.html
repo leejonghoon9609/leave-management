@@ -1817,7 +1817,13 @@ function renderAttDashboard() {
     let html='';
     deptOrder.forEach(function(dept){
       const deptAtts=todayAtts.filter(function(a){ const e=getEmpById(a.emp_id); return e&&e.dept===dept; });
-      if(!deptAtts.length) return;
+      const deptOtOnly = employees.filter(function(e){
+        if(e.dept!==dept || e.role==='admin') return false;
+        const hasNormal = deptAtts.find(function(a){ return a.emp_id===e.id; });
+        const hasOt = attendances.find(function(ot){ return ot.emp_id===e.id && ot.att_date===selDate && ot.overtime_checkin; });
+        return !hasNormal && hasOt;
+      });
+      if(!deptAtts.length && !deptOtOnly.length) return;
       html+='<div style="font-size:11px;font-weight:700;color:var(--primary-dark);background:var(--primary-light);padding:4px 8px;border-radius:4px;margin:8px 0 4px;">'+dept+'</div>';
 
       // 일반출근 직원
@@ -1857,13 +1863,7 @@ function renderAttDashboard() {
       }).join('');
 
       // 일반출근 없지만 특근만 있는 직원도 표시
-      const deptEmpsWithOtOnly = employees.filter(function(e){
-        if(e.dept!==dept || e.role==='admin') return false;
-        const hasNormal = deptAtts.find(function(a){ return a.emp_id===e.id; });
-        const hasOt = attendances.find(function(ot){ return ot.emp_id===e.id && ot.att_date===selDate && ot.overtime_checkin; });
-        return !hasNormal && hasOt;
-      });
-      html += deptEmpsWithOtOnly.map(function(e){
+      html += deptOtOnly.map(function(e){
         const idx=employees.findIndex(function(x){ return x.id===e.id; });
         const empOts = attendances.filter(function(ot){ return ot.emp_id===e.id && ot.att_date===selDate && ot.overtime_checkin; });
         const otHtml = '<div style="border-top:0.5px dashed #CECBF6;margin-top:6px;padding-top:6px;">'
