@@ -1831,7 +1831,7 @@ function renderAttDashboard() {
           + empOts.map(function(ot){
               const otGpsIn = ot.checkin_lat ? ' <a href="https://maps.google.com/?q='+ot.checkin_lat+','+ot.checkin_lng+'" target="_blank" style="font-size:11px;color:var(--blue);">📍</a>' : '';
               const otGpsOut = ot.checkout_lat ? ' <a href="https://maps.google.com/?q='+ot.checkout_lat+','+ot.checkout_lng+'" target="_blank" style="font-size:11px;color:var(--red);">📍</a>' : '';
-              const otCancelBtn = !ot.overtime_checkout ? '<span style="font-size:10px;color:var(--gray-400);cursor:pointer;text-decoration:underline;" onclick="cancelAttendance('+ot.id+',\''+e.id+'\')">취소</span>' : '';
+              const otCancelBtn = !ot.overtime_checkout ? '<span style="font-size:10px;color:var(--gray-400);cursor:pointer;text-decoration:underline;" onclick="cancelAttendance('"+ot.id+"','"+e.id+"')">취소</span>' : '';
               return '<div style="background:#EEEDFE;border-radius:6px;padding:6px 8px;margin-bottom:4px;">'
                 + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:3px;">'
                 + '<div style="font-size:11px;color:#534AB7;font-weight:500;">' + (ot.overtime_memo||'') + '</div>'
@@ -1848,7 +1848,7 @@ function renderAttDashboard() {
                 + '</div>';
             }).join('')
           + '</div>' : '';
-        const cancelBtn = !a.checkout_time ? '<span style="font-size:10px;color:var(--gray-400);cursor:pointer;text-decoration:underline;margin-left:6px;" onclick="cancelAttendance('+a.id+',\''+e.id+'\')">취소</span>' : '';
+        const cancelBtn = canCancel(e.id) ? '<span style="font-size:10px;color:var(--gray-400);cursor:pointer;text-decoration:underline;margin-left:6px;" onclick="cancelAttendance(\''+a.id+'\',\''+e.id+'\')">취소</span>' : '';
         return '<div class="att-row" style="flex-wrap:wrap;"><div class="avatar '+avClass(idx)+'">'+ini(e.name)+'</div><div class="att-info" style="flex:1;"><div class="att-name" style="display:flex;align-items:center;justify-content:space-between;">'+e.name+fm+cancelBtn+'</div><div class="att-detail">출근 '+formatTimeKST(a.checkin_time)+gps+' · 퇴근 '+formatTimeKST(a.checkout_time)+gps2+'</div>'+otHtml+'</div>'+attBadge(s)+cb+'</div>';
       }).join('');
 
@@ -1867,7 +1867,7 @@ function renderAttDashboard() {
           + empOts.map(function(ot){
               const otGpsIn = ot.checkin_lat ? ' <a href="https://maps.google.com/?q='+ot.checkin_lat+','+ot.checkin_lng+'" target="_blank" style="font-size:11px;color:var(--blue);">📍</a>' : '';
               const otGpsOut = ot.checkout_lat ? ' <a href="https://maps.google.com/?q='+ot.checkout_lat+','+ot.checkout_lng+'" target="_blank" style="font-size:11px;color:var(--red);">📍</a>' : '';
-              const otCancelBtn = !ot.overtime_checkout ? '<span style="font-size:10px;color:var(--gray-400);cursor:pointer;text-decoration:underline;" onclick="cancelAttendance('+ot.id+',\''+e.id+'\')">취소</span>' : '';
+              const otCancelBtn = !ot.overtime_checkout ? '<span style="font-size:10px;color:var(--gray-400);cursor:pointer;text-decoration:underline;" onclick="cancelAttendance('"+ot.id+"','"+e.id+"')">취소</span>' : '';
               return '<div style="background:#EEEDFE;border-radius:6px;padding:6px 8px;margin-bottom:4px;">'
                 + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:3px;">'
                 + '<div style="font-size:11px;color:#534AB7;font-weight:500;">' + (ot.overtime_memo||'') + '</div>'
@@ -2571,18 +2571,17 @@ function renderMyToday() {
 async function cancelAttendance(attId, empId) {
   const emp = getEmpById(empId||currentEmpId);
   const name = emp ? emp.name : '직원';
-  if(!confirm(name + '의 출근 기록을 삭제하시겠습니까?')) return;
+  if(!confirm(name + '의 기록을 삭제하시겠습니까?')) return;
   try {
     const ok = await dbDelete('attendances', attId);
     if(!ok) { alert('삭제 중 오류가 발생했습니다.'); return; }
     // 로컬 즉시 제거
     attendances = attendances.filter(function(a){ return a.id !== attId; });
-    // 현재 페이지 즉시 재렌더링
     refreshAfterCancel();
-    // DB 재로드 후 다시 렌더링
     await loadData();
     refreshAfterCancel();
   } catch(e) {
+    console.error('cancel error:', e);
     alert('삭제 중 오류가 발생했습니다.');
   }
 }
@@ -2600,7 +2599,7 @@ function canCancel(empId) {
 
 function cancelBtnHtml(attId, empId) {
   if(!canCancel(empId)) return '';
-  return '<span style="font-size:10px;color:var(--gray-400);cursor:pointer;text-decoration:underline;margin-left:6px;" onclick="cancelAttendance('+attId+',\''+empId+'\')">취소</span>';
+  return '<span style="font-size:10px;color:var(--gray-400);cursor:pointer;text-decoration:underline;margin-left:6px;" onclick="cancelAttendance(\''+attId+'\',\''+empId+'\')">취소</span>';
 }
 
 function overtimeHtml(otRecs, empId) {
@@ -2612,7 +2611,7 @@ function overtimeHtml(otRecs, empId) {
     + otRecs.map(function(ot) {
         const memo = ot.overtime_memo ? '<div style="font-size:10px;color:#7F77DD;margin-top:3px;">'+ot.overtime_memo+'</div>' : '';
         const cancelBtn = (!ot.overtime_checkout && canCancel(_empId))
-          ? '<span style="font-size:10px;color:var(--gray-400);cursor:pointer;text-decoration:underline;margin-left:6px;" onclick="cancelAttendance('+ot.id+',\''+_empId+'\')">취소</span>' : '';
+          ? '<span style="font-size:10px;color:var(--gray-400);cursor:pointer;text-decoration:underline;margin-left:6px;" onclick="cancelAttendance('"+ot.id+"','"+_empId+"')">취소</span>' : '';
         return '<div style="background:#EEEDFE;border-radius:6px;padding:8px 10px;margin-bottom:4px;">'
           + '<div style="display:flex;align-items:center;justify-content:space-between;font-size:12px;color:#534AB7;margin-bottom:3px;">'
           + '<div style="display:flex;align-items:center;gap:4px;"><span style="width:28px;">출근</span><span>' + formatTimeKST(ot.overtime_checkin) + '</span></div>'
