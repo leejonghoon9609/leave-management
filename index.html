@@ -1815,7 +1815,13 @@ function renderAttDashboard() {
         const gps2=((currentRole==='admin'||currentRole==='deptadmin')&&a.checkout_lat)?' <a href="https://maps.google.com/?q='+a.checkout_lat+','+a.checkout_lng+'" target="_blank" style="font-size:11px;color:var(--red);">📍퇴근</a>':'';
         const cb=a.checkout_time?(a.checkout_status==='early'?'<span class="badge badge-late" style="margin-left:4px;">조기퇴근</span>':'<span class="badge badge-present" style="margin-left:4px;">정상퇴근</span>'):'';
         const fm=a.checkin_field_memo?'<span style="font-size:10px;color:var(--blue);margin-left:4px;">[출근:'+a.checkin_field_memo+']</span>':(a.field_memo?'<span style="font-size:10px;color:var(--amber);margin-left:4px;">[퇴근:'+a.field_memo+']</span>':'');
-        return '<div class="att-row"><div class="avatar '+avClass(idx)+'">'+ini(e.name)+'</div><div class="att-info"><div class="att-name">'+e.name+fm+'</div><div class="att-detail">출근 '+formatTimeKST(a.checkin_time)+gps+' · 퇴근 '+formatTimeKST(a.checkout_time)+gps2+'</div></div>'+attBadge(s)+cb+'</div>';
+        // 특근 기록
+        const empOts = attendances.filter(function(ot){ return ot.emp_id===e.id && ot.att_date===selDate && ot.overtime_checkin; });
+        const otHtml = empOts.map(function(ot){
+          const otMemo = ot.overtime_memo ? ' <span style="font-size:10px;color:#8E44AD;">('+ot.overtime_memo+')</span>' : '';
+          return '<div style="font-size:11px;color:#8E44AD;margin-top:3px;padding-left:4px;">🌙 특근'+otMemo+' · 출근 '+formatTimeKST(ot.overtime_checkin)+(ot.overtime_checkout?' · 퇴근 '+formatTimeKST(ot.overtime_checkout):'')+'<span class="badge" style="background:#EEEDFE;color:#534AB7;font-size:10px;margin-left:4px;">'+(ot.overtime_checkout?'특근퇴근':'특근출근')+'</span></div>';
+        }).join('');
+        return '<div class="att-row" style="flex-wrap:wrap;"><div class="avatar '+avClass(idx)+'">'+ini(e.name)+'</div><div class="att-info" style="flex:1;"><div class="att-name">'+e.name+fm+'</div><div class="att-detail">출근 '+formatTimeKST(a.checkin_time)+gps+' · 퇴근 '+formatTimeKST(a.checkout_time)+gps2+'</div>'+otHtml+'</div>'+attBadge(s)+cb+'</div>';
       }).join('');
     });
     el.innerHTML=html||'<div class="empty">출근 기록이 없습니다</div>';
