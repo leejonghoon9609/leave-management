@@ -2580,11 +2580,14 @@ async function cancelAttendance(attId, empId) {
     console.log('cancelAttendance called - attId:', attId, 'empId:', empId);
     const ok = await dbDelete('attendances', attId);
     console.log('dbDelete result:', ok);
-    if(!ok) { alert('삭제 실패 - 콘솔을 확인해주세요'); return; }
-    attendances = attendances.filter(function(a){ return String(a.id) !== String(attId); });
-    refreshAfterCancel();
+    if(!ok) { alert('삭제 실패'); return; }
+    // DB 재로드 후 렌더링
     await loadData();
-    refreshAfterCancel();
+    console.log('loadData done, currentPage:', currentPage);
+    if(currentPage==='att-dashboard') renderAttDashboard();
+    else if(currentPage==='checkin') renderCheckin();
+    else if(currentPage==='team-att') renderTeamAtt();
+    else renderAll();
   } catch(e) {
     console.error('cancelAttendance error:', e);
     alert('오류: ' + e.message);
@@ -2592,9 +2595,12 @@ async function cancelAttendance(attId, empId) {
 }
 
 function refreshAfterCancel() {
-  if(currentPage==='att-dashboard') renderAttDashboard();
-  else if(currentPage==='checkin') renderCheckin();
-  else if(currentPage==='team-att') renderTeamAtt();
+  console.log('refreshAfterCancel - currentPage:', currentPage);
+  if(currentPage==='att-dashboard') { renderAttDashboard(); return; }
+  if(currentPage==='checkin') { renderCheckin(); return; }
+  if(currentPage==='team-att') { renderTeamAtt(); return; }
+  // 페이지 판단 못할 경우 전체 렌더
+  renderAll();
 }
 
 // 취소 버튼 표시 여부 - 관리자만 가능
