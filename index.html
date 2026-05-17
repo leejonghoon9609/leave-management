@@ -2862,61 +2862,28 @@ async function confirmOvertimeAction() {
     document.getElementById('checkin-status').textContent = '🌙 ' + formatTimeKST(nowISO) + ' 특근 출근 완료 (' + memo + ')';
 
   } else {
-    // 특근 퇴근 - 야간 특근 여부 판단
-    const isNightOvertimeEnd = kstHour < 9;
+    // 특근 퇴근 - 오늘 또는 전날 미퇴근 특근 출근 레코드 찾기
+    const today = todayStrKST();
+    const yesterday = new Date(nowKSTDate);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayStr = yesterday.toISOString().slice(0, 10);
 
-    if(isNightOvertimeEnd) {
-      const yesterday = new Date(nowKSTDate);
-      yesterday.setDate(yesterday.getDate() - 1);
-      const yesterdayStr = yesterday.toISOString().slice(0, 10);
+    // 오늘 미퇴근 특근 먼저, 없으면 전날 미퇴근 특근
+    const otRec = attendances.find(function(a) {
+      return a.emp_id === currentEmpId && a.att_date === today && a.overtime_checkin && !a.overtime_checkout;
+    }) || attendances.find(function(a) {
+      return a.emp_id === currentEmpId && a.att_date === yesterdayStr && a.overtime_checkin && !a.overtime_checkout;
+    });
 
-      const prevOtRec = attendances.find(function(a) {
-        return a.emp_id === currentEmpId && a.att_date === yesterdayStr && a.overtime_checkin && !a.overtime_checkout;
+    if(otRec) {
+      await dbUpdate('attendances', otRec.id, {
+        checkout_time: nowISO,
+        overtime_checkout: nowISO
       });
-
-      if(prevOtRec) {
-        await dbUpdate('attendances', prevOtRec.id, {
-          checkout_time: nowISO,
-          overtime_checkout: nowISO
-        });
-        document.getElementById('checkin-status').textContent = '🌙 ' + formatTimeKST(nowISO) + ' 야간특근 퇴근 완료';
-      } else {
-        await dbInsert('attendances', {
-          emp_id: currentEmpId,
-          att_date: today,
-          checkin_time: nowISO,
-          checkout_time: nowISO,
-          status: 'present',
-          overtime_checkout: nowISO,
-          overtime_memo: memo
-        });
-        document.getElementById('checkin-status').textContent = '🌙 ' + formatTimeKST(nowISO) + ' 특근 퇴근 완료';
-      }
-    } else {
-      // 당일 특근 퇴근 → 오늘 날짜 특근 출근 레코드 찾기 (미퇴근 우선, 없으면 최신)
-      const todayOtRec = attendances.find(function(a) {
-        return a.emp_id === currentEmpId && a.att_date === today && a.overtime_checkin && !a.overtime_checkout;
-      }) || attendances.slice().reverse().find(function(a) {
-        return a.emp_id === currentEmpId && a.att_date === today && a.overtime_checkin;
-      });
-
-      if(todayOtRec) {
-        await dbUpdate('attendances', todayOtRec.id, {
-          checkout_time: nowISO,
-          overtime_checkout: nowISO
-        });
-      } else {
-        await dbInsert('attendances', {
-          emp_id: currentEmpId,
-          att_date: today,
-          checkin_time: nowISO,
-          checkout_time: nowISO,
-          status: 'present',
-          overtime_checkout: nowISO,
-          overtime_memo: memo
-        });
-      }
       document.getElementById('checkin-status').textContent = '🌙 ' + formatTimeKST(nowISO) + ' 특근 퇴근 완료';
+    } else {
+      alert('특근 출근 기록이 없습니다. 먼저 특근 출근을 등록해주세요.');
+      return;
     }
   }
   await loadData();
