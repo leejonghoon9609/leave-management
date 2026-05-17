@@ -895,7 +895,11 @@ async function dbDelete(table, id) {
     method: 'DELETE',
     headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY, 'Prefer': 'return=minimal' }
   });
-  return res.ok;
+  if(!res.ok) {
+    const text = await res.text();
+    console.error('dbDelete error:', res.status, text);
+  }
+  return res.ok || res.status === 204;
 }
 
 // ===== 공통 유틸 =====
@@ -2573,16 +2577,17 @@ async function cancelAttendance(attId, empId) {
   const name = emp ? emp.name : '직원';
   if(!confirm(name + '의 기록을 삭제하시겠습니까?')) return;
   try {
+    console.log('cancelAttendance called - attId:', attId, 'empId:', empId);
     const ok = await dbDelete('attendances', attId);
-    if(!ok) { alert('삭제 중 오류가 발생했습니다.'); return; }
-    // 로컬 즉시 제거
-    attendances = attendances.filter(function(a){ return a.id !== attId; });
+    console.log('dbDelete result:', ok);
+    if(!ok) { alert('삭제 실패 - 콘솔을 확인해주세요'); return; }
+    attendances = attendances.filter(function(a){ return String(a.id) !== String(attId); });
     refreshAfterCancel();
     await loadData();
     refreshAfterCancel();
   } catch(e) {
-    console.error('cancel error:', e);
-    alert('삭제 중 오류가 발생했습니다.');
+    console.error('cancelAttendance error:', e);
+    alert('오류: ' + e.message);
   }
 }
 
