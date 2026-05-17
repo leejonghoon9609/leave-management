@@ -2526,16 +2526,19 @@ async function cancelAttendance(attId, empId) {
     // 로컬 즉시 제거
     attendances = attendances.filter(function(a){ return a.id !== attId; });
     // 현재 페이지 즉시 재렌더링
-    if(currentPage==='checkin') renderCheckin();
-    else if(currentPage==='leave-dashboard') renderAttDashboard();
-    // DB에서 최신 데이터 재로드
+    refreshAfterCancel();
+    // DB 재로드 후 다시 렌더링
     await loadData();
-    // 재로드 후 다시 렌더링
-    if(currentPage==='checkin') renderCheckin();
-    else if(currentPage==='leave-dashboard') renderAttDashboard();
+    refreshAfterCancel();
   } catch(e) {
     alert('삭제 중 오류가 발생했습니다.');
   }
+}
+
+function refreshAfterCancel() {
+  if(currentPage==='att-dashboard') renderAttDashboard();
+  else if(currentPage==='checkin') renderCheckin();
+  else if(currentPage==='team-att') renderTeamAtt();
 }
 
 // 취소 버튼 표시 여부 - 관리자만 가능
