@@ -869,13 +869,12 @@ function formatTimeKST(isoStr) {
 async function dbGet(table, extra) {
   let url = SUPABASE_URL + '/rest/v1/' + table + '?select=*';
   if(extra) url += '&' + extra;
-  url += '&_=' + Date.now(); // 캐시 방지
   const res = await fetch(url, {
+    cache: 'no-store',
     headers: {
       'apikey': SUPABASE_ANON_KEY,
       'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
-      'Cache-Control': 'no-cache, no-store',
-      'Pragma': 'no-cache'
+      'Cache-Control': 'no-cache'
     }
   });
   if(!res.ok) return [];
@@ -2585,17 +2584,19 @@ async function cancelAttendance(attId, empId) {
   const name = emp ? emp.name : '직원';
   if(!confirm(name + '의 기록을 삭제하시겠습니까?')) return;
   try {
-    console.log('cancelAttendance called - attId:', attId, 'empId:', empId);
     const ok = await dbDelete('attendances', attId);
-    console.log('dbDelete result:', ok);
     if(!ok) { alert('삭제 실패'); return; }
-    // DB 재로드 후 렌더링
-    await loadData();
-    console.log('loadData done, currentPage:', currentPage);
+    // 로컬 즉시 제거 후 렌더
+    attendances = attendances.filter(function(a){ return String(a.id) !== String(attId); });
     if(currentPage==='att-dashboard') renderAttDashboard();
     else if(currentPage==='checkin') renderCheckin();
     else if(currentPage==='team-att') renderTeamAtt();
-    else renderAll();
+    // 백그라운드 재로드
+    loadData().then(function(){
+      if(currentPage==='att-dashboard') renderAttDashboard();
+      else if(currentPage==='checkin') renderCheckin();
+      else if(currentPage==='team-att') renderTeamAtt();
+    });
   } catch(e) {
     console.error('cancelAttendance error:', e);
     alert('오류: ' + e.message);
