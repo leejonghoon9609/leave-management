@@ -1791,7 +1791,7 @@ function renderAttDashboard() {
   const selDate=picker?picker.value:todayStrKST();
   const visEmps=getVisibleEmployees();
   const visAtts=getVisibleAttendances();
-  const todayAtts=visAtts.filter(function(a){ return a.att_date===selDate; });
+  const todayAtts=visAtts.filter(function(a){ return a.att_date===selDate && !a.overtime_checkin; });
   let present=0,late=0,checkout=0;
   todayAtts.forEach(function(a){
     const s=getAttStatus(a);
@@ -1812,7 +1812,7 @@ function renderAttDashboard() {
   else {
     let html='';
     deptOrder.forEach(function(dept){
-      const deptAtts=todayAtts.filter(function(a){ const e=getEmpById(a.emp_id); return e&&e.dept===dept; });
+      const deptAtts=todayAtts.filter(function(a){ const e=getEmpById(a.emp_id); return e&&e.dept===dept&&!a.overtime_checkin; });
       if(!deptAtts.length) return;
       html+='<div style="font-size:11px;font-weight:700;color:var(--primary-dark);background:var(--primary-light);padding:4px 8px;border-radius:4px;margin:8px 0 4px;">'+dept+'</div>';
       html+=deptAtts.map(function(a){
