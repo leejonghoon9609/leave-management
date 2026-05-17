@@ -2599,13 +2599,15 @@ window.cancelAtt = async function(attId, empId) {
 document.addEventListener('click', function(ev) {
   const btn = ev.target.closest('.cancel-att-btn');
   if (!btn) return;
+  ev.preventDefault();
+  ev.stopPropagation();
   const attId = btn.dataset.attId;
   const empId = btn.dataset.empId;
   console.log('취소 버튼 클릭됨 attId:', attId, 'empId:', empId);
   if (attId && empId) {
     window.cancelAtt(Number(attId), Number(empId));
   }
-});
+}, true);
 
 function refreshAfterCancel() {
   console.log('refreshAfterCancel - currentPage:', currentPage);
