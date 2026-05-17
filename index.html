@@ -1812,9 +1812,11 @@ function renderAttDashboard() {
   else {
     let html='';
     deptOrder.forEach(function(dept){
-      const deptAtts=todayAtts.filter(function(a){ const e=getEmpById(a.emp_id); return e&&e.dept===dept&&!a.overtime_checkin; });
+      const deptAtts=todayAtts.filter(function(a){ const e=getEmpById(a.emp_id); return e&&e.dept===dept; });
       if(!deptAtts.length) return;
       html+='<div style="font-size:11px;font-weight:700;color:var(--primary-dark);background:var(--primary-light);padding:4px 8px;border-radius:4px;margin:8px 0 4px;">'+dept+'</div>';
+
+      // 일반출근 직원
       html+=deptAtts.map(function(a){
         const e=getEmpById(a.emp_id); if(!e) return '';
         const idx=employees.findIndex(function(x){ return x.id===e.id; });
@@ -1823,16 +1825,32 @@ function renderAttDashboard() {
         const gps2=((currentRole==='admin'||currentRole==='deptadmin')&&a.checkout_lat)?' <a href="https://maps.google.com/?q='+a.checkout_lat+','+a.checkout_lng+'" target="_blank" style="font-size:11px;color:var(--red);">📍퇴근</a>':'';
         const cb=a.checkout_time?(a.checkout_status==='early'?'<span class="badge badge-late" style="margin-left:4px;">조기퇴근</span>':'<span class="badge badge-present" style="margin-left:4px;">정상퇴근</span>'):'';
         const fm=a.checkin_field_memo?'<span style="font-size:10px;color:var(--blue);margin-left:4px;">[출근:'+a.checkin_field_memo+']</span>':(a.field_memo?'<span style="font-size:10px;color:var(--amber);margin-left:4px;">[퇴근:'+a.field_memo+']</span>':'');
-        // 특근 기록
         const empOts = attendances.filter(function(ot){ return ot.emp_id===e.id && ot.att_date===selDate && ot.overtime_checkin; });
         const otHtml = empOts.map(function(ot){
           const otMemo = ot.overtime_memo ? ' <span style="font-size:10px;color:#8E44AD;">('+ot.overtime_memo+')</span>' : '';
           const otCancelBtn = !ot.overtime_checkout ? '<span style="font-size:10px;color:var(--gray-400);cursor:pointer;text-decoration:underline;margin-left:6px;" onclick="cancelAttendance('+ot.id+',\''+e.id+'\')">취소</span>' : '';
           return '<div style="font-size:11px;color:#8E44AD;margin-top:3px;padding-left:4px;display:flex;align-items:center;justify-content:space-between;"><span>🌙 특근'+otMemo+' · 출근 '+formatTimeKST(ot.overtime_checkin)+(ot.overtime_checkout?' · 퇴근 '+formatTimeKST(ot.overtime_checkout):'')+'<span class="badge" style="background:#EEEDFE;color:#534AB7;font-size:10px;margin-left:4px;">'+(ot.overtime_checkout?'특근퇴근':'특근출근')+'</span></span>'+otCancelBtn+'</div>';
         }).join('');
-        // 일반 출근 취소버튼 (퇴근 전만)
         const cancelBtn = !a.checkout_time ? '<span style="font-size:10px;color:var(--gray-400);cursor:pointer;text-decoration:underline;margin-left:6px;" onclick="cancelAttendance('+a.id+',\''+e.id+'\')">취소</span>' : '';
         return '<div class="att-row" style="flex-wrap:wrap;"><div class="avatar '+avClass(idx)+'">'+ini(e.name)+'</div><div class="att-info" style="flex:1;"><div class="att-name" style="display:flex;align-items:center;justify-content:space-between;">'+e.name+fm+cancelBtn+'</div><div class="att-detail">출근 '+formatTimeKST(a.checkin_time)+gps+' · 퇴근 '+formatTimeKST(a.checkout_time)+gps2+'</div>'+otHtml+'</div>'+attBadge(s)+cb+'</div>';
+      }).join('');
+
+      // 일반출근 없지만 특근만 있는 직원도 표시
+      const deptEmpsWithOtOnly = employees.filter(function(e){
+        if(e.dept!==dept || e.role==='admin') return false;
+        const hasNormal = deptAtts.find(function(a){ return a.emp_id===e.id; });
+        const hasOt = attendances.find(function(ot){ return ot.emp_id===e.id && ot.att_date===selDate && ot.overtime_checkin; });
+        return !hasNormal && hasOt;
+      });
+      html += deptEmpsWithOtOnly.map(function(e){
+        const idx=employees.findIndex(function(x){ return x.id===e.id; });
+        const empOts = attendances.filter(function(ot){ return ot.emp_id===e.id && ot.att_date===selDate && ot.overtime_checkin; });
+        const otHtml = empOts.map(function(ot){
+          const otMemo = ot.overtime_memo ? ' <span style="font-size:10px;color:#8E44AD;">('+ot.overtime_memo+')</span>' : '';
+          const otCancelBtn = !ot.overtime_checkout ? '<span style="font-size:10px;color:var(--gray-400);cursor:pointer;text-decoration:underline;margin-left:6px;" onclick="cancelAttendance('+ot.id+',\''+e.id+'\')">취소</span>' : '';
+          return '<div style="font-size:11px;color:#8E44AD;margin-top:3px;padding-left:4px;display:flex;align-items:center;justify-content:space-between;"><span>🌙 특근'+otMemo+' · 출근 '+formatTimeKST(ot.overtime_checkin)+(ot.overtime_checkout?' · 퇴근 '+formatTimeKST(ot.overtime_checkout):'')+'<span class="badge" style="background:#EEEDFE;color:#534AB7;font-size:10px;margin-left:4px;">'+(ot.overtime_checkout?'특근퇴근':'특근출근')+'</span></span>'+otCancelBtn+'</div>';
+        }).join('');
+        return '<div class="att-row" style="flex-wrap:wrap;"><div class="avatar '+avClass(idx)+'">'+ini(e.name)+'</div><div class="att-info" style="flex:1;"><div class="att-name">'+e.name+'</div>'+otHtml+'</div></div>';
       }).join('');
     });
     el.innerHTML=html||'<div class="empty">출근 기록이 없습니다</div>';
