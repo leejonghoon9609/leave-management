@@ -869,14 +869,7 @@ function formatTimeKST(isoStr) {
 async function dbGet(table, extra) {
   let url = SUPABASE_URL + '/rest/v1/' + table + '?select=*';
   if(extra) url += '&' + extra;
-  const res = await fetch(url, {
-    cache: 'no-store',
-    headers: {
-      'apikey': SUPABASE_ANON_KEY,
-      'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
-      'Cache-Control': 'no-cache'
-    }
-  });
+  const res = await fetch(url, { headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY } });
   if(!res.ok) return [];
   return await res.json();
 }
