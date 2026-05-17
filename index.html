@@ -643,6 +643,19 @@ body { font-family: "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; backgrou
         </div>
         <div id="team-emp-table-month"></div>
       </div>
+
+      <!-- 특근 현황 섹션 -->
+      <div class="card" style="margin-top:16px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+          <div class="card-title" style="margin-bottom:0;">🌙 특근 현황</div>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <button class="cal-btn" onclick="changeTeamOtMonth(-1)">←</button>
+            <span id="team-ot-month-label" style="font-size:12px;font-weight:600;min-width:90px;text-align:center;"></span>
+            <button class="cal-btn" onclick="changeTeamOtMonth(1)">→</button>
+          </div>
+        </div>
+        <div id="team-ot-list"><div class="loading">불러오는 중...</div></div>
+      </div>
     </div>
 
     <!-- 근태 기록 -->
@@ -2827,6 +2840,63 @@ async function confirmOvertimeAction() {
   await loadData(); renderAll();
 }
 
+// ===== 특근 현황 =====
+let teamOtMonth = new Date(new Date().getFullYear(), new Date().getMonth());
+
+function changeTeamOtMonth(dir) {
+  teamOtMonth = new Date(teamOtMonth.getFullYear(), teamOtMonth.getMonth() + dir);
+  renderTeamOt();
+}
+
+function renderTeamOt() {
+  const emp = getEmpById(currentEmpId); if(!emp) return;
+  const y = teamOtMonth.getFullYear();
+  const m = teamOtMonth.getMonth();
+  const months = ['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'];
+  const labelEl = document.getElementById('team-ot-month-label');
+  if(labelEl) labelEl.textContent = y + '년 ' + months[m];
+
+  const startStr = y + '-' + String(m+1).padStart(2,'0') + '-01';
+  const endStr = new Date(y, m+1, 0).toISOString().slice(0,10);
+
+  // 팀원 특근 데이터
+  const otAtts = attendances.filter(function(a){
+    const e = getEmpById(a.emp_id);
+    return e && isInLeaderDept(e.dept, emp.name) && e.role!=='admin'
+      && a.overtime_checkin && a.att_date >= startStr && a.att_date <= endStr;
+  });
+  otAtts.sort(function(a,b){ return a.att_date > b.att_date ? -1 : 1; });
+
+  const el = document.getElementById('team-ot-list');
+  if(!otAtts.length) { el.innerHTML = '<div class="empty">이달 특근 기록이 없습니다</div>'; return; }
+
+  el.innerHTML = '<table style="width:100%;font-size:12px;border-collapse:collapse;">'
+    + '<thead><tr style="border-bottom:0.5px solid var(--gray-200);">'
+    + '<th style="text-align:left;padding:7px 4px;color:var(--gray-600);font-weight:500;">이름</th>'
+    + '<th style="text-align:center;padding:7px 4px;color:var(--gray-600);font-weight:500;">날짜</th>'
+    + '<th style="text-align:center;padding:7px 4px;color:var(--gray-600);font-weight:500;">출근</th>'
+    + '<th style="text-align:center;padding:7px 4px;color:var(--gray-600);font-weight:500;">퇴근</th>'
+    + '<th style="text-align:center;padding:7px 4px;color:var(--gray-600);font-weight:500;">상태</th>'
+    + '<th style="text-align:left;padding:7px 4px;color:var(--gray-600);font-weight:500;">메모</th>'
+    + '</tr></thead><tbody>'
+    + otAtts.map(function(a){
+        const e = getEmpById(a.emp_id);
+        const done = !!a.overtime_checkout;
+        const statusBadge = done
+          ? '<span style="font-size:10px;padding:1px 8px;border-radius:20px;background:#E1F5EE;color:#0F6E56;">완료</span>'
+          : '<span style="font-size:10px;padding:1px 8px;border-radius:20px;background:#FAEEDA;color:#854F0B;">진행 중</span>';
+        return '<tr style="border-bottom:0.5px solid var(--gray-100);">'
+          + '<td style="padding:7px 4px;font-weight:500;color:var(--gray-900);">' + (e?e.name:'') + '</td>'
+          + '<td style="text-align:center;padding:7px 4px;color:var(--gray-500);">' + a.att_date.slice(5) + '</td>'
+          + '<td style="text-align:center;padding:7px 4px;"><span style="color:#8E44AD;font-weight:500;">' + formatTimeKST(a.overtime_checkin) + '</span></td>'
+          + '<td style="text-align:center;padding:7px 4px;">' + (a.overtime_checkout ? '<span style="color:#8E44AD;font-weight:500;">'+formatTimeKST(a.overtime_checkout)+'</span>' : '<span style="color:var(--gray-400);">-</span>') + '</td>'
+          + '<td style="text-align:center;padding:7px 4px;">' + statusBadge + '</td>'
+          + '<td style="padding:7px 4px;color:var(--gray-500);">' + (a.overtime_memo||'-') + '</td>'
+          + '</tr>';
+      }).join('')
+    + '</tbody></table>';
+}
+
 // ===== 팀장 전용: 팀 출퇴근현황 =====
 function switchTeamTab(tab) {} // 하위 호환용
 
@@ -2924,6 +2994,7 @@ function renderTeamAtt() {
     summaryRow('특근', mOvertime + '건', '#8E44AD');
 
   renderTeamEmpTable();
+  renderTeamOt();
 }
 
 // 팀 출퇴근 주간/월간 네비게이션
