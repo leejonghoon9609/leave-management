@@ -3008,6 +3008,7 @@ function renderTeamOt() {
   otAtts.sort(function(a,b){ return a.att_date > b.att_date ? -1 : 1; });
 
   const el = document.getElementById('team-ot-list');
+  if(!el) return;
   if(!otAtts.length) { el.innerHTML = '<div class="empty">이달 특근 기록이 없습니다</div>'; return; }
 
   el.innerHTML = '<table style="width:100%;font-size:12px;border-collapse:collapse;">'
@@ -4118,7 +4119,8 @@ function renderTeamGraph() {
   const wrap = document.getElementById('teamGraphSvgWrap');
   if(!wrap) return;
 
-  const W = wrap.clientWidth || 600;
+  const W = (wrap.getBoundingClientRect().width || wrap.clientWidth || wrap.offsetWidth || 600);
+  if(W < 100) { setTimeout(renderTeamGraph, 300); return; } // 아직 렌더 안됨
   const H = 220;
   const paddingL = 36, paddingR = 16, paddingT = 16, paddingB = 40;
   const chartW = W - paddingL - paddingR;
@@ -4283,7 +4285,7 @@ async function showPage(page, el) {
   if(page==='apply') renderMyLeave();
   if(page==='checkin') { startClock(); renderCheckin(); }
   if(page==='team-graph') { renderTeamGraph(); }
-  if(page==='team-att') { renderTeamAtt(); setTimeout(function(){ renderTeamGraph(); }, 300); }
+  if(page==='team-att') { renderTeamAtt(); setTimeout(function(){ renderTeamGraph(); }, 500); }
   if(page==='my-records') { myRecTab='week'; setTimeout(function(){ renderMyAttRecords(); }, 0); }
   if(page==='monthly') renderMonthly();
 }
