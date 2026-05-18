@@ -3628,9 +3628,9 @@ function downloadAttExcel() {
   }
 
   const statusMap={'present':'정상출근','late':'지각','absent':'결근','off':'휴무'};
-  const GREEN='FF085041', AMBER='FF854F0B', RED='FFA32D2D', PURPLE='FF534AB7';
+  const GREEN='FF0F6E56', AMBER='FF854F0B', RED='FFE24B4A', PURPLE='FF7F77DD';
   const GREEN_BG='FFE1F5EE', AMBER_BG='FFFAEEDA', RED_BG='FFFCEBEB', PURPLE_BG='FFEEEDFE';
-  const BLUE_H='FF1E3A5F'; // 헤더 진한 네이비
+  const BLUE_H='FF2563EB';
   const thinBorder = function(color){ return {style:'thin',color:{rgb:color||'FFCCCCCC'}}; };
   const border = function(color){ return {top:thinBorder(color),bottom:thinBorder(color),left:thinBorder(color),right:thinBorder(color)}; };
 
@@ -3638,8 +3638,8 @@ function downloadAttExcel() {
   const hStyle = function(bg) { return {
     font:{bold:true,color:{rgb:'FFFFFFFF'},sz:11},
     fill:{fgColor:{rgb:bg||'FF1D9E75'}},
-    alignment:{horizontal:'center',vertical:'center',wrapText:true},
-    border:border('FF888888')
+    alignment:{horizontal:'center',vertical:'center',wrapText:false},
+    border:border('FFAAAAAA')
   }; };
   // 일반 셀 (테두리+가운데 정렬)
   const cStyle = {
@@ -3660,9 +3660,9 @@ function downloadAttExcel() {
   // 합계행 스타일
   const sumStyle = function(bg){ return {
     font:{bold:true,color:{rgb:'FFFFFFFF'},sz:11},
-    fill:{fgColor:{rgb:bg||'FF334155'}},
+    fill:{fgColor:{rgb:bg||'FF2E7D52'}},
     alignment:{horizontal:'center',vertical:'center'},
-    border:border('FF888888')
+    border:border('FFAAAAAA')
   }; };
   // 상태별 셀 스타일
   const stStyle = function(fg, bg){ return {
@@ -3709,13 +3709,13 @@ function downloadAttExcel() {
   statData.push(['합계','', totWd, totP, totL, totA, totLv, totOt, totAttended>0?Math.round(totL/totAttended*100)+'%':'0%']);
 
   const ws1 = XLSX.utils.aoa_to_sheet(statData);
-  ws1['!cols']=[{wch:10},{wch:16},{wch:8},{wch:10},{wch:8},{wch:8},{wch:8},{wch:8},{wch:8}];
+  ws1['!cols']=[{wch:10},{wch:18},{wch:8},{wch:10},{wch:8},{wch:8},{wch:8},{wch:8},{wch:8}];
   // 제목
-  if(ws1['A1']) ws1['A1'].s={font:{bold:true,sz:14,color:{rgb:'FF1E3A5F'}},alignment:{horizontal:'left'}};
+  if(ws1['A1']) ws1['A1'].s={font:{bold:true,sz:14,color:{rgb:'FF2E7D52'}},alignment:{horizontal:'left'}};
   ws1['!rows']=[{hpt:22},{hpt:20}];
   statHeaders.forEach(function(_,i){
     const cell=XLSX.utils.encode_cell({r:1,c:i});
-    if(ws1[cell]) ws1[cell].s=hStyle('FF1D9E75');
+    if(ws1[cell]) ws1[cell].s=hStyle('FF2E7D52');
   });
   // 데이터행 스타일
   for(var r2=2;r2<statData.length-1;r2++){
@@ -3733,7 +3733,7 @@ function downloadAttExcel() {
   const sumRow = statData.length-1;
   for(var c=0;c<statHeaders.length;c++){
     const cell=XLSX.utils.encode_cell({r:sumRow,c:c});
-    if(ws1[cell]) ws1[cell].s=sumStyle('FF1E3A5F');
+    if(ws1[cell]) ws1[cell].s=sumStyle('FF2E7D52');
   }
   XLSX.utils.book_append_sheet(wb, ws1, '팀 통계');
 
@@ -3764,12 +3764,12 @@ function downloadAttExcel() {
     sumData.push([e.name, e.dept, joinDate, years, totalLv, usedLv, remLv, pCnt, lCnt, aCnt, otDates2.length, eaCnt]);
   });
   const ws2 = XLSX.utils.aoa_to_sheet(sumData);
-  ws2['!cols']=[{wch:10},{wch:16},{wch:12},{wch:8},{wch:8},{wch:8},{wch:8},{wch:10},{wch:8},{wch:8},{wch:8},{wch:8}];
-  if(ws2['A1']) ws2['A1'].s={font:{bold:true,sz:14,color:{rgb:'FF1E3A5F'}},alignment:{horizontal:'left'}};
+  ws2['!cols']=[{wch:10},{wch:18},{wch:12},{wch:8},{wch:10},{wch:10},{wch:10},{wch:10},{wch:8},{wch:8},{wch:8},{wch:10}];
+  if(ws2['A1']) ws2['A1'].s={font:{bold:true,sz:14,color:{rgb:'FF2563EB'}},alignment:{horizontal:'left'}};
   ws2['!rows']=[{hpt:22},{hpt:20}];
   sumHeaders.forEach(function(_,i){
     const cell=XLSX.utils.encode_cell({r:1,c:i});
-    if(ws2[cell]) ws2[cell].s=hStyle('FF1E3A5F');
+    if(ws2[cell]) ws2[cell].s=hStyle('FF2563EB');
   });
   for(var r3=2;r3<sumData.length;r3++){
     for(var c3=0;c3<sumHeaders.length;c3++){
@@ -3813,11 +3813,11 @@ function downloadAttExcel() {
 
     const wsEmp = XLSX.utils.aoa_to_sheet(empData);
     wsEmp['!cols']=[{wch:12},{wch:10},{wch:10},{wch:10},{wch:10},{wch:20},{wch:10},{wch:10},{wch:16}];
-    if(wsEmp['A1']) wsEmp['A1'].s={font:{bold:true,sz:14,color:{rgb:'FF1E3A5F'}},alignment:{horizontal:'left'}};
+    if(wsEmp['A1']) wsEmp['A1'].s={font:{bold:true,sz:14,color:{rgb:'FF2E7D52'}},alignment:{horizontal:'left'}};
     wsEmp['!rows']=[{hpt:22},{hpt:20}];
     empHeaders.forEach(function(_,i){
       const cell=XLSX.utils.encode_cell({r:1,c:i});
-      if(wsEmp[cell]) wsEmp[cell].s=hStyle('FF1D9E75');
+      if(wsEmp[cell]) wsEmp[cell].s=hStyle('FF2E7D52');
     });
     for(var r=2;r<empData.length;r++){
       const st = empData[r][2];
