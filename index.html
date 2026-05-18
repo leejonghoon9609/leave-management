@@ -604,37 +604,6 @@ body { font-family: "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; backgrou
       </div>
     </div>
 
-    <!-- 팀장 전용: 팀 근태 그래프 -->
-    <div class="page" id="page-team-graph">
-      <div class="page-header">
-        <div>
-          <div class="page-title">팀 근태 그래프</div>
-          <div class="page-sub" id="team-graph-dept-name"></div>
-        </div>
-        <div style="display:flex;gap:8px;align-items:center;">
-          <select id="team-graph-month" onchange="renderTeamGraph()" style="font-size:13px;padding:4px 8px;border:1px solid var(--gray-200);border-radius:6px;"></select>
-          <button class="excel-btn" onclick="downloadAttExcelWithGraph()" style="font-size:12px;padding:6px 14px;">📥 엑셀+그래프 다운로드</button>
-        </div>
-      </div>
-      <div id="team-graph-content" style="padding:0 4px;">
-        <!-- 요약 카드 -->
-        <div id="team-graph-summary" style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px;"></div>
-        <!-- 그래프 카드 -->
-        <div id="team-graph-chart-card" style="background:var(--white);border:1px solid var(--gray-100);border-radius:12px;padding:16px;margin-bottom:16px;">
-          <div style="font-size:14px;font-weight:600;color:var(--gray-900);margin-bottom:8px;">정상출근 / 지각 / 결근 / 특근 비교</div>
-          <div style="display:flex;gap:14px;margin-bottom:12px;flex-wrap:wrap;">
-            <span style="display:flex;align-items:center;gap:4px;font-size:12px;color:var(--gray-600);"><span style="width:10px;height:10px;border-radius:2px;background:#1D9E75;display:inline-block;"></span>정상출근</span>
-            <span style="display:flex;align-items:center;gap:4px;font-size:12px;color:var(--gray-600);"><span style="width:10px;height:10px;border-radius:2px;background:#378ADD;display:inline-block;"></span>지각</span>
-            <span style="display:flex;align-items:center;gap:4px;font-size:12px;color:var(--gray-600);"><span style="width:10px;height:10px;border-radius:2px;background:#E24B4A;display:inline-block;"></span>결근</span>
-            <span style="display:flex;align-items:center;gap:4px;font-size:12px;color:var(--gray-600);"><span style="width:10px;height:10px;border-radius:2px;background:#7F77DD;display:inline-block;"></span>특근</span>
-          </div>
-          <div style="position:relative;width:100%;height:280px;">
-            <canvas id="teamGraphCanvas" role="img" aria-label="팀원별 근태 막대 그래프"></canvas>
-          </div>
-        </div>
-      </div>
-    </div>
-
     <!-- 팀장 전용: 팀 출퇴근현황 -->
     <div class="page" id="page-team-att">
       <div class="page-header">
@@ -679,8 +648,6 @@ body { font-family: "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; backgrou
             <input type="date" id="team-week-start" onchange="changeTeamWeekByDate()" style="font-size:12px;padding:4px 6px;border:1px solid var(--gray-200);border-radius:6px;">
             <span style="font-size:12px;color:var(--gray-400);">~</span>
             <input type="date" id="team-week-end" onchange="changeTeamWeekByDate()" style="font-size:12px;padding:4px 6px;border:1px solid var(--gray-200);border-radius:6px;">
-            <button class="cal-btn" onclick="changeTeamWeek(-1)" style="margin-left:4px;">←</button>
-            <button class="cal-btn" onclick="changeTeamWeek(1)">→</button>
           </div>
         </div>
         <div id="team-emp-table-week"></div>
@@ -4150,7 +4117,8 @@ function renderTeamGraph() {
     }).join('');
   }
 
-  // 차트
+  // 차트 - DOM 렌더 후 실행되도록 setTimeout
+  setTimeout(function() {
   const canvas = document.getElementById('teamGraphCanvas');
   if(!canvas) return;
   if(teamGraphChart) { teamGraphChart.destroy(); teamGraphChart = null; }
@@ -4175,6 +4143,7 @@ function renderTeamGraph() {
       }
     }
   });
+  }, 50);
 }
 
 async function downloadAttExcelWithGraph() {
@@ -4288,10 +4257,9 @@ async function showPage(page, el) {
   if(page==='apply') renderMyLeave();
   if(page==='checkin') { startClock(); renderCheckin(); }
   if(page==='team-graph') { renderTeamGraph(); }
-  if(page==='team-att') { renderTeamGraph(); }
+  if(page==='team-att') { renderTeamAtt(); setTimeout(function(){ renderTeamGraph(); }, 100); }
   if(page==='my-records') { myRecTab='week'; setTimeout(function(){ renderMyAttRecords(); }, 0); }
   if(page==='monthly') renderMonthly();
-  if(page==='team-att') renderTeamAtt();
 }
 
 // ===== 세션 복원 =====
