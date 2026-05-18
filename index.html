@@ -3666,7 +3666,7 @@ async function downloadAttExcel() {
     return;
   }
 
-  // ===== 팀장: Python API로 엑셀 생성 =====
+  // ===== 팀장: 브라우저 방식 엑셀 생성 (스타일 정확 반영) =====
   const today2 = todayStrKST();
   const y2 = myCurrentAttMonth ? myCurrentAttMonth.getFullYear() : new Date(nowKST()).getFullYear();
   const m2 = myCurrentAttMonth ? myCurrentAttMonth.getMonth() : new Date(nowKST()).getMonth();
@@ -3686,7 +3686,6 @@ async function downloadAttExcel() {
     ? employees.filter(function(e){ return e.role !== 'admin'; })
     : getVisibleEmployees().filter(function(e){ return e.role !== 'admin'; });
 
-  // 평일 목록
   const workdays2 = [];
   const wc2 = new Date(monthStart2);
   const wend2 = new Date(monthEnd2 < today2 ? monthEnd2 : today2);
@@ -3695,81 +3694,310 @@ async function downloadAttExcel() {
     wc2.setDate(wc2.getDate()+1);
   }
 
-  // 팀 통계 데이터
-  const apiData = teamEmps2.map(function(e) {
-    const myAtts = attendances.filter(function(a){ return a.emp_id===e.id && a.att_date>=monthStart2 && a.att_date<=monthEnd2 && !a.overtime_checkin; });
-    const myOts  = attendances.filter(function(a){ return a.emp_id===e.id && a.att_date>=monthStart2 && a.att_date<=monthEnd2 && a.overtime_checkin; });
-    const myLeaves = requests.filter(function(r){ return r.emp_id===e.id && r.status==='approved' && r.start_date<=monthEnd2 && r.end_date>=monthStart2; });
-    let pCnt=0,lCnt=0,aCnt=0,lvCnt=0; const otSet=[];
+  // 스타일 정의 (종훈님 수정파일 기준)
+  const GREEN='1D9E75', GREEN_D='0F6E56', GREEN_L='E1F5EE';
+  const BLUE_C='378ADD', BLUE_D='185FA5', BLUE_L='E6F1FB';
+  const RED_C='E24B4A', RED_D='A32D2D', RED_L='FCEBEB';
+  const PUR='7F77DD', PUR_D='534AB7', PUR_L='EEEDFE';
+  const AMB_D='854F0B', AMB_L='FAEEDA';
+  const HDR='2E7D52', NAVY='1E3A5F', GRAY_L='F3F9F6';
+
+  function mkFont(bold,sz,color){ return {font:{bold:!!bold,sz:sz||11,color:{rgb:'FF'+(color||'000000')}}}; }
+  function mkFill(color){ return {fill:{fgColor:{rgb:'FF'+color},patternType:'solid'}}; }
+  function mkBdr(color){ const s={style:'thin',color:{rgb:'FF'+(color||'CCCCCC')}}; return {border:{top:s,bottom:s,left:s,right:s}}; }
+  function mkAlign(h,v){ return {alignment:{horizontal:h||'center',vertical:v||'center'}}; }
+  function cell(v,styles){
+    const s=Object.assign({},...styles);
+    return {v:v, t:typeof v==='number'?'n':'s', s:s};
+  }
+
+  const wb = XLSX.utils.book_new();
+
+  // ===== 시트1: 월별현황 (막대그래프 + 팀통계 나란히) =====
+  const BAR=20;
+  const wsBar = {};
+  const wsBarMerges = [];
+
+  // 데이터 수집
+  const barRows = [];
+  let totP2=0,totL2=0,totA2=0,totLv2=0,totOt2=0;
+  teamEmps2.forEach(function(e) {
+    const myA = attendances.filter(function(a){ return a.emp_id===e.id && a.att_date>=monthStart2 && a.att_date<=monthEnd2 && !a.overtime_checkin; });
+    const myO = attendances.filter(function(a){ return a.emp_id===e.id && a.att_date>=monthStart2 && a.att_date<=monthEnd2 && a.overtime_checkin; });
+    const myL = requests.filter(function(r){ return r.emp_id===e.id && r.status==='approved' && r.start_date<=monthEnd2 && r.end_date>=monthStart2; });
+    let p=0,l=0,a=0,lv=0; const ots=[];
     workdays2.forEach(function(ds){
-      const lv=myLeaves.find(function(r){ return r.start_date<=ds && r.end_date>=ds; });
-      if(lv){ lvCnt++; return; }
-      const att=myAtts.find(function(a){ return a.att_date===ds; });
-      if(att){ const s=getAttStatus(att); if(s==='present') pCnt++; else if(s==='late') lCnt++; }
-      else if(ds<=today2) aCnt++;
+      const lv2=myL.find(function(r){ return r.start_date<=ds && r.end_date>=ds; });
+      if(lv2){ lv++; return; }
+      const att=myA.find(function(a){ return a.att_date===ds; });
+      if(att){ const s=getAttStatus(att); if(s==='present') p++; else if(s==='late') l++; }
+      else if(ds<=today2) a++;
     });
-    myOts.forEach(function(a){ if(!otSet.includes(a.att_date)) otSet.push(a.att_date); });
-    const attended = pCnt+lCnt;
-    return { name:e.name, dept:e.dept, wd:workdays2.length, p:pCnt, l:lCnt, a:aCnt, lv:lvCnt, ot:otSet.length,
-             lateRate: attended>0 ? Math.round(lCnt/attended*100)+'%' : '0%' };
+    myO.forEach(function(a){ if(!ots.includes(a.att_date)) ots.push(a.att_date); });
+    const att2=p+l; const lr=att2>0?Math.round(l/att2*100)+'%':'0%';
+    barRows.push({name:e.name,dept:e.dept,wd:workdays2.length,p:p,l:l,a:a,lv:lv,ot:ots.length,lr:lr});
+    totP2+=p; totL2+=l; totA2+=a; totLv2+=lv; totOt2+=ots.length;
+  });
+  const maxV = Math.max(1,...barRows.map(function(r){ return Math.max(r.p,r.l,r.a,r.ot); }));
+  const barDefs2=[
+    {key:'p',label:'정상출근',col:GREEN,bg:GREEN_L},
+    {key:'l',label:'지각',    col:BLUE_C,bg:BLUE_L},
+    {key:'a',label:'결근',    col:RED_C, bg:RED_L},
+    {key:'ot',label:'특근',   col:PUR,   bg:PUR_L},
+  ];
+  const sc2 = BAR+4; // Y열 시작 (0-indexed)
+
+  // 열 너비 설정 (종훈님 파일 기준)
+  const barCols = [{wch:8.86}]; // A
+  for(var i=0;i<BAR;i++) barCols.push({wch:3.0}); // B~U
+  barCols.push({wch:5.86}); // V=합계
+  barCols.push({wch:2}); // W=구분
+  barCols.push({wch:2}); // X=구분
+  // Y~AG = 팀통계 (이름,부서,평일수,정상출근,지각,결근,연차,특근,지각률)
+  [8,14.57,8.86,10.86,8.86,8.86,8.86,8.86,8.86].forEach(function(w){ barCols.push({wch:w}); });
+
+  wsBar['!cols'] = barCols;
+  wsBar['!rows'] = [];
+
+  // 행1: 제목
+  wsBar['!rows'][0] = {hpt:28.5};
+  var c0 = XLSX.utils.encode_cell({r:0,c:0});
+  wsBar[c0] = cell(statTitle+' - 그래프', [mkFont(true,12,HDR), mkAlign('left')]);
+  wsBarMerges.push({s:{r:0,c:0},e:{r:0,c:BAR+1}});
+  // 팀통계 제목
+  wsBar[XLSX.utils.encode_cell({r:0,c:sc2})] = cell(statTitle, [mkFont(true,12,HDR), mkAlign('left')]);
+  wsBarMerges.push({s:{r:0,c:sc2},e:{r:0,c:sc2+8}});
+
+  // 행2: 범례 + 팀통계 헤더
+  var legDefs=[['■ 정상출근',GREEN],['■ 지각',BLUE_C],['■ 결근',RED_C],['■ 특근',PUR]];
+  legDefs.forEach(function(lg,i){
+    wsBar[XLSX.utils.encode_cell({r:1,c:i*5})] = cell(lg[0], [mkFont(true,10,lg[1]), mkAlign('left'), {border:{bottom:{style:'thin',color:{rgb:'FFCCCCCC'}}}}]);
+  });
+  var stHdrs=['이름','부서','평일수','정상출근','지각','결근','연차','특근','지각률'];
+  stHdrs.forEach(function(h,i){
+    wsBar[XLSX.utils.encode_cell({r:1,c:sc2+i})] = cell(h, [mkFont(true,10,'FFFFFF'), mkFill(HDR), mkBdr('AAAAAA'), mkAlign('center')]);
   });
 
-  // 일별 데이터
-  const apiDaily = teamEmps2.map(function(e) {
-    const myAtts = attendances.filter(function(a){ return a.emp_id===e.id && a.att_date>=monthStart2 && a.att_date<=monthEnd2 && !a.overtime_checkin; });
-    const myOts  = attendances.filter(function(a){ return a.emp_id===e.id && a.att_date>=monthStart2 && a.att_date<=monthEnd2 && a.overtime_checkin; });
-    const myLeaves = requests.filter(function(r){ return r.emp_id===e.id && r.status==='approved' && r.start_date<=monthEnd2 && r.end_date>=monthStart2; });
-    const rows = [];
-    workdays2.forEach(function(ds) {
-      const lv = myLeaves.find(function(r){ return r.start_date<=ds && r.end_date>=ds; });
-      if(lv) { rows.push({date:ds,gubun:lv.type,type:'',time:'',status:'',memo:''}); return; }
-      const att = myAtts.find(function(a){ return a.att_date===ds; });
-      const otRecs = myOts.filter(function(a){ return a.att_date===ds; });
-      if(att) {
-        const s = getAttStatus(att);
-        const gubun = (att.checkin_field_memo||att.field_memo) ? '현장' : '본사';
-        rows.push({date:ds, gubun:gubun, type:'출근', time:formatTimeKST(att.checkin_time),
-                   status:s==='late'?'지각':'정상출근', memo:att.checkin_field_memo||''});
-        const coGubun = att.field_memo ? '현장' : (att.checkin_field_memo ? '현장' : '본사');
-        const coSt = att.checkout_time ? (att.checkout_status==='early'?'조기퇴근':'정상퇴근') : '-';
-        rows.push({date:'', gubun:coGubun, type:'퇴근', time:att.checkout_time?formatTimeKST(att.checkout_time):'-',
-                   status:coSt, memo:att.field_memo||''});
-      } else if(ds <= today2) {
-        rows.push({date:ds, gubun:'결근', type:'', time:'', status:'', memo:''});
+  // 직원별 막대 + 팀통계
+  var bRow=2;
+  barRows.forEach(function(row, ri) {
+    wsBar['!rows'][bRow] = {hpt:15.75};
+    // 직원 이름
+    wsBar[XLSX.utils.encode_cell({r:bRow,c:0})] = cell(row.name, [mkFont(true,12,NAVY), mkAlign('left','center')]);
+    wsBarMerges.push({s:{r:bRow,c:0},e:{r:bRow,c:BAR+1}});
+
+    // 팀통계 이름행
+    var stVals=[row.name,row.dept,row.wd,row.p,row.l,row.a,row.lv,row.ot,row.lr];
+    var stFcs=[null,null,null,GREEN_D,AMB_D,RED_D,null,PUR_D,null];
+    var stBd=[true,false,false,true,true,true,false,true,false];
+    stVals.forEach(function(v,i){
+      wsBar[XLSX.utils.encode_cell({r:bRow,c:sc2+i})] = cell(v, [
+        mkFont(stBd[i], i<2?9:10, stFcs[i]||'000000'),
+        mkAlign(i===0?'left':'center'), mkBdr()
+      ]);
+    });
+    bRow++;
+
+    // 일수 헤더행
+    wsBar[XLSX.utils.encode_cell({r:bRow,c:0})] = cell('일수', [mkFont(true,9,NAVY), mkAlign('center'), {border:{bottom:{style:'thin',color:{rgb:'FFCCCCCC'}},right:{style:'thin',color:{rgb:'FFCCCCCC'}}}}]);
+    for(var d=1;d<=BAR;d++){
+      wsBar[XLSX.utils.encode_cell({r:bRow,c:d})] = cell(d, [mkFont(false,9), mkAlign('center'), {border:{bottom:{style:'thin',color:{rgb:'FFCCCCCC'}}}}]);
+    }
+    wsBar[XLSX.utils.encode_cell({r:bRow,c:BAR+1})] = cell('합계', [mkFont(false,9), mkAlign('center'), {border:{bottom:{style:'thin',color:{rgb:'FFCCCCCC'}},left:{style:'thin',color:{rgb:'FFCCCCCC'}}}}]);
+    bRow++;
+
+    // 막대 4행
+    barDefs2.forEach(function(def) {
+      var val=row[def.key]; var bl=Math.round((val/maxV)*BAR);
+      wsBar[XLSX.utils.encode_cell({r:bRow,c:0})] = cell(def.label, [mkFont(false,10,def.col), mkAlign('right','center'), {border:{bottom:{style:'thin',color:{rgb:'FFCCCCCC'}},right:{style:'thin',color:{rgb:'FFCCCCCC'}}}}]);
+      for(var bi=1;bi<=BAR;bi++){
+        wsBar[XLSX.utils.encode_cell({r:bRow,c:bi})] = cell('', [
+          {fill:{fgColor:{rgb:'FF'+(bi<=bl?def.col:'FAFAFA')},patternType:'solid'}},
+          {border:{bottom:{style:'thin',color:{rgb:'FFCCCCCC'}}}}
+        ]);
       }
-      otRecs.forEach(function(ot) {
-        rows.push({date:att?'':ds, gubun:'특근', type:'출근', time:formatTimeKST(ot.overtime_checkin), status:'특근출근', memo:ot.overtime_memo||''});
-        if(ot.overtime_checkout) rows.push({date:'', gubun:'특근', type:'퇴근', time:formatTimeKST(ot.overtime_checkout), status:'특근퇴근', memo:''});
+      wsBar[XLSX.utils.encode_cell({r:bRow,c:BAR+1})] = cell(val, [mkFont(true,11,def.col), mkAlign('center'), {border:{bottom:{style:'thin',color:{rgb:'FFCCCCCC'}},left:{style:'thin',color:{rgb:'FFCCCCCC'}}}}]);
+      bRow++;
+    });
+
+    // 빈행
+    wsBarMerges.push({s:{r:bRow,c:0},e:{r:bRow,c:BAR+1}});
+    bRow++;
+  });
+
+  // 팀통계 합계행
+  const totAtt2=totP2+totL2; const totLR2=totAtt2>0?Math.round(totL2/totAtt2*100)+'%':'0%';
+  const sumStatRow = 2 + (barRows.length-1)*6;
+  ['합계','',workdays2.length*barRows.length,totP2,totL2,totA2,totLv2,totOt2,totLR2].forEach(function(v,i){
+    wsBar[XLSX.utils.encode_cell({r:sumStatRow,c:sc2+i})] = cell(v, [mkFont(true,10,'FFFFFF'), mkFill(HDR), mkBdr(), mkAlign('center')]);
+  });
+
+  wsBar['!ref'] = XLSX.utils.encode_range({s:{r:0,c:0},e:{r:bRow+1,c:sc2+8}});
+  wsBar['!merges'] = wsBarMerges;
+  XLSX.utils.book_append_sheet(wb, wsBar, '월별현황');
+
+  // ===== 시트2: 팀 통계 =====
+  const ws1 = {};
+  const ws1merge = [];
+  ws1['!cols']=[{wch:10.86},{wch:18.86},{wch:8.86},{wch:10.86},{wch:8.86},{wch:8.86},{wch:8.86},{wch:8.86},{wch:8.86}];
+  ws1['!rows']=[{hpt:21.95},{hpt:20.1}];
+
+  ws1[XLSX.utils.encode_cell({r:0,c:0})] = cell('', [{}]);
+  ws1[XLSX.utils.encode_cell({r:0,c:1})] = cell(statTitle, [mkFont(false,11), mkAlign('left')]);
+  ws1merge.push({s:{r:0,c:1},e:{r:0,c:8}});
+
+  var stHdrs2=['이름','부서','평일수','정상출근','지각','결근','연차','특근','지각률'];
+  stHdrs2.forEach(function(h,i){
+    ws1[XLSX.utils.encode_cell({r:1,c:i})] = cell(h, [mkFont(true,11,'FFFFFF'), mkFill(HDR), mkBdr('AAAAAA'), mkAlign('center')]);
+  });
+
+  barRows.forEach(function(row,ri){
+    var r=ri+2;
+    ws1['!rows'][r]={hpt:18};
+    var vals2=[row.name,row.dept,row.wd,row.p,row.l,row.a,row.lv,row.ot,row.lr];
+    var fcs2=[null,null,null,GREEN_D,AMB_D,RED_D,null,PUR_D,null];
+    var bds2=[true,false,false,true,true,true,false,true,false];
+    vals2.forEach(function(v,i){
+      ws1[XLSX.utils.encode_cell({r:r,c:i})] = cell(v, [mkFont(bds2[i],11,fcs2[i]||'000000'), mkAlign(i===0?'left':'center'), mkBdr()]);
+    });
+  });
+
+  // 합계행
+  var sumR=barRows.length+2;
+  ws1['!rows'][sumR]={hpt:18};
+  ['합계','',workdays2.length*barRows.length,totP2,totL2,totA2,totLv2,totOt2,totLR2].forEach(function(v,i){
+    ws1[XLSX.utils.encode_cell({r:sumR,c:i})] = cell(v, [mkFont(true,11,'FFFFFF'), mkFill(HDR), mkBdr(), mkAlign('center')]);
+  });
+  ws1['!ref']=XLSX.utils.encode_range({s:{r:0,c:0},e:{r:sumR,c:8}});
+  ws1['!merges']=ws1merge;
+  XLSX.utils.book_append_sheet(wb, ws1, '팀 통계');
+
+  // ===== 시트3~N: 직원별 일별 =====
+  teamEmps2.forEach(function(e) {
+    const myA2 = attendances.filter(function(a){ return a.emp_id===e.id && a.att_date>=monthStart2 && a.att_date<=monthEnd2 && !a.overtime_checkin; });
+    const myO2 = attendances.filter(function(a){ return a.emp_id===e.id && a.att_date>=monthStart2 && a.att_date<=monthEnd2 && a.overtime_checkin; });
+    const myL2 = requests.filter(function(r){ return r.emp_id===e.id && r.status==='approved' && r.start_date<=monthEnd2 && r.end_date>=monthStart2; });
+
+    const wsE = {};
+    const wsErows = [];
+    wsE['!cols']=[{wch:12.86},{wch:8.86},{wch:8},{wch:10.86},{wch:10.86},{wch:20.86}];
+    wsErows[0]={hpt:21.95}; wsErows[1]={hpt:6}; wsErows[2]={hpt:20.1};
+
+    // 제목
+    wsE[XLSX.utils.encode_cell({r:0,c:0})] = cell(e.name+'  |  부서: '+e.dept+'  |  기간: '+monthLabel2, [mkFont(true,13,HDR), mkAlign('left')]);
+    const wsEmerge=[{s:{r:0,c:0},e:{r:0,c:5}}];
+
+    // 헤더
+    ['날짜','구분','유형','시간','상태','현장메모'].forEach(function(h,i){
+      wsE[XLSX.utils.encode_cell({r:2,c:i})] = cell(h, [mkFont(true,11,'FFFFFF'), mkFill(HDR), mkBdr('AAAAAA'), mkAlign('center')]);
+    });
+
+    // 데이터
+    var eRow=3; var lastDate=''; var bgToggle=true;
+    workdays2.forEach(function(ds) {
+      if(ds!==lastDate){ lastDate=ds; bgToggle=!bgToggle; }
+      var bg=bgToggle?GRAY_L:'FFFFFF';
+      const lv2=myL2.find(function(r){ return r.start_date<=ds && r.end_date>=ds; });
+      if(lv2){
+        var gfg2,gbg2;
+        if(lv2.type==='연차'||lv2.type==='반차') { gfg2=GREEN_D; gbg2=GREEN_L; }
+        else if(lv2.type==='병가') { gfg2=RED_D; gbg2=RED_L; }
+        else { gfg2=PUR_D; gbg2=PUR_L; }
+        wsErows[eRow]={hpt:16};
+        [ds,lv2.type,'','','',''].forEach(function(v,i){
+          wsE[XLSX.utils.encode_cell({r:eRow,c:i})] = cell(v, [
+            i===1 ? mkFont(true,10,gfg2) : mkFont(false,11),
+            i===1 ? {fill:{fgColor:{rgb:'FF'+gbg2},patternType:'solid'}} : {fill:{fgColor:{rgb:'FF'+bg},patternType:'solid'}},
+            mkAlign(i===5?'left':'center'), mkBdr()
+          ]);
+        });
+        eRow++;
+        return;
+      }
+      const att=myA2.find(function(a){ return a.att_date===ds; });
+      const otRecs=myO2.filter(function(a){ return a.att_date===ds; });
+
+      if(att){
+        const s2=getAttStatus(att);
+        const gubun=(att.checkin_field_memo||att.field_memo)?'현장':'본사';
+        const ciSt=s2==='late'?'지각':'정상출근';
+        var gfg3=gubun==='현장'?BLUE_D:GREEN_D;
+        var gbg3=gubun==='현장'?BLUE_L:bg;
+        var sfg=ciSt==='지각'?AMB_D:GREEN_D;
+        var sbg=ciSt==='지각'?AMB_L:GREEN_L;
+
+        // 출근행
+        wsErows[eRow]={hpt:16};
+        [ds,gubun,'출근',formatTimeKST(att.checkin_time),ciSt,att.checkin_field_memo||''].forEach(function(v,i){
+          wsE[XLSX.utils.encode_cell({r:eRow,c:i})] = cell(v, [
+            i===1?mkFont(true,10,gfg3):i===4?mkFont(true,10,sfg):mkFont(false,11),
+            i===1?{fill:{fgColor:{rgb:'FF'+gbg3},patternType:'solid'}}:i===4?{fill:{fgColor:{rgb:'FF'+sbg},patternType:'solid'}}:{fill:{fgColor:{rgb:'FF'+bg},patternType:'solid'}},
+            mkAlign(i===5?'left':'center'), mkBdr()
+          ]);
+        });
+        eRow++;
+
+        // 퇴근행
+        wsErows[eRow]={hpt:16};
+        var coGubun=att.field_memo?'현장':(att.checkin_field_memo?'현장':'본사');
+        var coSt=att.checkout_time?(att.checkout_status==='early'?'조기퇴근':'정상퇴근'):'-';
+        var cofg=coSt==='조기퇴근'?RED_D:coSt==='정상퇴근'?GREEN_D:'888888';
+        var cobg=coSt==='조기퇴근'?RED_L:coSt==='정상퇴근'?GREEN_L:bg;
+        var cogfg=coGubun==='현장'?BLUE_D:GREEN_D;
+        var cogbg=coGubun==='현장'?BLUE_L:bg;
+        ['',coGubun,'퇴근',att.checkout_time?formatTimeKST(att.checkout_time):'-',coSt,att.field_memo||''].forEach(function(v,i){
+          wsE[XLSX.utils.encode_cell({r:eRow,c:i})] = cell(v, [
+            i===1?mkFont(true,10,cogfg):i===4?mkFont(true,10,cofg):mkFont(false,11),
+            i===1?{fill:{fgColor:{rgb:'FF'+cogbg},patternType:'solid'}}:i===4?{fill:{fgColor:{rgb:'FF'+cobg},patternType:'solid'}}:{fill:{fgColor:{rgb:'FF'+bg},patternType:'solid'}},
+            mkAlign(i===5?'left':'center'), mkBdr()
+          ]);
+        });
+        eRow++;
+      } else if(ds<=today2){
+        wsErows[eRow]={hpt:16};
+        [ds,'결근','','','',''].forEach(function(v,i){
+          wsE[XLSX.utils.encode_cell({r:eRow,c:i})] = cell(v, [
+            i===1?mkFont(true,10,RED_D):mkFont(false,11),
+            i===1?{fill:{fgColor:{rgb:'FF'+RED_L},patternType:'solid'}}:{fill:{fgColor:{rgb:'FF'+bg},patternType:'solid'}},
+            mkAlign(i===5?'left':'center'), mkBdr()
+          ]);
+        });
+        eRow++;
+      }
+
+      // 특근행
+      otRecs.forEach(function(ot){
+        wsErows[eRow]={hpt:16};
+        [att?'':ds,'특근','출근',formatTimeKST(ot.overtime_checkin),'특근출근',ot.overtime_memo||''].forEach(function(v,i){
+          wsE[XLSX.utils.encode_cell({r:eRow,c:i})] = cell(v, [
+            i===1?mkFont(true,10,PUR_D):i===4?mkFont(true,10,PUR_D):mkFont(false,11),
+            i===1?{fill:{fgColor:{rgb:'FF'+PUR_L},patternType:'solid'}}:i===4?{fill:{fgColor:{rgb:'FF'+PUR_L},patternType:'solid'}}:{fill:{fgColor:{rgb:'FF'+bg},patternType:'solid'}},
+            mkAlign(i===5?'left':'center'), mkBdr()
+          ]);
+        });
+        eRow++;
+        if(ot.overtime_checkout){
+          wsErows[eRow]={hpt:16};
+          ['','특근','퇴근',formatTimeKST(ot.overtime_checkout),'특근퇴근',''].forEach(function(v,i){
+            wsE[XLSX.utils.encode_cell({r:eRow,c:i})] = cell(v, [
+              i===1?mkFont(true,10,PUR_D):i===4?mkFont(true,10,PUR_D):mkFont(false,11),
+              {fill:{fgColor:{rgb:'FF'+PUR_L},patternType:'solid'}},
+              mkAlign(i===5?'left':'center'), mkBdr()
+            ]);
+          });
+          eRow++;
+        }
       });
     });
-    return { name:e.name, dept:e.dept, month:monthLabel2, rows:rows };
+
+    wsE['!ref']=XLSX.utils.encode_range({s:{r:0,c:0},e:{r:eRow,c:5}});
+    wsE['!merges']=wsEmerge;
+    wsE['!rows']=wsErows;
+    const sheetName=e.name.slice(0,10)+'_일별';
+    XLSX.utils.book_append_sheet(wb, wsE, sheetName);
   });
 
-  // 로딩 표시
-  const btn = document.querySelector('[onclick="downloadAttExcel()"]');
-  const origText = btn ? btn.textContent : '';
-  if(btn) btn.textContent = '⏳ 생성 중...';
-
-  try {
-    const resp = await fetch('/api/excel', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ title:statTitle, monthLabel:monthLabel2, data:apiData, daily:apiDaily })
-    });
-    if(!resp.ok) throw new Error('서버 오류: ' + resp.status);
-    const blob = await resp.blob();
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = '팀근태_' + monthLabel2.replace(' ','') + '_' + today2 + '.xlsx';
-    a.click();
-    URL.revokeObjectURL(url);
-  } catch(err) {
-    console.error('엑셀 생성 오류:', err);
-    alert('엑셀 생성 오류: ' + err.message);
-  } finally {
-    if(btn) btn.textContent = origText;
-  }
+  XLSX.writeFile(wb, '팀근태_'+monthLabel2.replace(' ','')+'-'+today2+'.xlsx');
 }
 
 // ===== 전체 렌더 =====
