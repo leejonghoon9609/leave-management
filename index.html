@@ -3745,7 +3745,7 @@ async function downloadAttExcel() {
     {key:'a',label:'결근',    col:RED_C, bg:RED_L},
     {key:'ot',label:'특근',   col:PUR,   bg:PUR_L},
   ];
-  const sc2 = BAR+4; // Y열 시작 (0-indexed)
+  const sc2 = BAR+5; // Y열 시작 (0-indexed=24 → Y=25번째열)
 
   // 열 너비: SheetJS는 !cols 배열 인덱스=열번호(0-based)
   // C~U는 포함하지 않음 → 엑셀 기본값(8.43) 유지
@@ -3759,7 +3759,7 @@ async function downloadAttExcel() {
   barColsArr[23] = {wch:2.43};   // X
   // Y(24)~AG(32) = 팀통계
   const statWchs = [8,14.57,8.86,10.86,8.86,8.86,8.86,8.86,8.86];
-  statWchs.forEach(function(w,i){ barColsArr[24+i]={wch:w}; });
+  statWchs.forEach(function(w,i){ barColsArr[25+i]={wch:w}; });
   wsBar['!cols'] = barColsArr;
   // 행 높이: 제목(1행)=28.5, 직원이름행만 15.75 나머지 기본값
   wsBar['!rows'] = [{hpt:28.5}]; // 1행 제목
@@ -3785,22 +3785,24 @@ async function downloadAttExcel() {
 
   // 직원별 막대 + 팀통계
   var bRow=2;
+  var statRow2=2; // 팀통계 별도 행 카운터 (2행=헤더, 3행부터 데이터)
   barRows.forEach(function(row, ri) {
     if(!wsBar['!rows']) wsBar['!rows']=[{hpt:28.5}]; wsBar['!rows'][bRow] = {hpt:15.75};
-    // 직원 이름
+    // 직원 이름 (막대 그래프)
     wsBar[XLSX.utils.encode_cell({r:bRow,c:0})] = cell(row.name, [mkFont(true,12,NAVY), mkAlign('left','center')]);
     wsBarMerges.push({s:{r:bRow,c:0},e:{r:bRow,c:BAR+1}});
 
-    // 팀통계 이름행
+    // 팀통계 데이터 (별도 행 카운터 사용)
     var stVals=[row.name,row.dept,row.wd,row.p,row.l,row.a,row.lv,row.ot,row.lr];
     var stFcs=[null,null,null,GREEN_D,AMB_D,RED_D,null,PUR_D,null];
     var stBd=[true,false,false,true,true,true,false,true,false];
     stVals.forEach(function(v,i){
-      wsBar[XLSX.utils.encode_cell({r:bRow,c:sc2+i})] = cell(v, [
+      wsBar[XLSX.utils.encode_cell({r:statRow2,c:sc2+i})] = cell(v, [
         mkFont(stBd[i], i<2?9:10, stFcs[i]||'000000'),
         mkAlign(i===0?'left':'center'), mkBdr()
       ]);
     });
+    statRow2++;
     bRow++;
 
     // 일수 헤더행
@@ -3832,7 +3834,7 @@ async function downloadAttExcel() {
 
   // 팀통계 합계행
   const totAtt2=totP2+totL2; const totLR2=totAtt2>0?Math.round(totL2/totAtt2*100)+'%':'0%';
-  const sumStatRow = 2 + (barRows.length-1)*6;
+  const sumStatRow = statRow2; // 팀통계 합계행
   ['합계','',workdays2.length*barRows.length,totP2,totL2,totA2,totLv2,totOt2,totLR2].forEach(function(v,i){
     wsBar[XLSX.utils.encode_cell({r:sumStatRow,c:sc2+i})] = cell(v, [mkFont(true,10,'FFFFFF'), mkFill(HDR), mkBdr(), mkAlign('center')]);
   });
