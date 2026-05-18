@@ -3714,7 +3714,7 @@ async function downloadAttExcel() {
   const wb = XLSX.utils.book_new();
 
   // ===== 시트1: 월별현황 (막대그래프 + 팀통계 나란히) =====
-  const BAR = Math.max(workdays2.length, 1); // 실제 평일수
+  const BAR = Math.max(workdays2.length, 20); // 최소 20칸
   const wsBar = {};
   const wsBarMerges = [];
 
@@ -3745,7 +3745,7 @@ async function downloadAttExcel() {
     {key:'a',label:'결근',    col:RED_C, bg:RED_L},
     {key:'ot',label:'특근',   col:PUR,   bg:PUR_L},
   ];
-  const sc2 = 24; // 팀통계 시작열 고정 Y열(0-indexed=24)
+  const sc2 = BAR+3; // 팀통계 시작열 = 합계열+2 (바짝 붙임)
 
   // 열 너비: SheetJS는 !cols 배열 인덱스=열번호(0-based)
   // C~U는 포함하지 않음 → 엑셀 기본값(8.43) 유지
@@ -3759,7 +3759,7 @@ async function downloadAttExcel() {
   // 팀통계는 항상 Y열(24)에 고정
   // 팀통계 열
   const statWchs = [8,14.57,8.86,10.86,8.86,8.86,8.86,8.86,8.86];
-  statWchs.forEach(function(w,i){ barColsArr[24+i]={wch:w}; }); // Y열 고정
+  statWchs.forEach(function(w,i){ barColsArr[sc2+i]={wch:w}; }); // 팀통계 열
   wsBar['!cols'] = barColsArr;
   // 행 높이: 제목=28.5, 나머지 모두 15.0
   wsBar['!rows'] = [{hpt:28.5}]; // 1행 제목
@@ -3846,7 +3846,7 @@ async function downloadAttExcel() {
   // 그래프 영역 외곽 테두리 추가
   const outerBdr = {style:'medium',color:{rgb:'FF2E7D52'}};
   for(var or2=0; or2<=bRow; or2++){
-    for(var oc2=0; oc2<=BAR+2; oc2++){
+    for(var oc2=0; oc2<=BAR+1; oc2++){
       const ck = XLSX.utils.encode_cell({r:or2,c:oc2});
       if(!wsBar[ck]) wsBar[ck]={v:'',t:'s',s:{}};
       if(!wsBar[ck].s) wsBar[ck].s={};
@@ -3854,11 +3854,11 @@ async function downloadAttExcel() {
       if(or2===0){ wsBar[ck].s.border.top=outerBdr; }
       if(or2===bRow){ wsBar[ck].s.border.bottom=outerBdr; }
       if(oc2===0){ wsBar[ck].s.border.left=outerBdr; }
-      if(oc2===BAR+2){ wsBar[ck].s.border.right=outerBdr; }
+      if(oc2===BAR+1){ wsBar[ck].s.border.right=outerBdr; }
     }
   }
 
-  wsBar['!ref'] = XLSX.utils.encode_range({s:{r:0,c:0},e:{r:bRow+1,c:32}});
+  wsBar['!ref'] = XLSX.utils.encode_range({s:{r:0,c:0},e:{r:bRow+1,c:sc2+8}});
   wsBar['!merges'] = wsBarMerges;
   XLSX.utils.book_append_sheet(wb, wsBar, '월별현황');
 
