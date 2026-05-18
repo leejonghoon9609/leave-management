@@ -2710,9 +2710,7 @@ function renderTeamMemberToday() {
         + '<div style="flex:1;min-width:0;text-align:left;">'
         + '<div style="font-size:13px;font-weight:600;">' + e.name + '</div>'
         + '</div>'
-        + '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px;padding-top:2px;flex-shrink:0;">'
-        + '<span class="badge badge-absent">결근</span>'
-        + '</div>'
+        + (dateStr > todayStrKST() ? '' : '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px;padding-top:2px;flex-shrink:0;"><span class="badge badge-absent">결근</span></div>')
         + '</div>';
     }
     rowHtml += overtimeHtml(otRecs, e.id);
