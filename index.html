@@ -359,7 +359,7 @@ body { font-family: "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; backgrou
       <div class="nav-section">⏱ 근태관리</div>
       <div class="nav-item" onclick="showPage('checkin',this)" style="color:var(--red);font-weight:700;"><span>🏃</span> 출퇴근 등록</div>
       <div class="nav-item" onclick="showPage('team-att',this)"><span>📊</span> 팀 출퇴근현황</div>
-      <div class="nav-item" onclick="showPage('team-graph',this)"><span>📈</span> 팀 근태 그래프</div>
+
       <div class="nav-item" onclick="showPage('my-records',this)"><span>📋</span> 내 근태 기록</div>
       <div style="padding:4px 0;"><button class="excel-btn" onclick="downloadAttExcel()" style="margin:4px 20px 0;">📥 근태현황 다운로드(.xlsx)</button></div>
       <div class="nav-divider"></div>
@@ -642,6 +642,27 @@ body { font-family: "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; backgrou
           <div class="page-title">팀 출퇴근현황</div>
           <div class="page-sub" id="team-att-dept-name" style="font-size:15px;font-weight:700;color:var(--gray-900);margin-top:2px;"></div>
         </div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <select id="team-graph-month" onchange="renderTeamGraph()" style="font-size:13px;padding:4px 8px;border:1px solid var(--gray-200);border-radius:6px;"></select>
+          <button class="excel-btn" onclick="downloadAttExcelWithGraph()" style="font-size:12px;padding:6px 14px;">📥 엑셀+그래프 다운로드</button>
+        </div>
+      </div>
+      <!-- 그래프 카드 -->
+      <div id="team-graph-chart-card" style="background:var(--white);border:1px solid var(--gray-100);border-radius:12px;padding:16px;margin-bottom:16px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+          <div style="font-size:14px;font-weight:600;color:var(--gray-900);">팀 근태 그래프</div>
+          <div style="display:flex;gap:14px;flex-wrap:wrap;">
+            <span style="display:flex;align-items:center;gap:4px;font-size:12px;color:var(--gray-600);"><span style="width:10px;height:10px;border-radius:2px;background:#1D9E75;display:inline-block;"></span>정상출근</span>
+            <span style="display:flex;align-items:center;gap:4px;font-size:12px;color:var(--gray-600);"><span style="width:10px;height:10px;border-radius:2px;background:#378ADD;display:inline-block;"></span>지각</span>
+            <span style="display:flex;align-items:center;gap:4px;font-size:12px;color:var(--gray-600);"><span style="width:10px;height:10px;border-radius:2px;background:#E24B4A;display:inline-block;"></span>결근</span>
+            <span style="display:flex;align-items:center;gap:4px;font-size:12px;color:var(--gray-600);"><span style="width:10px;height:10px;border-radius:2px;background:#7F77DD;display:inline-block;"></span>특근</span>
+          </div>
+        </div>
+        <!-- 요약 카드 -->
+        <div id="team-graph-summary" style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px;"></div>
+        <div style="position:relative;width:100%;height:220px;">
+          <canvas id="teamGraphCanvas" role="img" aria-label="팀원별 근태 막대 그래프"></canvas>
+        </div>
       </div>
       <!-- 주간·월간 카드 2단 -->
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
@@ -657,7 +678,7 @@ body { font-family: "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; backgrou
       <!-- 직원별 주간·월간 테이블 -->
       <div class="card" style="margin-bottom:16px;">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
-          <div class="card-title" style="margin-bottom:0;">👥 직원별 세부통계 (주간)</div>
+          <div class="card-title" style="margin-bottom:0;">👥 직원별 세부통계</div>
           <div style="display:flex;align-items:center;gap:8px;">
             <button class="cal-btn" onclick="changeTeamWeek(-1)">←</button>
             <span id="team-week-nav-label" style="font-size:12px;font-weight:600;min-width:130px;text-align:center;"></span>
@@ -4256,6 +4277,7 @@ async function showPage(page, el) {
   if(page==='apply') renderMyLeave();
   if(page==='checkin') { startClock(); renderCheckin(); }
   if(page==='team-graph') { renderTeamGraph(); }
+  if(page==='team-att') { renderTeamGraph(); }
   if(page==='my-records') { myRecTab='week'; setTimeout(function(){ renderMyAttRecords(); }, 0); }
   if(page==='monthly') renderMonthly();
   if(page==='team-att') renderTeamAtt();
