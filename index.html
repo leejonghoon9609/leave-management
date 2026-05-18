@@ -3777,8 +3777,8 @@ async function downloadAttExcel() {
   // 범례 - 한 줄에 붙여서 (i*2 간격)
   var legDefs=[['■ 정상출근',GREEN],['■ 지각',BLUE_C],['■ 결근',RED_C],['■ 특근',PUR]];
   legDefs.forEach(function(lg,i){
-    wsBar[XLSX.utils.encode_cell({r:1,c:i*2})] = cell(lg[0], [mkFont(true,10,lg[1]), mkAlign('left')]);
-    wsBarMerges.push({s:{r:1,c:i*2},e:{r:1,c:i*2+1}});
+    wsBar[XLSX.utils.encode_cell({r:1,c:i*3})] = cell(lg[0], [mkFont(true,10,lg[1]), mkAlign('left')]);
+    wsBarMerges.push({s:{r:1,c:i*3},e:{r:1,c:i*3+2}});
   });
   var stHdrs=['이름','부서','평일수','정상출근','지각','결근','연차','특근','지각률'];
   stHdrs.forEach(function(h,i){
@@ -3791,11 +3791,8 @@ async function downloadAttExcel() {
   barRows.forEach(function(row, ri) {
     if(!wsBar['!rows']) wsBar['!rows']=[{hpt:28.5}];
     wsBar['!rows'][bRow] = {hpt:15.75}; // 직원이름행
-    // 직원 이름 (검정 배경 + 흰 글씨)
-    wsBar[XLSX.utils.encode_cell({r:bRow,c:0})] = cell(row.name, [mkFont(true,11,'FFFFFF'), mkFill('1F1F1F'), mkAlign('left','center'), mkBdr('333333')]);
-    for(var ni=1;ni<=BAR+1;ni++){
-      wsBar[XLSX.utils.encode_cell({r:bRow,c:ni})] = cell('', [mkFill('1F1F1F'), mkBdr('333333')]);
-    }
+    // 직원 이름 (흰 배경 + 굵은 글씨)
+    wsBar[XLSX.utils.encode_cell({r:bRow,c:0})] = cell(row.name, [mkFont(true,12,NAVY), mkAlign('left','center')]);
     wsBarMerges.push({s:{r:bRow,c:0},e:{r:bRow,c:BAR+1}});
 
     // 팀통계 데이터 (별도 행 카운터 사용)
@@ -3811,15 +3808,14 @@ async function downloadAttExcel() {
     statRow2++;
     bRow++;
 
-    // 일수 헤더행 - 연한 배경
+    // 일수 헤더행 - 흰 배경
     wsBar['!rows'][bRow] = {hpt:15.0};
-    var hdrBg = 'F2F2F2';
     var hdrBdr = {top:{style:'thin',color:{rgb:'FF999999'}},bottom:{style:'thin',color:{rgb:'FF999999'}},left:{style:'thin',color:{rgb:'FF999999'}},right:{style:'thin',color:{rgb:'FF999999'}}};
-    wsBar[XLSX.utils.encode_cell({r:bRow,c:0})] = cell('일수', [mkFont(true,9,'444444'), mkFill(hdrBg), mkAlign('center'), {border:hdrBdr}]);
+    wsBar[XLSX.utils.encode_cell({r:bRow,c:0})] = cell('일수', [mkFont(true,9,'444444'), mkAlign('center'), {border:hdrBdr}]);
     for(var d=1;d<=BAR;d++){
-      wsBar[XLSX.utils.encode_cell({r:bRow,c:d})] = cell(d, [mkFont(false,9,'444444'), mkFill(hdrBg), mkAlign('center'), {border:hdrBdr}]);
+      wsBar[XLSX.utils.encode_cell({r:bRow,c:d})] = cell(d, [mkFont(false,9,'444444'), mkAlign('center'), {border:hdrBdr}]);
     }
-    wsBar[XLSX.utils.encode_cell({r:bRow,c:BAR+1})] = cell('합계', [mkFont(true,9,'444444'), mkFill(hdrBg), mkAlign('center'), {border:hdrBdr}]);
+    wsBar[XLSX.utils.encode_cell({r:bRow,c:BAR+1})] = cell('합계', [mkFont(true,9,'444444'), mkAlign('center'), {border:hdrBdr}]);
     bRow++;
 
     // 막대 4행
@@ -3837,10 +3833,7 @@ async function downloadAttExcel() {
       bRow++;
     });
 
-    // 빈행
-    wsBar['!rows'][bRow] = {hpt:15.0};
-    wsBarMerges.push({s:{r:bRow,c:0},e:{r:bRow,c:BAR}});
-    bRow++;
+    // 빈행 제거
   });
 
   // 팀통계 합계행
