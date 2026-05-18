@@ -3774,9 +3774,11 @@ async function downloadAttExcel() {
   wsBarMerges.push({s:{r:0,c:sc2},e:{r:0,c:sc2+8}});
 
   // 행2: 범례 + 팀통계 헤더
+  // 범례 - 한 줄에 붙여서 (i*2 간격)
   var legDefs=[['■ 정상출근',GREEN],['■ 지각',BLUE_C],['■ 결근',RED_C],['■ 특근',PUR]];
   legDefs.forEach(function(lg,i){
-    wsBar[XLSX.utils.encode_cell({r:1,c:i*5})] = cell(lg[0], [mkFont(true,10,lg[1]), mkAlign('left'), {border:{bottom:{style:'thin',color:{rgb:'FFCCCCCC'}}}}]);
+    wsBar[XLSX.utils.encode_cell({r:1,c:i*2})] = cell(lg[0], [mkFont(true,10,lg[1]), mkAlign('left')]);
+    wsBarMerges.push({s:{r:1,c:i*2},e:{r:1,c:i*2+1}});
   });
   var stHdrs=['이름','부서','평일수','정상출근','지각','결근','연차','특근','지각률'];
   stHdrs.forEach(function(h,i){
@@ -3789,9 +3791,12 @@ async function downloadAttExcel() {
   barRows.forEach(function(row, ri) {
     if(!wsBar['!rows']) wsBar['!rows']=[{hpt:28.5}];
     wsBar['!rows'][bRow] = {hpt:15.75}; // 직원이름행
-    // 직원 이름 (막대 그래프)
-    wsBar[XLSX.utils.encode_cell({r:bRow,c:0})] = cell(row.name, [mkFont(true,12,NAVY), mkAlign('left','center')]);
-    wsBarMerges.push({s:{r:bRow,c:0},e:{r:bRow,c:BAR}});
+    // 직원 이름 (검정 배경 + 흰 글씨)
+    wsBar[XLSX.utils.encode_cell({r:bRow,c:0})] = cell(row.name, [mkFont(true,11,'FFFFFF'), mkFill('1F1F1F'), mkAlign('left','center'), mkBdr('333333')]);
+    for(var ni=1;ni<=BAR+1;ni++){
+      wsBar[XLSX.utils.encode_cell({r:bRow,c:ni})] = cell('', [mkFill('1F1F1F'), mkBdr('333333')]);
+    }
+    wsBarMerges.push({s:{r:bRow,c:0},e:{r:bRow,c:BAR+1}});
 
     // 팀통계 데이터 (별도 행 카운터 사용)
     var stVals=[row.name,row.dept,row.wd,row.p,row.l,row.a,row.lv,row.ot,row.lr];
@@ -3806,27 +3811,29 @@ async function downloadAttExcel() {
     statRow2++;
     bRow++;
 
-    // 일수 헤더행
+    // 일수 헤더행 - 연한 배경
     wsBar['!rows'][bRow] = {hpt:15.0};
-    wsBar[XLSX.utils.encode_cell({r:bRow,c:0})] = cell('일수', [mkFont(true,9,NAVY), mkAlign('center'), {border:{bottom:{style:'thin',color:{rgb:'FFCCCCCC'}},right:{style:'thin',color:{rgb:'FFCCCCCC'}}}}]);
+    var hdrBg = 'F2F2F2';
+    var hdrBdr = {top:{style:'thin',color:{rgb:'FF999999'}},bottom:{style:'thin',color:{rgb:'FF999999'}},left:{style:'thin',color:{rgb:'FF999999'}},right:{style:'thin',color:{rgb:'FF999999'}}};
+    wsBar[XLSX.utils.encode_cell({r:bRow,c:0})] = cell('일수', [mkFont(true,9,'444444'), mkFill(hdrBg), mkAlign('center'), {border:hdrBdr}]);
     for(var d=1;d<=BAR;d++){
-      wsBar[XLSX.utils.encode_cell({r:bRow,c:d})] = cell(d, [mkFont(false,9), mkAlign('center'), {border:{bottom:{style:'thin',color:{rgb:'FFCCCCCC'}}}}]);
+      wsBar[XLSX.utils.encode_cell({r:bRow,c:d})] = cell(d, [mkFont(false,9,'444444'), mkFill(hdrBg), mkAlign('center'), {border:hdrBdr}]);
     }
-    wsBar[XLSX.utils.encode_cell({r:bRow,c:BAR+1})] = cell('합계', [mkFont(false,9), mkAlign('center'), {border:{bottom:{style:'thin',color:{rgb:'FFCCCCCC'}},left:{style:'thin',color:{rgb:'FFCCCCCC'}}}}]);
+    wsBar[XLSX.utils.encode_cell({r:bRow,c:BAR+1})] = cell('합계', [mkFont(true,9,'444444'), mkFill(hdrBg), mkAlign('center'), {border:hdrBdr}]);
     bRow++;
 
     // 막대 4행
     barDefs2.forEach(function(def) {
       wsBar['!rows'][bRow] = {hpt:15.0};
       var val=row[def.key]; var bl=val; // 1칸=1일 직접 표시
-      wsBar[XLSX.utils.encode_cell({r:bRow,c:0})] = cell(def.label, [mkFont(false,10,def.col), mkAlign('center','center'), {border:{top:{style:'thin',color:{rgb:'FFCCCCCC'}},bottom:{style:'thin',color:{rgb:'FFCCCCCC'}},left:{style:'thin',color:{rgb:'FFCCCCCC'}},right:{style:'thin',color:{rgb:'FFCCCCCC'}}}}]);
+      wsBar[XLSX.utils.encode_cell({r:bRow,c:0})] = cell(def.label, [mkFont(false,10,def.col), mkAlign('center','center'), {border:{top:{style:'thin',color:{rgb:'FF999999'}},bottom:{style:'thin',color:{rgb:'FF999999'}},left:{style:'thin',color:{rgb:'FF999999'}},right:{style:'thin',color:{rgb:'FF999999'}}}}]);
       for(var bi=1;bi<=BAR;bi++){
         wsBar[XLSX.utils.encode_cell({r:bRow,c:bi})] = cell('', [
-          {fill:{fgColor:{rgb:'FF'+(bi<=bl?def.col:'FAFAFA')},patternType:'solid'}},
-          {border:{bottom:{style:'thin',color:{rgb:'FFCCCCCC'}}}}
+          {fill:{fgColor:{rgb:'FF'+(bi<=bl?def.col:'FFFFFF')},patternType:'solid'}},
+          {border:{top:{style:'thin',color:{rgb:'FF999999'}},bottom:{style:'thin',color:{rgb:'FF999999'}},left:{style:'thin',color:{rgb:'FF999999'}},right:{style:'thin',color:{rgb:'FF999999'}}}}
         ]);
       }
-      wsBar[XLSX.utils.encode_cell({r:bRow,c:BAR+1})] = cell(val, [mkFont(true,11,def.col), mkAlign('center'), {border:{bottom:{style:'thin',color:{rgb:'FFCCCCCC'}},left:{style:'thin',color:{rgb:'FFCCCCCC'}}}}]);
+      wsBar[XLSX.utils.encode_cell({r:bRow,c:BAR+1})] = cell(val, [mkFont(true,11,def.col), mkAlign('center'), {border:{top:{style:'thin',color:{rgb:'FF999999'}},bottom:{style:'thin',color:{rgb:'FF999999'}},left:{style:'thin',color:{rgb:'FF999999'}},right:{style:'thin',color:{rgb:'FF999999'}}}}]);
       bRow++;
     });
 
@@ -3844,7 +3851,7 @@ async function downloadAttExcel() {
   });
 
   // 그래프 영역 외곽 테두리 추가
-  const outerBdr = {style:'medium',color:{rgb:'FF2E7D52'}};
+  const outerBdr = {style:'medium',color:{rgb:'FF000000'}};
   for(var or2=0; or2<=bRow; or2++){
     for(var oc2=0; oc2<=BAR+1; oc2++){
       const ck = XLSX.utils.encode_cell({r:or2,c:oc2});
