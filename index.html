@@ -3600,44 +3600,173 @@ function downloadAttExcel() {
     return;
   }
 
-  // ===== 팀장/관리자: 기존 형식 유지 =====
-  const today2=todayStrKST();
-  let targetAtts=[];
-  if(currentRole==='admin') { const adminIds=employees.filter(function(e){ return e.role==='admin'; }).map(function(e){ return e.id; }); targetAtts=attendances.filter(function(a){ return !adminIds.includes(a.emp_id); }); }
-  else if(currentRole==='manager'||currentRole==='viewer') { const visIds=getVisibleEmployees().map(function(e){ return e.id; }); targetAtts=attendances.filter(function(a){ return visIds.includes(a.emp_id); }); }
-  else targetAtts=attendances.filter(function(a){ return a.emp_id===currentEmpId; });
-  const statusMap={'present':'정상출근','late':'지각','absent':'결근','off':'휴무'};
-  const statusColor={'present':'FF085041','late':'FFBA7517','absent':'FFE24B4A','off':'FF5F5F5F'};
-  const headerStyle={font:{bold:true,color:{rgb:'FFFFFFFF'},sz:11},fill:{fgColor:{rgb:'FF1D9E75'}},alignment:{horizontal:'center',vertical:'center'},border:{top:{style:'thin',color:{rgb:'FF999999'}},bottom:{style:'thin',color:{rgb:'FF999999'}},left:{style:'thin',color:{rgb:'FF999999'}},right:{style:'thin',color:{rgb:'FF999999'}}}};
-  const cellStyle={alignment:{horizontal:'center',vertical:'center'},border:{top:{style:'thin',color:{rgb:'FFCCCCCC'}},bottom:{style:'thin',color:{rgb:'FFCCCCCC'}},left:{style:'thin',color:{rgb:'FFCCCCCC'}},right:{style:'thin',color:{rgb:'FFCCCCCC'}}}};
-  const headers=['이름','부서','날짜','출근시간','출근상태','퇴근시간','퇴근상태','현장메모'];
-  const wb=XLSX.utils.book_new();
-  const wsData=[headers];
-  targetAtts.forEach(function(a) {
-    const e=getEmpById(a.emp_id); if(!e) return;
-    const s=a.field_memo?'present':(a.status||getAttStatus(a));
-    const checkoutSt=a.checkout_time?(a.checkout_status==='early'?'조기퇴근':'정상퇴근'):'-';
-    wsData.push([e.name, e.dept, a.att_date, formatTimeKST(a.checkin_time), statusMap[s]||s, formatTimeKST(a.checkout_time), checkoutSt, a.field_memo||'']);
-  });
-  const ws=XLSX.utils.aoa_to_sheet(wsData);
-  ws['!cols']=[{wch:10},{wch:16},{wch:12},{wch:10},{wch:10},{wch:10},{wch:10},{wch:20}];
-  ws['!rows']=[{hpt:20}];
-  headers.forEach(function(_,i){
-    const cell=XLSX.utils.encode_cell({r:0,c:i});
-    if(ws[cell]) ws[cell].s=headerStyle;
-  });
-  for(var r=1;r<wsData.length;r++){
-    var s=wsData[r][5];
-    var sKey=Object.keys(statusMap).find(function(k){ return statusMap[k]===s; })||'off';
-    for(var c=0;c<6;c++){
-      var cell=XLSX.utils.encode_cell({r:r,c:c});
-      if(!ws[cell]) continue;
-      if(c===5){ ws[cell].s=Object.assign({},cellStyle,{font:{bold:true,color:{rgb:statusColor[sKey]||'FF333333'}}}); }
-      else { ws[cell].s=cellStyle; }
-    }
+  // ===== 팀장: 다중 시트 형식 =====
+  const today2 = todayStrKST();
+  const y2 = myCurrentAttMonth ? myCurrentAttMonth.getFullYear() : new Date(nowKST()).getFullYear();
+  const m2 = myCurrentAttMonth ? myCurrentAttMonth.getMonth() : new Date(nowKST()).getMonth();
+  const months2 = ['01','02','03','04','05','06','07','08','09','10','11','12'];
+  const prefix2 = y2 + '-' + months2[m2];
+  const monthStart2 = prefix2 + '-01';
+  const monthEnd2 = new Date(y2, m2+1, 0).toISOString().slice(0,10);
+  const monthLabel2 = y2 + '년 ' + (m2+1) + '월';
+
+  // 대상 직원
+  let teamEmps2 = [];
+  if(currentRole==='admin') {
+    teamEmps2 = employees.filter(function(e){ return e.role !== 'admin'; });
+  } else {
+    teamEmps2 = getVisibleEmployees().filter(function(e){ return e.role !== 'admin'; });
   }
-  XLSX.utils.book_append_sheet(wb, ws, '근태기록');
-  XLSX.writeFile(wb, '근태기록_'+today2+'.xlsx');
+
+  // 평일 목록
+  const workdays2 = [];
+  const wc2 = new Date(monthStart2);
+  const wend2 = new Date(monthEnd2 < today2 ? monthEnd2 : today2);
+  while(wc2 <= wend2) {
+    if(wc2.getDay()!==0 && wc2.getDay()!==6) workdays2.push(wc2.toISOString().slice(0,10));
+    wc2.setDate(wc2.getDate()+1);
+  }
+
+  const statusMap={'present':'정상출근','late':'지각','absent':'결근','off':'휴무'};
+  const GREEN='FF085041', AMBER='FFBA7517', RED='FFE24B4A', PURPLE='FF534AB7';
+
+  const hStyle = function(bg) { return {font:{bold:true,color:{rgb:'FFFFFFFF'},sz:10},fill:{fgColor:{rgb:bg||'FF1D9E75'}},alignment:{horizontal:'center',vertical:'center'},border:{top:{style:'thin',color:{rgb:'FF999999'}},bottom:{style:'thin',color:{rgb:'FF999999'}},left:{style:'thin',color:{rgb:'FF999999'}},right:{style:'thin',color:{rgb:'FF999999'}}}}; };
+  const cStyle = {alignment:{horizontal:'center',vertical:'center'},border:{top:{style:'thin',color:{rgb:'FFCCCCCC'}},bottom:{style:'thin',color:{rgb:'FFCCCCCC'}},left:{style:'thin',color:{rgb:'FFCCCCCC'}},right:{style:'thin',color:{rgb:'FFCCCCCC'}}}};
+  const lStyle = Object.assign({},cStyle,{alignment:{horizontal:'left',vertical:'center'}});
+
+  const wb = XLSX.utils.book_new();
+
+  // ===== 시트1: 팀 통계 =====
+  const statHeaders = ['이름','부서','평일수','정상출근','지각','결근','연차','특근','지각률'];
+  const statData = [['', monthLabel2 + ' 팀 근태 통계'], statHeaders];
+  let totP=0,totL=0,totA=0,totLv=0,totOt=0,totWd=0;
+
+  teamEmps2.forEach(function(e) {
+    const myAtts2 = attendances.filter(function(a){ return a.emp_id===e.id && a.att_date>=monthStart2 && a.att_date<=monthEnd2 && !a.overtime_checkin; });
+    const myOts2  = attendances.filter(function(a){ return a.emp_id===e.id && a.att_date>=monthStart2 && a.att_date<=monthEnd2 && a.overtime_checkin; });
+    const myLeaves2 = requests.filter(function(r){ return r.emp_id===e.id && r.status==='approved' && r.start_date<=monthEnd2 && r.end_date>=monthStart2; });
+    let pCnt=0,lCnt=0,aCnt=0,lvCnt=0,otDates2=[];
+    workdays2.forEach(function(ds){
+      const lv = myLeaves2.find(function(r){ return r.start_date<=ds && r.end_date>=ds; });
+      if(lv) { lvCnt++; return; }
+      const att = myAtts2.find(function(a){ return a.att_date===ds; });
+      if(att) {
+        const s = getAttStatus(att);
+        if(s==='present') pCnt++; else if(s==='late') lCnt++;
+      } else if(ds <= today2) { aCnt++; }
+    });
+    myOts2.forEach(function(a){ if(!otDates2.includes(a.att_date)) otDates2.push(a.att_date); });
+    const attended = pCnt+lCnt;
+    const lateRate = attended>0 ? Math.round(lCnt/attended*100)+'%' : '0%';
+    statData.push([e.name, e.dept, workdays2.length, pCnt, lCnt, aCnt, lvCnt, otDates2.length, lateRate]);
+    totP+=pCnt; totL+=lCnt; totA+=aCnt; totLv+=lvCnt; totOt+=otDates2.length; totWd+=workdays2.length;
+  });
+  const totAttended = totP+totL;
+  statData.push(['합계','', totWd, totP, totL, totA, totLv, totOt, totAttended>0?Math.round(totL/totAttended*100)+'%':'0%']);
+
+  const ws1 = XLSX.utils.aoa_to_sheet(statData);
+  ws1['!cols']=[{wch:10},{wch:16},{wch:8},{wch:10},{wch:8},{wch:8},{wch:8},{wch:8},{wch:8}];
+  // 제목
+  if(ws1['A1']) ws1['A1'].s={font:{bold:true,sz:13},alignment:{horizontal:'left'}};
+  // 헤더
+  statHeaders.forEach(function(_,i){
+    const cell=XLSX.utils.encode_cell({r:1,c:i});
+    if(ws1[cell]) ws1[cell].s=hStyle('FF1D9E75');
+  });
+  // 합계행
+  const sumRow = statData.length-1;
+  for(var c=0;c<statHeaders.length;c++){
+    const cell=XLSX.utils.encode_cell({r:sumRow,c:c});
+    if(ws1[cell]) ws1[cell].s=hStyle('FF334155');
+  }
+  XLSX.utils.book_append_sheet(wb, ws1, '팀 통계');
+
+  // ===== 시트2: 팀원별 요약 =====
+  const sumHeaders = ['이름','부서','입사일','근속(년)','연차총계','연차사용','연차잔여','정상출근','지각','결근','특근','조기퇴근'];
+  const sumData = [['', monthLabel2 + ' 팀원별 요약'], sumHeaders];
+  teamEmps2.forEach(function(e) {
+    const myAtts2 = attendances.filter(function(a){ return a.emp_id===e.id && a.att_date>=monthStart2 && a.att_date<=monthEnd2 && !a.overtime_checkin; });
+    const myOts2  = attendances.filter(function(a){ return a.emp_id===e.id && a.att_date>=monthStart2 && a.att_date<=monthEnd2 && a.overtime_checkin; });
+    const myLeaves2 = requests.filter(function(r){ return r.emp_id===e.id && r.status==='approved' && r.start_date<=monthEnd2 && r.end_date>=monthStart2; });
+    let pCnt=0,lCnt=0,aCnt=0,eaCnt=0,otDates2=[];
+    workdays2.forEach(function(ds){
+      const lv = myLeaves2.find(function(r){ return r.start_date<=ds && r.end_date>=ds; });
+      if(lv) return;
+      const att = myAtts2.find(function(a){ return a.att_date===ds; });
+      if(att) {
+        const s = getAttStatus(att);
+        if(s==='present') pCnt++; else if(s==='late') lCnt++;
+        if(att.checkout_status==='early') eaCnt++;
+      } else if(ds<=today2) { aCnt++; }
+    });
+    myOts2.forEach(function(a){ if(!otDates2.includes(a.att_date)) otDates2.push(a.att_date); });
+    const joinDate = e.join_date || '-';
+    const years = joinDate!=='-' ? Math.floor((new Date()-new Date(joinDate))/(365.25*24*3600*1000)) : '-';
+    const totalLv = calcLeave ? calcLeave(years) : '-';
+    const usedLv = requests.filter(function(r){ return r.emp_id===e.id && r.status==='approved' && r.type==='연차'; }).reduce(function(s,r){ return s+(r.days||0); },0);
+    const remLv = typeof totalLv==='number' ? totalLv-usedLv : '-';
+    sumData.push([e.name, e.dept, joinDate, years, totalLv, usedLv, remLv, pCnt, lCnt, aCnt, otDates2.length, eaCnt]);
+  });
+  const ws2 = XLSX.utils.aoa_to_sheet(sumData);
+  ws2['!cols']=[{wch:10},{wch:16},{wch:12},{wch:8},{wch:8},{wch:8},{wch:8},{wch:10},{wch:8},{wch:8},{wch:8},{wch:8}];
+  if(ws2['A1']) ws2['A1'].s={font:{bold:true,sz:13},alignment:{horizontal:'left'}};
+  sumHeaders.forEach(function(_,i){
+    const cell=XLSX.utils.encode_cell({r:1,c:i});
+    if(ws2[cell]) ws2[cell].s=hStyle('FF334155');
+  });
+  XLSX.utils.book_append_sheet(wb, ws2, '팀원별 요약');
+
+  // ===== 시트3~N: 직원별 일별 근태 =====
+  teamEmps2.forEach(function(e) {
+    const myAtts2 = attendances.filter(function(a){ return a.emp_id===e.id && a.att_date>=monthStart2 && a.att_date<=monthEnd2 && !a.overtime_checkin; });
+    const myOts2  = attendances.filter(function(a){ return a.emp_id===e.id && a.att_date>=monthStart2 && a.att_date<=monthEnd2 && a.overtime_checkin; });
+    const myLeaves2 = requests.filter(function(r){ return r.emp_id===e.id && r.status==='approved' && r.start_date<=monthEnd2 && r.end_date>=monthStart2; });
+
+    const empHeaders = ['날짜','출근시간','출근상태','퇴근시간','퇴근상태','현장메모','특근출근','특근퇴근','특근메모'];
+    const empData = [[e.name + ' - ' + monthLabel2 + ' 일별 근태'], empHeaders];
+
+    workdays2.forEach(function(ds) {
+      const lv = myLeaves2.find(function(r){ return r.start_date<=ds && r.end_date>=ds; });
+      if(lv) {
+        empData.push([ds, '', lv.type, '', '', '', '', '', '']);
+        return;
+      }
+      const att = myAtts2.find(function(a){ return a.att_date===ds; });
+      const otRecs = myOts2.filter(function(a){ return a.att_date===ds; });
+      const checkinSt = att ? (getAttStatus(att)==='late'?'지각':'정상출근') : (ds<=today2?'결근':'');
+      const checkoutSt = att && att.checkout_time ? (att.checkout_status==='early'?'조기퇴근':'정상퇴근') : '-';
+      const otCheckin = otRecs.length ? formatTimeKST(otRecs[0].overtime_checkin) : '';
+      const otCheckout = otRecs.length && otRecs[0].overtime_checkout ? formatTimeKST(otRecs[0].overtime_checkout) : '';
+      const otMemo = otRecs.length && otRecs[0].overtime_memo ? otRecs[0].overtime_memo : '';
+      const fieldMemo = att ? (att.checkin_field_memo||att.field_memo||'') : '';
+      empData.push([ds, att?formatTimeKST(att.checkin_time):'-', checkinSt, att?formatTimeKST(att.checkout_time):'-', checkoutSt, fieldMemo, otCheckin, otCheckout, otMemo]);
+    });
+
+    const wsEmp = XLSX.utils.aoa_to_sheet(empData);
+    wsEmp['!cols']=[{wch:12},{wch:10},{wch:10},{wch:10},{wch:10},{wch:20},{wch:10},{wch:10},{wch:16}];
+    if(wsEmp['A1']) wsEmp['A1'].s={font:{bold:true,sz:12},alignment:{horizontal:'left'}};
+    empHeaders.forEach(function(_,i){
+      const cell=XLSX.utils.encode_cell({r:1,c:i});
+      if(wsEmp[cell]) wsEmp[cell].s=hStyle('FF1D9E75');
+    });
+    // 출근상태 색상
+    for(var r=2;r<empData.length;r++){
+      const st = empData[r][2];
+      const stColor = st==='정상출근'?GREEN : st==='지각'?AMBER : st==='결근'?RED : st==='특근'?PURPLE : 'FF333333';
+      for(var c=0;c<empHeaders.length;c++){
+        const cell=XLSX.utils.encode_cell({r:r,c:c});
+        if(!wsEmp[cell]) continue;
+        if(c===2){ wsEmp[cell].s=Object.assign({},cStyle,{font:{bold:true,color:{rgb:stColor}}}); }
+        else if(c===5||c===8){ wsEmp[cell].s=lStyle; }
+        else { wsEmp[cell].s=cStyle; }
+      }
+    }
+    // 시트 이름 최대 31자 제한
+    const sheetName = e.name.slice(0,10) + '_일별';
+    XLSX.utils.book_append_sheet(wb, wsEmp, sheetName);
+  });
+
+  XLSX.writeFile(wb, '팀근태_' + monthLabel2.replace(' ','') + '_' + today2 + '.xlsx');
 }
 
 // ===== 전체 렌더 =====
