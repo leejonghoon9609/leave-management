@@ -3818,7 +3818,7 @@ async function downloadAttExcel() {
     // 막대 4행
     barDefs2.forEach(function(def) {
       wsBar['!rows'][bRow] = {hpt:15.0};
-      var val=row[def.key]; var bl=Math.round((val/maxV)*BAR);
+      var val=row[def.key]; var bl=val; // 1칸=1일 직접 표시
       wsBar[XLSX.utils.encode_cell({r:bRow,c:0})] = cell(def.label, [mkFont(false,10,def.col), mkAlign('center','center'), {border:{top:{style:'thin',color:{rgb:'FFCCCCCC'}},bottom:{style:'thin',color:{rgb:'FFCCCCCC'}},left:{style:'thin',color:{rgb:'FFCCCCCC'}},right:{style:'thin',color:{rgb:'FFCCCCCC'}}}}]);
       for(var bi=1;bi<=BAR;bi++){
         wsBar[XLSX.utils.encode_cell({r:bRow,c:bi})] = cell('', [
