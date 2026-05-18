@@ -3714,7 +3714,7 @@ async function downloadAttExcel() {
   const wb = XLSX.utils.book_new();
 
   // ===== 시트1: 월별현황 (막대그래프 + 팀통계 나란히) =====
-  const BAR = Math.max(workdays2.length, 20); // 최소 20칸
+  const BAR = Math.max(workdays2.length, 10); // 최소 10칸
   const wsBar = {};
   const wsBarMerges = [];
 
@@ -3860,6 +3860,15 @@ async function downloadAttExcel() {
 
   wsBar['!ref'] = XLSX.utils.encode_range({s:{r:0,c:0},e:{r:bRow+1,c:sc2+8}});
   wsBar['!merges'] = wsBarMerges;
+  // 페이지 설정: 가로방향, 1페이지에 맞춤
+  wsBar['!pageSetup'] = {
+    orientation: 'landscape',
+    fitToPage: true,
+    fitToWidth: 1,
+    fitToHeight: 0,
+    paperSize: 9
+  };
+  wsBar['!printArea'] = XLSX.utils.encode_range({s:{r:0,c:0},e:{r:bRow+1,c:sc2+8}});
   XLSX.utils.book_append_sheet(wb, wsBar, '월별현황');
 
   // ===== 시트2: 팀 통계 =====
@@ -3896,7 +3905,7 @@ async function downloadAttExcel() {
   });
   ws1['!ref']=XLSX.utils.encode_range({s:{r:0,c:0},e:{r:sumR,c:8}});
   ws1['!merges']=ws1merge;
-  XLSX.utils.book_append_sheet(wb, ws1, '팀 통계');
+  // 팀 통계 탭 제거
 
   // ===== 시트3~N: 직원별 일별 =====
   teamEmps2.forEach(function(e) {
