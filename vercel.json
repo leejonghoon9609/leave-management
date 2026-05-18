@@ -1,0 +1,10 @@
+{
+  "functions": {
+    "api/excel.py": {
+      "runtime": "python3.9"
+    }
+  },
+  "rewrites": [
+    { "source": "/api/excel", "destination": "/api/excel.py" }
+  ]
+}
