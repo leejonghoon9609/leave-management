@@ -3628,11 +3628,55 @@ function downloadAttExcel() {
   }
 
   const statusMap={'present':'정상출근','late':'지각','absent':'결근','off':'휴무'};
-  const GREEN='FF085041', AMBER='FFBA7517', RED='FFE24B4A', PURPLE='FF534AB7';
+  const GREEN='FF085041', AMBER='FF854F0B', RED='FFA32D2D', PURPLE='FF534AB7';
+  const GREEN_BG='FFE1F5EE', AMBER_BG='FFFAEEDA', RED_BG='FFFCEBEB', PURPLE_BG='FFEEEDFE';
+  const BLUE_H='FF1E3A5F'; // 헤더 진한 네이비
+  const thinBorder = function(color){ return {style:'thin',color:{rgb:color||'FFCCCCCC'}}; };
+  const border = function(color){ return {top:thinBorder(color),bottom:thinBorder(color),left:thinBorder(color),right:thinBorder(color)}; };
 
-  const hStyle = function(bg) { return {font:{bold:true,color:{rgb:'FFFFFFFF'},sz:10},fill:{fgColor:{rgb:bg||'FF1D9E75'}},alignment:{horizontal:'center',vertical:'center'},border:{top:{style:'thin',color:{rgb:'FF999999'}},bottom:{style:'thin',color:{rgb:'FF999999'}},left:{style:'thin',color:{rgb:'FF999999'}},right:{style:'thin',color:{rgb:'FF999999'}}}}; };
-  const cStyle = {alignment:{horizontal:'center',vertical:'center'},border:{top:{style:'thin',color:{rgb:'FFCCCCCC'}},bottom:{style:'thin',color:{rgb:'FFCCCCCC'}},left:{style:'thin',color:{rgb:'FFCCCCCC'}},right:{style:'thin',color:{rgb:'FFCCCCCC'}}}};
-  const lStyle = Object.assign({},cStyle,{alignment:{horizontal:'left',vertical:'center'}});
+  // 헤더 스타일 (진한 배경 + 흰글씨)
+  const hStyle = function(bg) { return {
+    font:{bold:true,color:{rgb:'FFFFFFFF'},sz:11},
+    fill:{fgColor:{rgb:bg||'FF1D9E75'}},
+    alignment:{horizontal:'center',vertical:'center',wrapText:true},
+    border:border('FF888888')
+  }; };
+  // 일반 셀 (테두리+가운데 정렬)
+  const cStyle = {
+    alignment:{horizontal:'center',vertical:'center'},
+    border:border('FFCCCCCC')
+  };
+  // 왼쪽 정렬 셀
+  const lStyle = {
+    alignment:{horizontal:'left',vertical:'center'},
+    border:border('FFCCCCCC')
+  };
+  // 이름 셀 (굵게+왼쪽)
+  const nameStyle = {
+    font:{bold:true,sz:11},
+    alignment:{horizontal:'left',vertical:'center'},
+    border:border('FFCCCCCC')
+  };
+  // 합계행 스타일
+  const sumStyle = function(bg){ return {
+    font:{bold:true,color:{rgb:'FFFFFFFF'},sz:11},
+    fill:{fgColor:{rgb:bg||'FF334155'}},
+    alignment:{horizontal:'center',vertical:'center'},
+    border:border('FF888888')
+  }; };
+  // 상태별 셀 스타일
+  const stStyle = function(fg, bg){ return {
+    font:{bold:true,color:{rgb:fg},sz:10},
+    fill:{fgColor:{rgb:bg}},
+    alignment:{horizontal:'center',vertical:'center'},
+    border:border('FFCCCCCC')
+  }; };
+  // 숫자 강조 스타일
+  const numStyle = function(fg){ return {
+    font:{bold:true,color:{rgb:fg||'FF1D9E75'},sz:11},
+    alignment:{horizontal:'center',vertical:'center'},
+    border:border('FFCCCCCC')
+  }; };
 
   const wb = XLSX.utils.book_new();
 
@@ -3667,17 +3711,29 @@ function downloadAttExcel() {
   const ws1 = XLSX.utils.aoa_to_sheet(statData);
   ws1['!cols']=[{wch:10},{wch:16},{wch:8},{wch:10},{wch:8},{wch:8},{wch:8},{wch:8},{wch:8}];
   // 제목
-  if(ws1['A1']) ws1['A1'].s={font:{bold:true,sz:13},alignment:{horizontal:'left'}};
-  // 헤더
+  if(ws1['A1']) ws1['A1'].s={font:{bold:true,sz:14,color:{rgb:'FF1E3A5F'}},alignment:{horizontal:'left'}};
+  ws1['!rows']=[{hpt:22},{hpt:20}];
   statHeaders.forEach(function(_,i){
     const cell=XLSX.utils.encode_cell({r:1,c:i});
     if(ws1[cell]) ws1[cell].s=hStyle('FF1D9E75');
   });
-  // 합계행
+  // 데이터행 스타일
+  for(var r2=2;r2<statData.length-1;r2++){
+    for(var c2=0;c2<statHeaders.length;c2++){
+      const cell=XLSX.utils.encode_cell({r:r2,c:c2});
+      if(!ws1[cell]) continue;
+      if(c2===0) ws1[cell].s=nameStyle;
+      else if(c2===3) ws1[cell].s=numStyle(GREEN);
+      else if(c2===4) ws1[cell].s=numStyle(AMBER);
+      else if(c2===5) ws1[cell].s=numStyle(RED);
+      else if(c2===7) ws1[cell].s=numStyle(PURPLE);
+      else ws1[cell].s=cStyle;
+    }
+  }
   const sumRow = statData.length-1;
   for(var c=0;c<statHeaders.length;c++){
     const cell=XLSX.utils.encode_cell({r:sumRow,c:c});
-    if(ws1[cell]) ws1[cell].s=hStyle('FF334155');
+    if(ws1[cell]) ws1[cell].s=sumStyle('FF1E3A5F');
   }
   XLSX.utils.book_append_sheet(wb, ws1, '팀 통계');
 
@@ -3709,11 +3765,24 @@ function downloadAttExcel() {
   });
   const ws2 = XLSX.utils.aoa_to_sheet(sumData);
   ws2['!cols']=[{wch:10},{wch:16},{wch:12},{wch:8},{wch:8},{wch:8},{wch:8},{wch:10},{wch:8},{wch:8},{wch:8},{wch:8}];
-  if(ws2['A1']) ws2['A1'].s={font:{bold:true,sz:13},alignment:{horizontal:'left'}};
+  if(ws2['A1']) ws2['A1'].s={font:{bold:true,sz:14,color:{rgb:'FF1E3A5F'}},alignment:{horizontal:'left'}};
+  ws2['!rows']=[{hpt:22},{hpt:20}];
   sumHeaders.forEach(function(_,i){
     const cell=XLSX.utils.encode_cell({r:1,c:i});
-    if(ws2[cell]) ws2[cell].s=hStyle('FF334155');
+    if(ws2[cell]) ws2[cell].s=hStyle('FF1E3A5F');
   });
+  for(var r3=2;r3<sumData.length;r3++){
+    for(var c3=0;c3<sumHeaders.length;c3++){
+      const cell=XLSX.utils.encode_cell({r:r3,c:c3});
+      if(!ws2[cell]) continue;
+      if(c3===0) ws2[cell].s=nameStyle;
+      else if(c3===7) ws2[cell].s=numStyle(GREEN);
+      else if(c3===8) ws2[cell].s=numStyle(AMBER);
+      else if(c3===9) ws2[cell].s=numStyle(RED);
+      else if(c3===10) ws2[cell].s=numStyle(PURPLE);
+      else ws2[cell].s=cStyle;
+    }
+  }
   XLSX.utils.book_append_sheet(wb, ws2, '팀원별 요약');
 
   // ===== 시트3~N: 직원별 일별 근태 =====
@@ -3744,21 +3813,37 @@ function downloadAttExcel() {
 
     const wsEmp = XLSX.utils.aoa_to_sheet(empData);
     wsEmp['!cols']=[{wch:12},{wch:10},{wch:10},{wch:10},{wch:10},{wch:20},{wch:10},{wch:10},{wch:16}];
-    if(wsEmp['A1']) wsEmp['A1'].s={font:{bold:true,sz:12},alignment:{horizontal:'left'}};
+    if(wsEmp['A1']) wsEmp['A1'].s={font:{bold:true,sz:14,color:{rgb:'FF1E3A5F'}},alignment:{horizontal:'left'}};
+    wsEmp['!rows']=[{hpt:22},{hpt:20}];
     empHeaders.forEach(function(_,i){
       const cell=XLSX.utils.encode_cell({r:1,c:i});
       if(wsEmp[cell]) wsEmp[cell].s=hStyle('FF1D9E75');
     });
-    // 출근상태 색상
     for(var r=2;r<empData.length;r++){
       const st = empData[r][2];
-      const stColor = st==='정상출근'?GREEN : st==='지각'?AMBER : st==='결근'?RED : st==='특근'?PURPLE : 'FF333333';
+      // 출근상태별 배경색
+      var checkinSt_fg, checkinSt_bg;
+      if(st==='정상출근'){ checkinSt_fg=GREEN; checkinSt_bg=GREEN_BG; }
+      else if(st==='지각'){ checkinSt_fg=AMBER; checkinSt_bg=AMBER_BG; }
+      else if(st==='결근'){ checkinSt_fg=RED; checkinSt_bg=RED_BG; }
+      else if(st==='연차'||st==='반차'||st==='병가'){ checkinSt_fg=PURPLE; checkinSt_bg=PURPLE_BG; }
+      else { checkinSt_fg='FF333333'; checkinSt_bg='FFFFFFFF'; }
+      // 퇴근상태별 배경색
+      const cst = empData[r][4];
+      var checkoutSt_fg, checkoutSt_bg;
+      if(cst==='정상퇴근'){ checkoutSt_fg=GREEN; checkoutSt_bg=GREEN_BG; }
+      else if(cst==='조기퇴근'){ checkoutSt_fg=RED; checkoutSt_bg=RED_BG; }
+      else { checkoutSt_fg='FF888888'; checkoutSt_bg='FFFFFFFF'; }
+      // 격행 배경
+      const rowBg = r%2===0 ? 'FFF8F8F8' : 'FFFFFFFF';
       for(var c=0;c<empHeaders.length;c++){
         const cell=XLSX.utils.encode_cell({r:r,c:c});
         if(!wsEmp[cell]) continue;
-        if(c===2){ wsEmp[cell].s=Object.assign({},cStyle,{font:{bold:true,color:{rgb:stColor}}}); }
-        else if(c===5||c===8){ wsEmp[cell].s=lStyle; }
-        else { wsEmp[cell].s=cStyle; }
+        if(c===2){ wsEmp[cell].s=stStyle(checkinSt_fg, checkinSt_bg); }
+        else if(c===4){ wsEmp[cell].s=stStyle(checkoutSt_fg, checkoutSt_bg); }
+        else if(c===5||c===8){ wsEmp[cell].s=Object.assign({},lStyle,{fill:{fgColor:{rgb:rowBg}}}); }
+        else if(c===6&&empData[r][6]){ wsEmp[cell].s=stStyle(PURPLE, PURPLE_BG); }
+        else { wsEmp[cell].s=Object.assign({},cStyle,{fill:{fgColor:{rgb:rowBg}}}); }
       }
     }
     // 시트 이름 최대 31자 제한
