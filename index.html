@@ -2839,6 +2839,11 @@ function renderEmpWeek() {
         + leaveDayBadge(leave.type)
         + '</div>';
     } else {
+      if(ds > todayStrKST()) {
+        return '<div style="padding:6px 0;border-bottom:0.5px solid var(--gray-100);display:flex;align-items:center;justify-content:space-between;">'
+          + '<div style="font-size:11px;font-weight:600;color:var(--gray-800);">' + dateLabel + '</div>'
+          + '</div>';
+      }
       return '<div style="padding:6px 0;border-bottom:0.5px solid var(--gray-100);display:flex;align-items:center;justify-content:space-between;">'
         + '<div style="font-size:11px;font-weight:600;color:var(--gray-800);">' + dateLabel + '</div>'
         + '<span style="font-size:10px;padding:1px 5px;border-radius:20px;background:#FCEBEB;color:#A32D2D;">결근</span>'
