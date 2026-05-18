@@ -194,6 +194,8 @@ body { font-family: "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; backgrou
 }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 </head>
 <body>
 
@@ -357,6 +359,7 @@ body { font-family: "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; backgrou
       <div class="nav-section">⏱ 근태관리</div>
       <div class="nav-item" onclick="showPage('checkin',this)" style="color:var(--red);font-weight:700;"><span>🏃</span> 출퇴근 등록</div>
       <div class="nav-item" onclick="showPage('team-att',this)"><span>📊</span> 팀 출퇴근현황</div>
+      <div class="nav-item" onclick="showPage('team-graph',this)"><span>📈</span> 팀 근태 그래프</div>
       <div class="nav-item" onclick="showPage('my-records',this)"><span>📋</span> 내 근태 기록</div>
       <div style="padding:4px 0;"><button class="excel-btn" onclick="downloadAttExcel()" style="margin:4px 20px 0;">📥 근태현황 다운로드(.xlsx)</button></div>
       <div class="nav-divider"></div>
@@ -596,6 +599,37 @@ body { font-family: "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; backgrou
           </div>
           <div id="dept-detail-view" style="display:none;">
             <div id="dept-detail-list"><div class="loading">불러오는 중...</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 팀장 전용: 팀 근태 그래프 -->
+    <div class="page" id="page-team-graph">
+      <div class="page-header">
+        <div>
+          <div class="page-title">팀 근태 그래프</div>
+          <div class="page-sub" id="team-graph-dept-name"></div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <select id="team-graph-month" onchange="renderTeamGraph()" style="font-size:13px;padding:4px 8px;border:1px solid var(--gray-200);border-radius:6px;"></select>
+          <button class="excel-btn" onclick="downloadAttExcelWithGraph()" style="font-size:12px;padding:6px 14px;">📥 엑셀+그래프 다운로드</button>
+        </div>
+      </div>
+      <div id="team-graph-content" style="padding:0 4px;">
+        <!-- 요약 카드 -->
+        <div id="team-graph-summary" style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px;"></div>
+        <!-- 그래프 카드 -->
+        <div id="team-graph-chart-card" style="background:var(--white);border:1px solid var(--gray-100);border-radius:12px;padding:16px;margin-bottom:16px;">
+          <div style="font-size:14px;font-weight:600;color:var(--gray-900);margin-bottom:8px;">정상출근 / 지각 / 결근 / 특근 비교</div>
+          <div style="display:flex;gap:14px;margin-bottom:12px;flex-wrap:wrap;">
+            <span style="display:flex;align-items:center;gap:4px;font-size:12px;color:var(--gray-600);"><span style="width:10px;height:10px;border-radius:2px;background:#1D9E75;display:inline-block;"></span>정상출근</span>
+            <span style="display:flex;align-items:center;gap:4px;font-size:12px;color:var(--gray-600);"><span style="width:10px;height:10px;border-radius:2px;background:#378ADD;display:inline-block;"></span>지각</span>
+            <span style="display:flex;align-items:center;gap:4px;font-size:12px;color:var(--gray-600);"><span style="width:10px;height:10px;border-radius:2px;background:#E24B4A;display:inline-block;"></span>결근</span>
+            <span style="display:flex;align-items:center;gap:4px;font-size:12px;color:var(--gray-600);"><span style="width:10px;height:10px;border-radius:2px;background:#7F77DD;display:inline-block;"></span>특근</span>
+          </div>
+          <div style="position:relative;width:100%;height:280px;">
+            <canvas id="teamGraphCanvas" role="img" aria-label="팀원별 근태 막대 그래프"></canvas>
           </div>
         </div>
       </div>
@@ -3998,6 +4032,169 @@ function downloadAttExcel() {
 }
 
 // ===== 전체 렌더 =====
+// ===== 팀 근태 그래프 =====
+let teamGraphChart = null;
+
+function getTeamGraphData(monthPrefix) {
+  const today2 = todayStrKST();
+  const y = parseInt(monthPrefix.split('-')[0]);
+  const m = parseInt(monthPrefix.split('-')[1]) - 1;
+  const monthStart = monthPrefix + '-01';
+  const monthEnd = new Date(y, m+1, 0).toISOString().slice(0,10);
+
+  const workdays = [];
+  const c = new Date(monthStart);
+  const wend = new Date(monthEnd < today2 ? monthEnd : today2);
+  while(c <= wend) {
+    if(c.getDay()!==0 && c.getDay()!==6) workdays.push(c.toISOString().slice(0,10));
+    c.setDate(c.getDate()+1);
+  }
+
+  const emp = getEmpById(currentEmpId);
+  let teamEmps = currentRole==='admin'
+    ? employees.filter(function(e){ return e.role!=='admin'; })
+    : getVisibleEmployees().filter(function(e){ return e.role!=='admin'; });
+
+  const result = { labels:[], present:[], late:[], absent:[], ot:[], totalP:0, totalL:0, totalA:0, totalOt:0, teamCount:teamEmps.length };
+
+  teamEmps.forEach(function(e) {
+    const myAtts = attendances.filter(function(a){ return a.emp_id===e.id && a.att_date>=monthStart && a.att_date<=monthEnd && !a.overtime_checkin; });
+    const myOts  = attendances.filter(function(a){ return a.emp_id===e.id && a.att_date>=monthStart && a.att_date<=monthEnd && a.overtime_checkin; });
+    const myLeaves = requests.filter(function(r){ return r.emp_id===e.id && r.status==='approved' && r.start_date<=monthEnd && r.end_date>=monthStart; });
+    let pCnt=0,lCnt=0,aCnt=0; const otSet=[];
+    workdays.forEach(function(ds){
+      const lv=myLeaves.find(function(r){ return r.start_date<=ds && r.end_date>=ds; });
+      if(lv) return;
+      const att=myAtts.find(function(a){ return a.att_date===ds; });
+      if(att){ const s=getAttStatus(att); if(s==='present') pCnt++; else if(s==='late') lCnt++; }
+      else if(ds<=today2) aCnt++;
+    });
+    myOts.forEach(function(a){ if(!otSet.includes(a.att_date)) otSet.push(a.att_date); });
+    result.labels.push(e.name);
+    result.present.push(pCnt); result.late.push(lCnt); result.absent.push(aCnt); result.ot.push(otSet.length);
+    result.totalP+=pCnt; result.totalL+=lCnt; result.totalA+=aCnt; result.totalOt+=otSet.length;
+  });
+
+  const totalAtt = result.totalP + result.totalL;
+  const totalWd = workdays.length * teamEmps.length;
+  result.attRate = totalWd>0 ? Math.round(totalAtt/totalWd*100) : 0;
+  return result;
+}
+
+function renderTeamGraph() {
+  const emp = getEmpById(currentEmpId);
+  const deptEl = document.getElementById('team-graph-dept-name');
+  if(deptEl && emp) deptEl.textContent = emp.dept || '';
+
+  // 월 선택 셀렉트 초기화
+  const sel = document.getElementById('team-graph-month');
+  if(sel && sel.options.length === 0) {
+    const now = new Date(nowKST());
+    for(var i=0; i<6; i++){
+      const d = new Date(now.getFullYear(), now.getMonth()-i, 1);
+      const val = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0');
+      const label = d.getFullYear() + '년 ' + (d.getMonth()+1) + '월';
+      const opt = document.createElement('option');
+      opt.value = val; opt.textContent = label;
+      sel.appendChild(opt);
+    }
+  }
+  const monthPrefix = sel ? sel.value : todayStrKST().slice(0,7);
+  const data = getTeamGraphData(monthPrefix);
+
+  // 요약 카드
+  const summaryEl = document.getElementById('team-graph-summary');
+  if(summaryEl) {
+    summaryEl.innerHTML = [
+      {label:'팀원 수', val:data.teamCount+'명', color:'var(--gray-900)'},
+      {label:'평균 출근율', val:data.attRate+'%', color:'#0F6E56'},
+      {label:'지각 총계', val:data.totalL+'건', color:'#185FA5'},
+      {label:'결근 총계', val:data.totalA+'건', color:'#E24B4A'},
+    ].map(function(c){
+      return '<div style="background:var(--gray-50);border:1px solid var(--gray-100);border-radius:10px;padding:14px 16px;">'
+        + '<div style="font-size:12px;color:var(--gray-500);margin-bottom:6px;">'+c.label+'</div>'
+        + '<div style="font-size:22px;font-weight:700;color:'+c.color+';">'+c.val+'</div>'
+        + '</div>';
+    }).join('');
+  }
+
+  // 차트
+  const canvas = document.getElementById('teamGraphCanvas');
+  if(!canvas) return;
+  if(teamGraphChart) { teamGraphChart.destroy(); teamGraphChart = null; }
+
+  teamGraphChart = new Chart(canvas, {
+    type: 'bar',
+    data: {
+      labels: data.labels,
+      datasets: [
+        {label:'정상출근', data:data.present, backgroundColor:'#1D9E75', borderRadius:4},
+        {label:'지각',     data:data.late,    backgroundColor:'#378ADD', borderRadius:4},
+        {label:'결근',     data:data.absent,  backgroundColor:'#E24B4A', borderRadius:4},
+        {label:'특근',     data:data.ot,      backgroundColor:'#7F77DD', borderRadius:4},
+      ]
+    },
+    options: {
+      responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{display:false} },
+      scales:{
+        x:{ grid:{display:false}, ticks:{font:{size:12}} },
+        y:{ grid:{color:'rgba(0,0,0,0.05)'}, ticks:{stepSize:5, font:{size:11}} }
+      }
+    }
+  });
+}
+
+async function downloadAttExcelWithGraph() {
+  // 그래프 캡처
+  const chartCard = document.getElementById('team-graph-chart-card');
+  if(!chartCard) { downloadAttExcel(); return; }
+
+  const canvas = await html2canvas(chartCard, { scale:2, backgroundColor:'#ffffff', useCORS:true });
+  const imgData = canvas.toDataURL('image/png');
+
+  // 기존 엑셀 생성 후 이미지 삽입
+  const sel = document.getElementById('team-graph-month');
+  const monthPrefix = sel ? sel.value : todayStrKST().slice(0,7);
+  const data = getTeamGraphData(monthPrefix);
+  const today2 = todayStrKST();
+  const y2 = parseInt(monthPrefix.split('-')[0]);
+  const m2 = parseInt(monthPrefix.split('-')[1]) - 1;
+  const monthLabel2 = y2 + '년 ' + (m2+1) + '월';
+
+  const wb = XLSX.utils.book_new();
+
+  // 그래프 이미지 시트
+  const wsImg = {};
+  wsImg['A1'] = {v: monthLabel2 + ' 팀 근태 그래프', t:'s', s:{font:{bold:true,sz:14,color:{rgb:'FF2E7D52'}}}};
+  wsImg['A2'] = {v: '※ 아래 이미지는 앱 화면을 캡처한 것입니다.', t:'s', s:{font:{sz:10,color:{rgb:'FF888888'}}}};
+  wsImg['!ref'] = 'A1:M40';
+  wsImg['!cols'] = Array(13).fill({wch:9});
+  wsImg['!rows'] = [{hpt:20},{hpt:14}];
+
+  // 이미지 base64 → 바이너리
+  const base64 = imgData.split(',')[1];
+  if(!wb.Workbook) wb.Workbook = {};
+  if(!wb.Workbook.Sheets) wb.Workbook.Sheets = [];
+
+  XLSX.utils.book_append_sheet(wb, wsImg, '📈 그래프');
+
+  // 이미지 첨부 (xlsx-js-style 방식)
+  const ws0 = wb.Sheets['📈 그래프'];
+  if(!ws0['!images']) ws0['!images'] = [];
+  ws0['!images'].push({
+    name: 'graph.png',
+    data: base64,
+    opts: { base64: true },
+    position: { type: 'twoCellAnchor', attrs: { editAs: 'oneCell' },
+      from: { col:0, row:2, colOff:0, rowOff:0 },
+      to:   { col:12, row:38, colOff:0, rowOff:0 }
+    }
+  });
+
+  XLSX.writeFile(wb, '팀근태그래프_' + monthLabel2.replace(' ','') + '_' + today2 + '.xlsx');
+}
+
 function renderAll() {
   if(currentRole==='admin' || currentRole==='deptadmin') {
     if(currentPage==='leave-dashboard') renderAdminLeaveDashboard();
@@ -4058,6 +4255,7 @@ async function showPage(page, el) {
   }
   if(page==='apply') renderMyLeave();
   if(page==='checkin') { startClock(); renderCheckin(); }
+  if(page==='team-graph') { renderTeamGraph(); }
   if(page==='my-records') { myRecTab='week'; setTimeout(function(){ renderMyAttRecords(); }, 0); }
   if(page==='monthly') renderMonthly();
   if(page==='team-att') renderTeamAtt();
