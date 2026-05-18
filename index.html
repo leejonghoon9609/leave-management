@@ -3852,7 +3852,7 @@ async function downloadAttExcel() {
       else ws2[cell].s=cStyle;
     }
   }
-  XLSX.utils.book_append_sheet(wb, ws2, '팀원별 요약');
+  // 팀원별 요약 탭 제거됨
 
   // ===== 시트3~N: 직원별 일별 근태 (날짜별 본사/현장 행 분리) =====
   teamEmps2.forEach(function(e) {
@@ -4054,14 +4054,16 @@ async function downloadAttExcel() {
       URL.revokeObjectURL(url);
       const pngBase64 = cvs.toDataURL('image/png').split(',')[1];
       if(!ws1['!images']) ws1['!images'] = [];
+      // 팀통계 데이터 행 수 계산 (헤더2행 + 데이터행 + 합계행 + 여백)
+      const imgStartRow = teamEmps2.length + 5;
       ws1['!images'].push({
         name: 'graph.png',
         data: pngBase64,
         opts: { base64: true },
         position: {
           type: 'twoCellAnchor', attrs: { editAs: 'oneCell' },
-          from: { col: 0, row: 0, colOff: 0, rowOff: 0 },
-          to:   { col: 9, row: 18, colOff: 0, rowOff: 0 }
+          from: { col: 0, row: imgStartRow, colOff: 0, rowOff: 0 },
+          to:   { col: 9, row: imgStartRow + 18, colOff: 0, rowOff: 0 }
         }
       });
     }
