@@ -3747,18 +3747,17 @@ async function downloadAttExcel() {
   ];
   const sc2 = BAR+4; // Y열 시작 (0-indexed)
 
-  // 열 너비 설정 (종훈님 파일 기준 - B만 3.0, C~U는 기본값)
-  const barCols = [{wch:8.86}]; // A
-  barCols.push({wch:3.0}); // B
-  for(var i=0;i<BAR-1;i++) barCols.push({}); // C~U 기본값
-  barCols.push({wch:5.86}); // V=합계
-  barCols.push({}); // W
-  barCols.push({wch:2.43}); // X
-  barCols.push({}); // 빈열
-  // Y~AG = 팀통계
-  [8,14.57,8.86,10.86,8.86,8.86,8.86,8.86,8.86].forEach(function(w){ barCols.push({wch:w}); });
-
-  wsBar['!cols'] = barCols;
+  // 열 너비: A, B, V, X, Y~AG만 설정 (C~U는 !cols에 포함 안 해서 엑셀 기본값 사용)
+  // SheetJS에서 !cols 배열 길이로 열이 결정되므로, 중간 열을 null로 처리
+  const barColsArr = new Array(sc2+9).fill(null);
+  barColsArr[0]  = {wch:8.86};  // A
+  barColsArr[1]  = {wch:3.0};   // B
+  // C~U(2~20)는 null 유지 → 기본값
+  barColsArr[BAR+1] = {wch:5.86}; // V
+  barColsArr[BAR+3] = {wch:2.43}; // X
+  // Y~AG (sc2 = BAR+4 = 24)
+  [8,14.57,8.86,10.86,8.86,8.86,8.86,8.86,8.86].forEach(function(w,i){ barColsArr[sc2+i]={wch:w}; });
+  wsBar['!cols'] = barColsArr;
   wsBar['!rows'] = [];
 
   // 행1: 제목
