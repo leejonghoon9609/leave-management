@@ -3752,7 +3752,7 @@ async function downloadAttExcel() {
   // !cols를 sparse array 방식으로 설정
   const barColsArr = [];
   barColsArr[0]  = {wch:8.86};   // A
-  barColsArr[1]  = {wch:3.0};    // B
+  barColsArr[1]  = {wch:5.0};    // B
   // C(2)~U(20) 미설정 → 기본값
   barColsArr[BAR+1] = {wch:5.86};  // V
   barColsArr[BAR+3] = {wch:2.43};  // X
@@ -3760,7 +3760,7 @@ async function downloadAttExcel() {
   const statWchs = [8,14.57,8.86,10.86,8.86,8.86,8.86,8.86,8.86];
   statWchs.forEach(function(w,i){ barColsArr[BAR+5+i]={wch:w}; });
   wsBar['!cols'] = barColsArr;
-  // 행 높이: 제목(1행)=28.5, 직원이름행만 15.75 나머지 기본값
+  // 행 높이: 제목=28.5, 나머지 모두 15.0
   wsBar['!rows'] = [{hpt:28.5}]; // 1행 제목
 
   // 행1: 제목
@@ -3786,7 +3786,8 @@ async function downloadAttExcel() {
   var bRow=2;
   var statRow2=2; // 팀통계 별도 행 카운터 (2행=헤더, 3행부터 데이터)
   barRows.forEach(function(row, ri) {
-    if(!wsBar['!rows']) wsBar['!rows']=[{hpt:28.5}]; wsBar['!rows'][bRow] = {hpt:15.75};
+    if(!wsBar['!rows']) wsBar['!rows']=[{hpt:28.5}];
+    wsBar['!rows'][bRow] = {hpt:15.75}; // 직원이름행
     // 직원 이름 (막대 그래프)
     wsBar[XLSX.utils.encode_cell({r:bRow,c:0})] = cell(row.name, [mkFont(true,12,NAVY), mkAlign('left','center')]);
     wsBarMerges.push({s:{r:bRow,c:0},e:{r:bRow,c:BAR+1}});
@@ -3805,6 +3806,7 @@ async function downloadAttExcel() {
     bRow++;
 
     // 일수 헤더행
+    wsBar['!rows'][bRow] = {hpt:15.0};
     wsBar[XLSX.utils.encode_cell({r:bRow,c:0})] = cell('일수', [mkFont(true,9,NAVY), mkAlign('center'), {border:{bottom:{style:'thin',color:{rgb:'FFCCCCCC'}},right:{style:'thin',color:{rgb:'FFCCCCCC'}}}}]);
     for(var d=1;d<=BAR;d++){
       wsBar[XLSX.utils.encode_cell({r:bRow,c:d})] = cell(d, [mkFont(false,9), mkAlign('center'), {border:{bottom:{style:'thin',color:{rgb:'FFCCCCCC'}}}}]);
@@ -3814,8 +3816,9 @@ async function downloadAttExcel() {
 
     // 막대 4행
     barDefs2.forEach(function(def) {
+      wsBar['!rows'][bRow] = {hpt:15.0};
       var val=row[def.key]; var bl=Math.round((val/maxV)*BAR);
-      wsBar[XLSX.utils.encode_cell({r:bRow,c:0})] = cell(def.label, [mkFont(false,10,def.col), mkAlign('right','center'), {border:{bottom:{style:'thin',color:{rgb:'FFCCCCCC'}},right:{style:'thin',color:{rgb:'FFCCCCCC'}}}}]);
+      wsBar[XLSX.utils.encode_cell({r:bRow,c:0})] = cell(def.label, [mkFont(false,10,def.col), mkAlign('center','center'), {border:{top:{style:'thin',color:{rgb:'FFCCCCCC'}},bottom:{style:'thin',color:{rgb:'FFCCCCCC'}},left:{style:'thin',color:{rgb:'FFCCCCCC'}},right:{style:'thin',color:{rgb:'FFCCCCCC'}}}}]);
       for(var bi=1;bi<=BAR;bi++){
         wsBar[XLSX.utils.encode_cell({r:bRow,c:bi})] = cell('', [
           {fill:{fgColor:{rgb:'FF'+(bi<=bl?def.col:'FAFAFA')},patternType:'solid'}},
@@ -3827,6 +3830,7 @@ async function downloadAttExcel() {
     });
 
     // 빈행
+    wsBar['!rows'][bRow] = {hpt:15.0};
     wsBarMerges.push({s:{r:bRow,c:0},e:{r:bRow,c:BAR+1}});
     bRow++;
   });
