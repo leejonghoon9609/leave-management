@@ -3745,7 +3745,7 @@ async function downloadAttExcel() {
     {key:'a',label:'결근',    col:RED_C, bg:RED_L},
     {key:'ot',label:'특근',   col:PUR,   bg:PUR_L},
   ];
-  const sc2 = BAR+3; // 팀통계 시작열 = 합계열+2 (바짝 붙임)
+  const sc2 = 16; // 팀통계 시작열 Q열 고정 (0-indexed=16)
 
   // 열 너비: SheetJS는 !cols 배열 인덱스=열번호(0-based)
   // C~U는 포함하지 않음 → 엑셀 기본값(8.43) 유지
@@ -3759,7 +3759,7 @@ async function downloadAttExcel() {
   // 팀통계는 항상 Y열(24)에 고정
   // 팀통계 열
   const statWchs = [8,14.57,8.86,10.86,8.86,8.86,8.86,8.86,8.86];
-  statWchs.forEach(function(w,i){ barColsArr[sc2+i]={wch:w}; }); // 팀통계 열
+  statWchs.forEach(function(w,i){ barColsArr[16+i]={wch:w}; }); // Q열부터 팀통계
   wsBar['!cols'] = barColsArr;
   // 행 높이: 제목=28.5, 나머지 모두 15.0
   wsBar['!rows'] = [{hpt:28.5}]; // 1행 제목
@@ -3777,8 +3777,7 @@ async function downloadAttExcel() {
   // 범례 - 한 줄에 붙여서 (i*2 간격)
   var legDefs=[['■ 정상출근',GREEN],['■ 지각',BLUE_C],['■ 결근',RED_C],['■ 특근',PUR]];
   legDefs.forEach(function(lg,i){
-    wsBar[XLSX.utils.encode_cell({r:1,c:i*3})] = cell(lg[0], [mkFont(true,10,lg[1]), mkAlign('left')]);
-    wsBarMerges.push({s:{r:1,c:i*3},e:{r:1,c:i*3+2}});
+    wsBar[XLSX.utils.encode_cell({r:1,c:i})] = cell(lg[0], [mkFont(true,10,lg[1]), mkAlign('left')]);
   });
   var stHdrs=['이름','부서','평일수','정상출근','지각','결근','연차','특근','지각률'];
   stHdrs.forEach(function(h,i){
@@ -3833,7 +3832,10 @@ async function downloadAttExcel() {
       bRow++;
     });
 
-    // 빈행 제거
+    // 빈행
+    wsBar['!rows'][bRow] = {hpt:15.0};
+    wsBarMerges.push({s:{r:bRow,c:0},e:{r:bRow,c:BAR+1}});
+    bRow++;
   });
 
   // 팀통계 합계행
