@@ -2279,7 +2279,8 @@ function renderMyAttTable() {
     const ot = myOt.find(function(a){ return a.att_date===ds; });
     const present = att && getAttStatus(att)==='present' ? 1 : 0;
     const late = att && getAttStatus(att)==='late' ? 1 : 0;
-    const absent = att ? 0 : 1;
+    const isFuture = ds > todayStr;
+    const absent = (!att && !isFuture) ? 1 : 0;
     const overtime = ot ? 1 : 0;
     totalPresent+=present; totalLate+=late; totalAbsent+=absent; totalOt+=overtime;
 
@@ -3336,7 +3337,7 @@ function downloadAttExcel() {
         if(s==='present') presentDates.push(ds); else if(s==='late') lateDates.push(ds);
         if(att.checkout_status==='early') earlyDates.push(ds);
         if(att.checkin_field_memo || att.field_memo) fieldDates.push(ds); else officeDates.push(ds);
-      } else {
+      } else if(ds <= todayStr) {
         absentDates.push(ds);
       }
     });
