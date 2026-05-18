@@ -612,7 +612,7 @@ body { font-family: "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; backgrou
         </div>
       </div>
       <!-- 그래프 카드 -->
-      <div id="team-graph-chart-card" style="background:var(--white);border:1px solid var(--gray-100);border-radius:12px;padding:16px;margin-bottom:16px;">
+      <div id="team-graph-chart-card" style="background:var(--white);border:2px solid var(--gray-200);border-radius:12px;padding:16px;margin-bottom:16px;">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
           <div style="font-size:14px;font-weight:600;color:var(--gray-900);">팀 근태 그래프</div>
           <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:center;">
@@ -4139,7 +4139,7 @@ function renderTeamGraph() {
       const bx = gx + d * barW;
       const by = paddingT + chartH - bh;
       if(val > 0) {
-        svg += '<rect x="'+bx+'" y="'+by+'" width="'+(barW-2)+'" height="'+bh+'" fill="'+COLORS[d]+'" rx="2"/>';
+        svg += '<rect x="'+bx+'" y="'+by+'" width="'+(barW-2)+'" height="'+bh+'" fill="'+COLORS[d]+'" rx="2" stroke="rgba(0,0,0,0.15)" stroke-width="0.5"/>';
         svg += '<text x="'+(bx+(barW-2)/2)+'" y="'+(by-3)+'" text-anchor="middle" font-size="9" fill="'+COLORS[d]+'">'+val+'</text>';
       }
     }
