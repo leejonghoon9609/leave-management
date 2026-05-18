@@ -3936,11 +3936,7 @@ async function downloadAttExcel() {
   const BAR_MAX2 = 20;
   let monRow = 2; // 0-indexed, 3행
 
-  // 팀통계 데이터 행
-  let statRow = 2;
-  barRows2 = barRows2 || [];
-
-  // barRows2 재계산 (barRows와 동일)
+  // barRows2 계산
   const barRows2 = [];
   teamEmps2.forEach(function(e) {
     const myAtts2b = attendances.filter(function(a){ return a.emp_id===e.id && a.att_date>=monthStart2 && a.att_date<=monthEnd2 && !a.overtime_checkin; });
