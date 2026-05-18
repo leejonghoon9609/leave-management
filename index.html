@@ -3804,6 +3804,105 @@ async function downloadAttExcel() {
     const cell=XLSX.utils.encode_cell({r:sumRow,c:c});
     if(ws1[cell]) ws1[cell].s=sumStyle('FF2E7D52');
   }
+  // ===== 막대 시각화 시트 추가 =====
+  // 데이터 수집
+  const barRows = [];
+  teamEmps2.forEach(function(e) {
+    const myAtts2 = attendances.filter(function(a){ return a.emp_id===e.id && a.att_date>=monthStart2 && a.att_date<=monthEnd2 && !a.overtime_checkin; });
+    const myOts2  = attendances.filter(function(a){ return a.emp_id===e.id && a.att_date>=monthStart2 && a.att_date<=monthEnd2 && a.overtime_checkin; });
+    const myLeaves2 = requests.filter(function(r){ return r.emp_id===e.id && r.status==='approved' && r.start_date<=monthEnd2 && r.end_date>=monthStart2; });
+    let pCnt=0,lCnt=0,aCnt=0; const otSet=[];
+    workdays2.forEach(function(ds){
+      const lv=myLeaves2.find(function(r){ return r.start_date<=ds && r.end_date>=ds; });
+      if(lv) return;
+      const att=myAtts2.find(function(a){ return a.att_date===ds; });
+      if(att){ const s=getAttStatus(att); if(s==='present') pCnt++; else if(s==='late') lCnt++; }
+      else if(ds<=today2) aCnt++;
+    });
+    myOts2.forEach(function(a){ if(!otSet.includes(a.att_date)) otSet.push(a.att_date); });
+    barRows.push({name:e.name, p:pCnt, l:lCnt, a:aCnt, ot:otSet.length});
+  });
+
+  const maxVal2 = Math.max(1, ...barRows.map(function(r){ return Math.max(r.p,r.l,r.a,r.ot); }));
+  const BAR_MAX = 20; // 막대 최대 칸 수
+  const wsBar = {};
+  const wsBarMerges = [];
+  let bRow = 0;
+
+  // 제목
+  wsBar[XLSX.utils.encode_cell({r:bRow,c:0})] = {v: statTitle + ' - 그래프', t:'s', s:{font:{bold:true,sz:14,color:{rgb:'FF2E7D52'}},alignment:{horizontal:'left'}}};
+  wsBarMerges.push({s:{r:bRow,c:0},e:{r:bRow,c:BAR_MAX+2}});
+  bRow += 2;
+
+  // 범례
+  const legends = [
+    {label:'정상출근', color:'FF1D9E75'}, {label:'지각', color:'FF378ADD'},
+    {label:'결근', color:'FFE24B4A'},     {label:'특근', color:'FF7F77DD'}
+  ];
+  legends.forEach(function(lg, i) {
+    const c = i * 4;
+    wsBar[XLSX.utils.encode_cell({r:bRow,c:c})] = {v:'■ '+lg.label, t:'s', s:{font:{bold:true,sz:10,color:{rgb:lg.color}},alignment:{horizontal:'left'}}};
+  });
+  bRow += 2;
+
+  // 각 직원별 막대 그래프
+  const barDefs = [
+    {key:'p', label:'정상출근', color:'FF1D9E75', bg:'FFE1F5EE'},
+    {key:'l', label:'지각',     color:'FF378ADD', bg:'FFE6F1FB'},
+    {key:'a', label:'결근',     color:'FFE24B4A', bg:'FFFCEBEB'},
+    {key:'ot',label:'특근',     color:'FF7F77DD', bg:'FFEEEDFE'},
+  ];
+
+  barRows.forEach(function(row) {
+    // 직원 이름 헤더
+    wsBar[XLSX.utils.encode_cell({r:bRow,c:0})] = {v:row.name, t:'s', s:{font:{bold:true,sz:12,color:{rgb:'FF1E3A5F'}},alignment:{horizontal:'left',vertical:'center'}}};
+    wsBarMerges.push({s:{r:bRow,c:0},e:{r:bRow,c:BAR_MAX+2}});
+    bRow++;
+
+    barDefs.forEach(function(def) {
+      const val = row[def.key];
+      const barLen = Math.round((val / maxVal2) * BAR_MAX);
+
+      // 항목 레이블
+      wsBar[XLSX.utils.encode_cell({r:bRow,c:0})] = {v:def.label, t:'s',
+        s:{font:{sz:10,color:{rgb:def.color}},alignment:{horizontal:'right',vertical:'center'},
+           border:{right:{style:'thin',color:{rgb:'FFCCCCCC'}}}}};
+
+      // 막대 칸 (채운 부분)
+      for(var ci=1; ci<=BAR_MAX; ci++){
+        const isFilled = ci <= barLen;
+        const isLast = ci === BAR_MAX;
+        wsBar[XLSX.utils.encode_cell({r:bRow,c:ci})] = {v:'', t:'s',
+          s:{fill:{fgColor:{rgb: isFilled ? def.color : 'FFFAFAFA'},patternType:'solid'},
+             border:{
+               top:{style:'thin',color:{rgb:'FFEEEEEE'}},
+               bottom:{style:'thin',color:{rgb:'FFEEEEEE'}},
+               left:{style:'thin',color:{rgb:'FFEEEEEE'}},
+               right:{style:'thin',color:{rgb: isLast?'FFCCCCCC':'FFEEEEEE'}}
+             }}};
+      }
+
+      // 숫자 표시
+      wsBar[XLSX.utils.encode_cell({r:bRow,c:BAR_MAX+1})] = {v:val, t:'n',
+        s:{font:{bold:true,sz:11,color:{rgb:def.color}},alignment:{horizontal:'center',vertical:'center'}}};
+
+      bRow++;
+    });
+
+    // 직원 간 구분선
+    wsBar[XLSX.utils.encode_cell({r:bRow,c:0})] = {v:'', t:'s', s:{border:{bottom:{style:'thin',color:{rgb:'FFDDDDDD'}}}}};
+    wsBarMerges.push({s:{r:bRow,c:0},e:{r:bRow,c:BAR_MAX+1}});
+    bRow++;
+  });
+
+  wsBar['!ref'] = XLSX.utils.encode_range({s:{r:0,c:0},e:{r:bRow,c:BAR_MAX+1}});
+  const barCols = [{wch:8}];
+  for(var bi=0;bi<BAR_MAX;bi++) barCols.push({wch:1.2});
+  barCols.push({wch:5});
+  wsBar['!cols'] = barCols;
+  wsBar['!merges'] = wsBarMerges;
+  XLSX.utils.book_append_sheet(wb, wsBar, '📊 그래프');
+
   XLSX.utils.book_append_sheet(wb, ws1, '팀 통계');
 
   // ===== 시트2: 팀원별 요약 =====
