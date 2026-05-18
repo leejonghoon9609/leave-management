@@ -3332,7 +3332,7 @@ function downloadLeaveExcel() {
   XLSX.writeFile(wb, '연차현황_'+today+'.xlsx');
 }
 
-function downloadAttExcel() {
+async function downloadAttExcel() {
   const today = todayStrKST();
 
   // ===== 직원: 2시트 형식 (월별결산 + 일별근태) =====
@@ -3748,7 +3748,10 @@ function downloadAttExcel() {
 
   // ===== 시트1: 팀 통계 =====
   const statHeaders = ['이름','부서','평일수','정상출근','지각','결근','연차','특근','지각률'];
-  const statData = [['', monthLabel2 + ' 팀 근태 통계'], statHeaders];
+  const emp2 = getEmpById(currentEmpId);
+  const myDept2 = emp2 ? (getLeaderDept(emp2.name) || emp2.dept || '') : '';
+  const statTitle = currentRole==='admin' ? monthLabel2 + ' 팀 근태 통계(전체)' : monthLabel2 + ' 팀 근태 통계(' + myDept2 + ')';
+  const statData = [['', statTitle], statHeaders];
   let totP=0,totL=0,totA=0,totLv=0,totOt=0,totWd=0;
 
   teamEmps2.forEach(function(e) {
@@ -4026,7 +4029,44 @@ function downloadAttExcel() {
     if(wsChart[cell]) wsChart[cell].s = {font:{bold:true,color:{rgb:'FFFFFFFF'},sz:11},fill:{fgColor:{rgb:'FF2E7D52'}},alignment:{horizontal:'center',vertical:'center'},border:{top:{style:'medium',color:{rgb:'FF888888'}},bottom:{style:'medium',color:{rgb:'FF888888'}},left:{style:'medium',color:{rgb:'FF888888'}},right:{style:'medium',color:{rgb:'FF888888'}}}};
   }
 
-  XLSX.utils.book_append_sheet(wb, wsChart, '차트데이터');
+  // 차트데이터 탭 제거됨
+  // ===== 그래프 SVG → PNG → 팀통계 시트에 삽입 =====
+  try {
+    const svgWrap = document.getElementById('teamGraphSvgWrap');
+    const svgEl = svgWrap ? svgWrap.querySelector('svg') : null;
+    if(svgEl && ws1) {
+      const svgStr = new XMLSerializer().serializeToString(svgEl);
+      const svgBlob = new Blob([svgStr], {type:'image/svg+xml'});
+      const url = URL.createObjectURL(svgBlob);
+      const img = new Image();
+      await new Promise(function(resolve) {
+        img.onload = resolve;
+        img.onerror = resolve;
+        img.src = url;
+      });
+      const cvs = document.createElement('canvas');
+      cvs.width = svgEl.viewBox && svgEl.viewBox.baseVal.width || svgEl.getAttribute('width') || 600;
+      cvs.height = svgEl.viewBox && svgEl.viewBox.baseVal.height || svgEl.getAttribute('height') || 220;
+      const ctx = cvs.getContext('2d');
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, cvs.width, cvs.height);
+      ctx.drawImage(img, 0, 0);
+      URL.revokeObjectURL(url);
+      const pngBase64 = cvs.toDataURL('image/png').split(',')[1];
+      if(!ws1['!images']) ws1['!images'] = [];
+      ws1['!images'].push({
+        name: 'graph.png',
+        data: pngBase64,
+        opts: { base64: true },
+        position: {
+          type: 'twoCellAnchor', attrs: { editAs: 'oneCell' },
+          from: { col: 0, row: 0, colOff: 0, rowOff: 0 },
+          to:   { col: 9, row: 18, colOff: 0, rowOff: 0 }
+        }
+      });
+    }
+  } catch(e) { console.warn('그래프 이미지 삽입 실패:', e); }
+
   XLSX.writeFile(wb, '팀근태_' + monthLabel2.replace(' ','') + '_' + today2 + '.xlsx');
 }
 
