@@ -3782,7 +3782,7 @@ async function downloadAttExcel() {
   });
   var stHdrs=['이름','부서','평일수','정상출근','지각','결근','연차','특근','지각률'];
   stHdrs.forEach(function(h,i){
-    wsBar[XLSX.utils.encode_cell({r:1,c:sc2+i})] = cell(h, [mkFont(true,10,'FFFFFF'), mkFill(HDR), mkBdr('AAAAAA'), mkAlign('center')]);
+    wsBar[XLSX.utils.encode_cell({r:1,c:sc2+i})] = cell(h, [mkFont(true,10,'FFFFFF'), mkFill(HDR), {border:{top:{style:'thin'},bottom:{style:'thin'},left:{style:'thin'},right:{style:'thin'}}}, mkAlign('center')]);
   });
 
   // 직원별 막대 + 팀통계
@@ -3802,7 +3802,7 @@ async function downloadAttExcel() {
     stVals.forEach(function(v,i){
       wsBar[XLSX.utils.encode_cell({r:statRow2,c:sc2+i})] = cell(v, [
         mkFont(stBd[i], i<2?9:10, stFcs[i]||'000000'),
-        mkAlign(i===0?'left':'center'), mkBdr()
+        mkAlign(i===0?'left':'center'), {border:{top:{style:'thin'},bottom:{style:'thin'},left:{style:'thin'},right:{style:'thin'}}}
       ]);
     });
     statRow2++;
@@ -3811,7 +3811,7 @@ async function downloadAttExcel() {
     // 일수 헤더행 - 연한 회색 배경 + 얇은 테두리 통일
     wsBar['!rows'][bRow] = {hpt:15.0};
     var thinGray = {style:'thin',color:{rgb:'FFCCCCCC'}};
-    var thinI={style:'thin',color:{indexed:64}}; var hdrBdr2 = {top:thinI,bottom:thinI,left:{style:'medium'},right:thinI};
+    var hdrBdr2 = {top:{style:'thin'},bottom:{style:'thin'},left:{style:'thin'},right:{style:'thin'}};
     wsBar[XLSX.utils.encode_cell({r:bRow,c:0})] = cell('일수', [mkFont(true,9,'555555'), mkFill('EFEFEF'), mkAlign('center'), {border:hdrBdr2}]);
     for(var d=1;d<=BAR;d++){
       wsBar[XLSX.utils.encode_cell({r:bRow,c:d})] = cell(d, [mkFont(false,9,'555555'), mkFill('EFEFEF'), mkAlign('center'), {border:hdrBdr2}]);
@@ -3823,15 +3823,14 @@ async function downloadAttExcel() {
     barDefs2.forEach(function(def) {
       wsBar['!rows'][bRow] = {hpt:15.0};
       var val=row[def.key]; var bl=val; // 1칸=1일 직접 표시
-      var thinI3={style:'thin',color:{indexed:64}}; wsBar[XLSX.utils.encode_cell({r:bRow,c:0})] = cell(def.label, [mkFont(false,10,def.col), mkAlign('center','center'), {border:{top:thinI3,bottom:thinI3,left:{style:'medium'},right:thinI3}}]);
+      wsBar[XLSX.utils.encode_cell({r:bRow,c:0})] = cell(def.label, [mkFont(false,10,def.col), mkAlign('center','center'), {border:{top:{style:'thin'},bottom:{style:'thin'},left:{style:'medium'},right:{style:'thin'}}}]);
       for(var bi=1;bi<=BAR;bi++){
-        var thinI2 = {style:'thin',color:{indexed:64}};
         wsBar[XLSX.utils.encode_cell({r:bRow,c:bi})] = cell('', [
           {fill:{fgColor:{rgb:'FF'+(bi<=bl?def.col:'FFFFFF')},patternType:'solid'}},
-          {border:{top:thinI2,bottom:thinI2,left:thinI2,right:thinI2}}
+          {border:{top:{style:'thin'},bottom:{style:'thin'},left:{style:'thin'},right:{style:'thin'}}}
         ]);
       }
-      var thinI4={style:'thin',color:{indexed:64}}; wsBar[XLSX.utils.encode_cell({r:bRow,c:BAR+1})] = cell(val, [mkFont(true,11,def.col), mkAlign('center'), {border:{top:thinI4,bottom:thinI4,left:thinI4,right:{style:'medium'}}}]);
+      wsBar[XLSX.utils.encode_cell({r:bRow,c:BAR+1})] = cell(val, [mkFont(true,11,def.col), mkAlign('center'), {border:{top:{style:'thin'},bottom:{style:'thin'},left:{style:'thin'},right:{style:'medium'}}}]);
       bRow++;
     });
 
@@ -3845,7 +3844,7 @@ async function downloadAttExcel() {
   const totAtt2=totP2+totL2; const totLR2=totAtt2>0?Math.round(totL2/totAtt2*100)+'%':'0%';
   const sumStatRow = statRow2; // 팀통계 합계행
   ['합계','',workdays2.length*barRows.length,totP2,totL2,totA2,totLv2,totOt2,totLR2].forEach(function(v,i){
-    wsBar[XLSX.utils.encode_cell({r:sumStatRow,c:sc2+i})] = cell(v, [mkFont(true,10,'FFFFFF'), mkFill(HDR), mkBdr(), mkAlign('center')]);
+    wsBar[XLSX.utils.encode_cell({r:sumStatRow,c:sc2+i})] = cell(v, [mkFont(true,10,'FFFFFF'), mkFill(HDR), {border:{top:{style:'thin'},bottom:{style:'thin'},left:{style:'thin'},right:{style:'thin'}}}, mkAlign('center')]);
   });
 
   // 그래프 영역 외곽 테두리 추가
@@ -3888,7 +3887,7 @@ async function downloadAttExcel() {
 
   var stHdrs2=['이름','부서','평일수','정상출근','지각','결근','연차','특근','지각률'];
   stHdrs2.forEach(function(h,i){
-    ws1[XLSX.utils.encode_cell({r:1,c:i})] = cell(h, [mkFont(true,11,'FFFFFF'), mkFill(HDR), mkBdr('AAAAAA'), mkAlign('center')]);
+    ws1[XLSX.utils.encode_cell({r:1,c:i})] = cell(h, [mkFont(true,11,'FFFFFF'), mkFill(HDR), {border:{top:{style:'thin'},bottom:{style:'thin'},left:{style:'thin'},right:{style:'thin'}}}, mkAlign('center')]);
   });
 
   barRows.forEach(function(row,ri){
@@ -3898,7 +3897,7 @@ async function downloadAttExcel() {
     var fcs2=[null,null,null,GREEN_D,AMB_D,RED_D,null,PUR_D,null];
     var bds2=[true,false,false,true,true,true,false,true,false];
     vals2.forEach(function(v,i){
-      ws1[XLSX.utils.encode_cell({r:r,c:i})] = cell(v, [mkFont(bds2[i],11,fcs2[i]||'000000'), mkAlign(i===0?'left':'center'), mkBdr()]);
+      ws1[XLSX.utils.encode_cell({r:r,c:i})] = cell(v, [mkFont(bds2[i],11,fcs2[i]||'000000'), mkAlign(i===0?'left':'center'), {border:{top:{style:'thin'},bottom:{style:'thin'},left:{style:'thin'},right:{style:'thin'}}}]);
     });
   });
 
@@ -3906,7 +3905,7 @@ async function downloadAttExcel() {
   var sumR=barRows.length+2;
   ws1['!rows'][sumR]={hpt:18};
   ['합계','',workdays2.length*barRows.length,totP2,totL2,totA2,totLv2,totOt2,totLR2].forEach(function(v,i){
-    ws1[XLSX.utils.encode_cell({r:sumR,c:i})] = cell(v, [mkFont(true,11,'FFFFFF'), mkFill(HDR), mkBdr(), mkAlign('center')]);
+    ws1[XLSX.utils.encode_cell({r:sumR,c:i})] = cell(v, [mkFont(true,11,'FFFFFF'), mkFill(HDR), {border:{top:{style:'thin'},bottom:{style:'thin'},left:{style:'thin'},right:{style:'thin'}}}, mkAlign('center')]);
   });
   ws1['!ref']=XLSX.utils.encode_range({s:{r:0,c:0},e:{r:sumR,c:8}});
   ws1['!merges']=ws1merge;
@@ -3929,7 +3928,7 @@ async function downloadAttExcel() {
 
     // 헤더
     ['날짜','구분','유형','시간','상태','현장메모'].forEach(function(h,i){
-      wsE[XLSX.utils.encode_cell({r:2,c:i})] = cell(h, [mkFont(true,11,'FFFFFF'), mkFill(HDR), {border:{top:{style:'thin',color:{indexed:64}},bottom:{style:'thin',color:{indexed:64}},left:{style:'thin',color:{indexed:64}},right:{style:'thin',color:{indexed:64}}}}, mkAlign('center')]);
+      wsE[XLSX.utils.encode_cell({r:2,c:i})] = cell(h, [mkFont(true,11,'FFFFFF'), mkFill(HDR), {border:{top:{style:'thin'},bottom:{style:'thin'},left:{style:'thin'},right:{style:'thin'}}}, mkAlign('center')]);
     });
 
     // 데이터
@@ -3948,7 +3947,7 @@ async function downloadAttExcel() {
           wsE[XLSX.utils.encode_cell({r:eRow,c:i})] = cell(v, [
             i===1 ? mkFont(true,10,gfg2) : mkFont(false,11),
             i===1 ? {fill:{fgColor:{rgb:'FF'+gbg2},patternType:'solid'}} : {fill:{fgColor:{rgb:'FF'+bg},patternType:'solid'}},
-            mkAlign(i===5?'left':'center'), {border:{top:{style:'thin',color:{indexed:64}},bottom:{style:'thin',color:{indexed:64}},left:{style:'thin',color:{indexed:64}},right:{style:'thin',color:{indexed:64}}}}
+            mkAlign(i===5?'left':'center'), {border:{top:{style:'thin'},bottom:{style:'thin'},left:{style:'thin'},right:{style:'thin'}}}
           ]);
         });
         eRow++;
@@ -3972,7 +3971,7 @@ async function downloadAttExcel() {
           wsE[XLSX.utils.encode_cell({r:eRow,c:i})] = cell(v, [
             i===1?mkFont(true,10,gfg3):i===4?mkFont(true,10,sfg):mkFont(false,11),
             i===1?{fill:{fgColor:{rgb:'FF'+gbg3},patternType:'solid'}}:i===4?{fill:{fgColor:{rgb:'FF'+sbg},patternType:'solid'}}:{fill:{fgColor:{rgb:'FF'+bg},patternType:'solid'}},
-            mkAlign(i===5?'left':'center'), {border:{top:{style:'thin',color:{indexed:64}},bottom:{style:'thin',color:{indexed:64}},left:{style:'thin',color:{indexed:64}},right:{style:'thin',color:{indexed:64}}}}
+            mkAlign(i===5?'left':'center'), {border:{top:{style:'thin'},bottom:{style:'thin'},left:{style:'thin'},right:{style:'thin'}}}
           ]);
         });
         eRow++;
@@ -3989,7 +3988,7 @@ async function downloadAttExcel() {
           wsE[XLSX.utils.encode_cell({r:eRow,c:i})] = cell(v, [
             i===1?mkFont(true,10,cogfg):i===4?mkFont(true,10,cofg):mkFont(false,11),
             i===1?{fill:{fgColor:{rgb:'FF'+cogbg},patternType:'solid'}}:i===4?{fill:{fgColor:{rgb:'FF'+cobg},patternType:'solid'}}:{fill:{fgColor:{rgb:'FF'+bg},patternType:'solid'}},
-            mkAlign(i===5?'left':'center'), {border:{top:{style:'thin',color:{indexed:64}},bottom:{style:'thin',color:{indexed:64}},left:{style:'thin',color:{indexed:64}},right:{style:'thin',color:{indexed:64}}}}
+            mkAlign(i===5?'left':'center'), {border:{top:{style:'thin'},bottom:{style:'thin'},left:{style:'thin'},right:{style:'thin'}}}
           ]);
         });
         eRow++;
@@ -3999,7 +3998,7 @@ async function downloadAttExcel() {
           wsE[XLSX.utils.encode_cell({r:eRow,c:i})] = cell(v, [
             i===1?mkFont(true,10,RED_D):mkFont(false,11),
             i===1?{fill:{fgColor:{rgb:'FF'+RED_L},patternType:'solid'}}:{fill:{fgColor:{rgb:'FF'+bg},patternType:'solid'}},
-            mkAlign(i===5?'left':'center'), {border:{top:{style:'thin',color:{indexed:64}},bottom:{style:'thin',color:{indexed:64}},left:{style:'thin',color:{indexed:64}},right:{style:'thin',color:{indexed:64}}}}
+            mkAlign(i===5?'left':'center'), {border:{top:{style:'thin'},bottom:{style:'thin'},left:{style:'thin'},right:{style:'thin'}}}
           ]);
         });
         eRow++;
@@ -4012,7 +4011,7 @@ async function downloadAttExcel() {
           wsE[XLSX.utils.encode_cell({r:eRow,c:i})] = cell(v, [
             i===1?mkFont(true,10,PUR_D):i===4?mkFont(true,10,PUR_D):mkFont(false,11),
             i===1?{fill:{fgColor:{rgb:'FF'+PUR_L},patternType:'solid'}}:i===4?{fill:{fgColor:{rgb:'FF'+PUR_L},patternType:'solid'}}:{fill:{fgColor:{rgb:'FF'+bg},patternType:'solid'}},
-            mkAlign(i===5?'left':'center'), {border:{top:{style:'thin',color:{indexed:64}},bottom:{style:'thin',color:{indexed:64}},left:{style:'thin',color:{indexed:64}},right:{style:'thin',color:{indexed:64}}}}
+            mkAlign(i===5?'left':'center'), {border:{top:{style:'thin'},bottom:{style:'thin'},left:{style:'thin'},right:{style:'thin'}}}
           ]);
         });
         eRow++;
@@ -4022,7 +4021,7 @@ async function downloadAttExcel() {
             wsE[XLSX.utils.encode_cell({r:eRow,c:i})] = cell(v, [
               i===1?mkFont(true,10,PUR_D):i===4?mkFont(true,10,PUR_D):mkFont(false,11),
               {fill:{fgColor:{rgb:'FF'+PUR_L},patternType:'solid'}},
-              mkAlign(i===5?'left':'center'), mkBdr()
+              mkAlign(i===5?'left':'center'), {border:{top:{style:'thin'},bottom:{style:'thin'},left:{style:'thin'},right:{style:'thin'}}}
             ]);
           });
           eRow++;
