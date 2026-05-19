@@ -3705,6 +3705,7 @@ async function downloadAttExcel() {
   function mkFont(bold,sz,color){ return {font:{bold:!!bold,sz:sz||11,color:{rgb:'FF'+(color||'000000')}}}; }
   function mkFill(color){ return {fill:{fgColor:{rgb:'FF'+color},patternType:'solid'}}; }
   function mkBdr(color){ const s={style:'thin',color:{rgb:'FF'+(color||'CCCCCC')}}; return {border:{top:s,bottom:s,left:s,right:s}}; }
+  function BD64(){ const s={style:'thin',color:{indexed:64}}; return {border:{top:s,bottom:s,left:s,right:s}}; }
   function mkAlign(h,v){ return {alignment:{horizontal:h||'center',vertical:v||'center'}}; }
   function cell(v,styles){
     const s=Object.assign({},...styles);
@@ -3919,8 +3920,8 @@ async function downloadAttExcel() {
 
     const wsE = {};
     const wsErows = [];
-    wsE['!cols']=[{wch:12.86},{wch:8.86},{wch:8},{wch:10.86},{wch:10.86},{wch:20.86}];
-    wsErows[0]={hpt:21.95}; wsErows[1]={hpt:6}; wsErows[2]={hpt:20.1};
+    wsE['!cols']=[{wch:13.71},{wch:9.71},{wch:8.86},{wch:11.71},{},{wch:21.71}];
+    wsErows[0]={hpt:21.95}; wsErows[1]={hpt:6.0}; wsErows[2]={hpt:20.1};
 
     // 제목
     wsE[XLSX.utils.encode_cell({r:0,c:0})] = cell(e.name+'  |  부서: '+e.dept+'  |  기간: '+monthLabel2, [mkFont(true,13,HDR), mkAlign('left')]);
@@ -3928,7 +3929,7 @@ async function downloadAttExcel() {
 
     // 헤더
     ['날짜','구분','유형','시간','상태','현장메모'].forEach(function(h,i){
-      wsE[XLSX.utils.encode_cell({r:2,c:i})] = cell(h, [mkFont(true,11,'FFFFFF'), mkFill(HDR), mkBdr('AAAAAA'), mkAlign('center')]);
+      wsE[XLSX.utils.encode_cell({r:2,c:i})] = cell(h, [mkFont(true,11,'FFFFFF'), mkFill(HDR), {border:{top:{style:'thin',color:{indexed:64}},bottom:{style:'thin',color:{indexed:64}},left:{style:'thin',color:{indexed:64}},right:{style:'thin',color:{indexed:64}}}}, mkAlign('center')]);
     });
 
     // 데이터
@@ -3942,12 +3943,12 @@ async function downloadAttExcel() {
         if(lv2.type==='연차'||lv2.type==='반차') { gfg2=GREEN_D; gbg2=GREEN_L; }
         else if(lv2.type==='병가') { gfg2=RED_D; gbg2=RED_L; }
         else { gfg2=PUR_D; gbg2=PUR_L; }
-        wsErows[eRow]={hpt:16};
+        wsErows[eRow]={hpt:15.95};
         [ds,lv2.type,'','','',''].forEach(function(v,i){
           wsE[XLSX.utils.encode_cell({r:eRow,c:i})] = cell(v, [
             i===1 ? mkFont(true,10,gfg2) : mkFont(false,11),
             i===1 ? {fill:{fgColor:{rgb:'FF'+gbg2},patternType:'solid'}} : {fill:{fgColor:{rgb:'FF'+bg},patternType:'solid'}},
-            mkAlign(i===5?'left':'center'), mkBdr()
+            mkAlign(i===5?'left':'center'), {border:{top:{style:'thin',color:{indexed:64}},bottom:{style:'thin',color:{indexed:64}},left:{style:'thin',color:{indexed:64}},right:{style:'thin',color:{indexed:64}}}}
           ]);
         });
         eRow++;
@@ -3966,18 +3967,18 @@ async function downloadAttExcel() {
         var sbg=ciSt==='지각'?AMB_L:GREEN_L;
 
         // 출근행
-        wsErows[eRow]={hpt:16};
+        wsErows[eRow]={hpt:15.95};
         [ds,gubun,'출근',formatTimeKST(att.checkin_time),ciSt,att.checkin_field_memo||''].forEach(function(v,i){
           wsE[XLSX.utils.encode_cell({r:eRow,c:i})] = cell(v, [
             i===1?mkFont(true,10,gfg3):i===4?mkFont(true,10,sfg):mkFont(false,11),
             i===1?{fill:{fgColor:{rgb:'FF'+gbg3},patternType:'solid'}}:i===4?{fill:{fgColor:{rgb:'FF'+sbg},patternType:'solid'}}:{fill:{fgColor:{rgb:'FF'+bg},patternType:'solid'}},
-            mkAlign(i===5?'left':'center'), mkBdr()
+            mkAlign(i===5?'left':'center'), {border:{top:{style:'thin',color:{indexed:64}},bottom:{style:'thin',color:{indexed:64}},left:{style:'thin',color:{indexed:64}},right:{style:'thin',color:{indexed:64}}}}
           ]);
         });
         eRow++;
 
         // 퇴근행
-        wsErows[eRow]={hpt:16};
+        wsErows[eRow]={hpt:15.95};
         var coGubun=att.field_memo?'현장':(att.checkin_field_memo?'현장':'본사');
         var coSt=att.checkout_time?(att.checkout_status==='early'?'조기퇴근':'정상퇴근'):'-';
         var cofg=coSt==='조기퇴근'?RED_D:coSt==='정상퇴근'?GREEN_D:'888888';
@@ -3988,17 +3989,17 @@ async function downloadAttExcel() {
           wsE[XLSX.utils.encode_cell({r:eRow,c:i})] = cell(v, [
             i===1?mkFont(true,10,cogfg):i===4?mkFont(true,10,cofg):mkFont(false,11),
             i===1?{fill:{fgColor:{rgb:'FF'+cogbg},patternType:'solid'}}:i===4?{fill:{fgColor:{rgb:'FF'+cobg},patternType:'solid'}}:{fill:{fgColor:{rgb:'FF'+bg},patternType:'solid'}},
-            mkAlign(i===5?'left':'center'), mkBdr()
+            mkAlign(i===5?'left':'center'), {border:{top:{style:'thin',color:{indexed:64}},bottom:{style:'thin',color:{indexed:64}},left:{style:'thin',color:{indexed:64}},right:{style:'thin',color:{indexed:64}}}}
           ]);
         });
         eRow++;
       } else if(ds<=today2){
-        wsErows[eRow]={hpt:16};
+        wsErows[eRow]={hpt:15.95};
         [ds,'결근','','','',''].forEach(function(v,i){
           wsE[XLSX.utils.encode_cell({r:eRow,c:i})] = cell(v, [
             i===1?mkFont(true,10,RED_D):mkFont(false,11),
             i===1?{fill:{fgColor:{rgb:'FF'+RED_L},patternType:'solid'}}:{fill:{fgColor:{rgb:'FF'+bg},patternType:'solid'}},
-            mkAlign(i===5?'left':'center'), mkBdr()
+            mkAlign(i===5?'left':'center'), {border:{top:{style:'thin',color:{indexed:64}},bottom:{style:'thin',color:{indexed:64}},left:{style:'thin',color:{indexed:64}},right:{style:'thin',color:{indexed:64}}}}
           ]);
         });
         eRow++;
@@ -4006,17 +4007,17 @@ async function downloadAttExcel() {
 
       // 특근행
       otRecs.forEach(function(ot){
-        wsErows[eRow]={hpt:16};
+        wsErows[eRow]={hpt:15.95};
         [att?'':ds,'특근','출근',formatTimeKST(ot.overtime_checkin),'특근출근',ot.overtime_memo||''].forEach(function(v,i){
           wsE[XLSX.utils.encode_cell({r:eRow,c:i})] = cell(v, [
             i===1?mkFont(true,10,PUR_D):i===4?mkFont(true,10,PUR_D):mkFont(false,11),
             i===1?{fill:{fgColor:{rgb:'FF'+PUR_L},patternType:'solid'}}:i===4?{fill:{fgColor:{rgb:'FF'+PUR_L},patternType:'solid'}}:{fill:{fgColor:{rgb:'FF'+bg},patternType:'solid'}},
-            mkAlign(i===5?'left':'center'), mkBdr()
+            mkAlign(i===5?'left':'center'), {border:{top:{style:'thin',color:{indexed:64}},bottom:{style:'thin',color:{indexed:64}},left:{style:'thin',color:{indexed:64}},right:{style:'thin',color:{indexed:64}}}}
           ]);
         });
         eRow++;
         if(ot.overtime_checkout){
-          wsErows[eRow]={hpt:16};
+          wsErows[eRow]={hpt:15.95};
           ['','특근','퇴근',formatTimeKST(ot.overtime_checkout),'특근퇴근',''].forEach(function(v,i){
             wsE[XLSX.utils.encode_cell({r:eRow,c:i})] = cell(v, [
               i===1?mkFont(true,10,PUR_D):i===4?mkFont(true,10,PUR_D):mkFont(false,11),
